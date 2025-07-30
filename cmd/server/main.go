@@ -61,7 +61,7 @@ func main() {
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "ok",
-			"message": "LifePathDAO API Server is running",
+			"message": "Blueprint API Server is running",
 		})
 	})
 
