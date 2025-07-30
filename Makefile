@@ -57,6 +57,37 @@ dev: ## 개발 모드로 시작 (rebuild + logs)
 	@echo "Starting development environment..."
 	docker-compose up --build
 
+dev-db: ## 데이터베이스만 시작 (로컬 개발용)
+	@echo "Starting development databases..."
+	docker-compose -f docker-compose.dev.yml up -d
+	@echo "✅ Development databases started!"
+	@echo "🗄️  PostgreSQL: localhost:5432"
+	@echo "🔴 Redis: localhost:6379"
+	@echo ""
+	@echo "이제 백엔드와 프론트엔드를 로컬에서 실행하세요:"
+	@echo "  Backend:  make run-backend"
+	@echo "  Frontend: make run-frontend"
+
+dev-db-down: ## 개발 데이터베이스 중지
+	docker-compose -f docker-compose.dev.yml down
+
+run-backend: ## 로컬에서 백엔드 실행
+	@echo "🚀 Starting backend locally..."
+	export DB_HOST=localhost && \
+	export DB_PORT=5432 && \
+	export DB_USER=postgres && \
+	export DB_PASSWORD=password && \
+	export DB_NAME=blueprint_db && \
+	export DB_SSLMODE=disable && \
+	export JWT_SECRET=your-super-secret-jwt-key && \
+	export PORT=8080 && \
+	export GIN_MODE=debug && \
+	go run cmd/server/main.go
+
+run-frontend: ## 로컬에서 프론트엔드 실행
+	@echo "🌐 Starting frontend locally..."
+	cd web && npm run dev
+
 test: ## 애플리케이션 테스트 실행
 	@echo "Running tests..."
 	docker-compose exec app go test ./...
