@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 데이터베이스
+  postgres:
+    image: postgres:16-alpine
+    container_name: blueprint-postgres
+    environment:
+      POSTGRES_DB: blueprint_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - blueprint-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (캐시 및 세션 스토어용)
+  redis:
+    image: redis:7-alpine
+    container_name: blueprint-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - blueprint-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Blueprint 애플리케이션
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blueprint-app
+    environment:
+      # 데이터베이스 설정
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: blueprint_db
+      DB_SSLMODE: disable
+
+      # JWT 설정
+      JWT_SECRET: your-super-secret-jwt-key-blueprint-2024-docker
+
+      # Google OAuth (실제 값으로 교체 필요)
+      GOOGLE_CLIENT_ID: your-google-client-id
+      GOOGLE_CLIENT_SECRET: your-google-client-secret
+      GOOGLE_REDIRECT_URL: http://localhost:8080/auth/google/callback
+
+      # 서버 설정
+      PORT: 8080
+      GIN_MODE: debug
+      FRONTEND_URL: http://localhost:3000
+
+      # Redis 설정 (향후 사용)
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - blueprint-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  blueprint-network:
+    driver: bridge

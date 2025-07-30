@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+docs/
+
+# Environment files
+.env
+.env.*
+
+# Compiled binaries
+main
+server
+*.exe
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+
+# Test files
+*_test.go
+
+# Development files
+docker-compose.yml
+Dockerfile
+
+# Node.js (if any frontend assets)
+node_modules/
+npm-debug.log*
