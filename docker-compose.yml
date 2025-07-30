@@ -37,7 +37,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Blueprint 애플리케이션
+  # Blueprint 백엔드 애플리케이션
   app:
     build:
       context: .
@@ -75,6 +75,20 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - blueprint-network
+    restart: unless-stopped
+
+  # Blueprint 프론트엔드 애플리케이션
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: blueprint-web
+    ports:
+      - "3000:3000"
+    depends_on:
+      - app
     networks:
       - blueprint-network
     restart: unless-stopped

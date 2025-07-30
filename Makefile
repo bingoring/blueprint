@@ -31,8 +31,11 @@ restart: ## 모든 서비스 재시작
 logs: ## 모든 서비스 로그 표시
 	docker-compose logs -f
 
-logs-app: ## 애플리케이션 로그만 표시
+logs-app: ## 백엔드 애플리케이션 로그만 표시
 	docker-compose logs -f app
+
+logs-web: ## 프론트엔드 애플리케이션 로그만 표시
+	docker-compose logs -f web
 
 logs-db: ## 데이터베이스 로그만 표시
 	docker-compose logs -f postgres
@@ -58,8 +61,11 @@ test: ## 애플리케이션 테스트 실행
 	@echo "Running tests..."
 	docker-compose exec app go test ./...
 
-shell-app: ## 애플리케이션 컨테이너 셸 접속
+shell-app: ## 백엔드 애플리케이션 컨테이너 셸 접속
 	docker-compose exec app /bin/sh
+
+shell-web: ## 프론트엔드 애플리케이션 컨테이너 셸 접속
+	docker-compose exec web /bin/sh
 
 shell-db: ## 데이터베이스 컨테이너 셸 접속
 	docker-compose exec postgres psql -U postgres -d blueprint_db
@@ -80,6 +86,7 @@ install: ## 첫 실행을 위한 전체 설정
 	docker-compose ps
 	@echo ""
 	@echo "🚀 Blueprint is now running!"
+	@echo "🌐 Frontend: http://localhost:3000"
 	@echo "📡 API Server: http://localhost:8080"
 	@echo "🗄️  PostgreSQL: localhost:5432"
 	@echo "🔴 Redis: localhost:6379"
