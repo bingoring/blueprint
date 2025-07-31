@@ -6,7 +6,9 @@ import type {
   CreateMilestoneRequest,
   GoalCategoryOption,
   GoalCategory,
-  Goal
+  Goal,
+  AIMilestone,
+  AIMilestoneResponse
 } from '../types';
 
 interface CreateDreamModalProps {
@@ -21,6 +23,11 @@ export default function CreateDreamModal({ isOpen, onClose, onSuccess, onLoginRe
   const [categories, setCategories] = useState<GoalCategoryOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // AI 관련 상태
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<AIMilestoneResponse | null>(null);
+  const [showAiResults, setShowAiResults] = useState(false);
 
   // 폼 상태
   const [formData, setFormData] = useState<Omit<CreateDreamRequest, 'milestones'>>({
@@ -162,6 +169,55 @@ export default function CreateDreamModal({ isOpen, onClose, onSuccess, onLoginRe
   const prevStep = () => {
     setCurrentStep(1);
     setError(null);
+  };
+
+  // AI 마일스톤 제안 받기 🤖
+  const handleAISuggestions = async () => {
+    if (!formData.title.trim()) {
+      setError('꿈의 제목을 먼저 입력해주세요');
+      return;
+    }
+
+    setAiLoading(true);
+    setError(null);
+
+    try {
+      // 현재 입력된 꿈 정보로 AI 제안 요청
+      const dreamData = {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        target_date: formData.target_date,
+        budget: formData.budget,
+        priority: formData.priority,
+        tags: formData.tags,
+      };
+
+      const response = await apiClient.generateAIMilestones(dreamData);
+
+      if (response.success && response.data) {
+        setAiSuggestions(response.data);
+        setShowAiResults(true);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'AI 제안을 받는데 실패했습니다');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // AI 제안을 마일스톤으로 적용하기
+  const applyAISuggestions = (suggestions: AIMilestone[]) => {
+    const newMilestones: CreateMilestoneRequest[] = suggestions.map((suggestion, index) => ({
+      title: suggestion.title,
+      description: suggestion.description,
+      order: index + 1,
+      target_date: '', // 사용자가 나중에 설정
+    }));
+
+    setMilestones(newMilestones);
+    setShowAiResults(false);
+    setAiSuggestions(null);
   };
 
   if (!isOpen) return null;
@@ -360,6 +416,123 @@ export default function CreateDreamModal({ isOpen, onClose, onSuccess, onLoginRe
                 </p>
               </div>
 
+              {/* AI 제안 받기 버튼 */}
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-purple-900 mb-1">
+                      🤖 AI 마일스톤 제안
+                    </h4>
+                    <p className="text-sm text-purple-700">
+                      AI가 당신의 꿈에 맞는 구체적인 마일스톤을 제안해드려요
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleAISuggestions}
+                    disabled={aiLoading || !formData.title.trim()}
+                    className={`px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg text-sm font-medium transition duration-200 ${
+                      aiLoading || !formData.title.trim()
+                        ? 'opacity-50 cursor-not-allowed'
+                        : 'hover:from-purple-700 hover:to-blue-700'
+                    }`}
+                  >
+                    {aiLoading ? '제안 생성 중...' : '🤖 AI 제안 받기'}
+                  </button>
+                </div>
+              </div>
+
+              {/* AI 제안 결과 모달 */}
+              {showAiResults && aiSuggestions && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
+                  <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                    <div className="p-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          🤖 AI 마일스톤 제안 결과
+                        </h3>
+                        <button
+                          onClick={() => setShowAiResults(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* AI 제안 마일스톤들 */}
+                      <div className="space-y-4 mb-6">
+                        {aiSuggestions.milestones.map((milestone, index) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-medium text-gray-900">{milestone.title}</h4>
+                              <div className="flex space-x-2 text-xs">
+                                <span className={`px-2 py-1 rounded-full ${
+                                  milestone.difficulty === '쉬움' ? 'bg-green-100 text-green-700' :
+                                  milestone.difficulty === '보통' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {milestone.difficulty}
+                                </span>
+                                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                                  {milestone.duration}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-gray-600 text-sm">{milestone.description}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 추가 팁 */}
+                      {aiSuggestions.tips.length > 0 && (
+                        <div className="mb-4">
+                          <h4 className="font-medium text-gray-900 mb-2">💡 성공 팁</h4>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            {aiSuggestions.tips.map((tip, index) => (
+                              <li key={index} className="flex items-start">
+                                <span className="text-blue-500 mr-2">•</span>
+                                {tip}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* 주의사항 */}
+                      {aiSuggestions.warnings.length > 0 && (
+                        <div className="mb-6">
+                          <h4 className="font-medium text-gray-900 mb-2">⚠️ 주의사항</h4>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            {aiSuggestions.warnings.map((warning, index) => (
+                              <li key={index} className="flex items-start">
+                                <span className="text-orange-500 mr-2">•</span>
+                                {warning}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* 액션 버튼 */}
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={() => applyAISuggestions(aiSuggestions.milestones)}
+                          className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition duration-200"
+                        >
+                          ✨ 이 제안들을 적용하기
+                        </button>
+                        <button
+                          onClick={() => setShowAiResults(false)}
+                          className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                        >
+                          닫기
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 기존 마일스톤 입력 폼들 */}
               {milestones.map((milestone, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex justify-between items-center mb-3">

@@ -17,6 +17,7 @@ import type {
   GoalCategoryOption,
   GoalStatusOption,
   Pagination,
+  AIMilestoneResponse,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -116,6 +117,14 @@ class ApiClient {
   // ✨ 꿈 등록 (마일스톤 포함)
   async createDream(dreamData: CreateDreamRequest): Promise<ApiResponse<Goal>> {
     return this.request('/dreams', {
+      method: 'POST',
+      body: JSON.stringify(dreamData),
+    });
+  }
+
+  // 🤖 AI 마일스톤 제안 받기
+  async generateAIMilestones(dreamData: CreateGoalRequest): Promise<ApiResponse<AIMilestoneResponse>> {
+    return this.request('/ai/milestones', {
       method: 'POST',
       body: JSON.stringify(dreamData),
     });

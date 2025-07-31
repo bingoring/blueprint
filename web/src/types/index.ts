@@ -101,6 +101,27 @@ export interface UpdateMilestoneRequest {
   notes?: string;
 }
 
+// AI 마일스톤 제안 관련 타입들 🤖
+export interface AIMilestone {
+  title: string;
+  description: string;
+  order: number;
+  duration: string;    // 예상 소요 기간
+  difficulty: string;  // 난이도 (쉬움/보통/어려움)
+  category: string;    // 카테고리 (준비/실행/완성)
+}
+
+export interface AIMilestoneResponse {
+  milestones: AIMilestone[];
+  tips: string[];       // 추가 팁
+  warnings: string[];   // 주의사항
+  meta: {
+    model: string;
+    generated_at: string;
+    user_id: number;
+  };
+}
+
 export interface GoalCategoryOption {
   value: string;
   label: string;
