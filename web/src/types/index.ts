@@ -26,6 +26,7 @@ export interface Goal {
   metrics: string;
   created_at: string;
   updated_at: string;
+  milestones?: Milestone[]; // 꿈의 마일스톤들
 }
 
 export type GoalCategory =
@@ -68,10 +69,43 @@ export interface UpdateGoalRequest {
   metrics?: string;
 }
 
+// 꿈과 마일스톤을 함께 생성하는 요청 ✨
+export interface CreateDreamRequest {
+  title: string;
+  description?: string;
+  category: GoalCategory;
+  target_date?: string;
+  budget?: number;
+  priority?: number;
+  is_public?: boolean;
+  tags?: string[];
+  metrics?: string;
+  milestones: CreateMilestoneRequest[];
+}
+
+// 마일스톤 생성 요청
+export interface CreateMilestoneRequest {
+  title: string;
+  description?: string;
+  order: number;
+  target_date?: string;
+}
+
+// 마일스톤 업데이트 요청
+export interface UpdateMilestoneRequest {
+  title?: string;
+  description?: string;
+  status?: MilestoneStatus;
+  target_date?: string;
+  evidence?: string;
+  notes?: string;
+}
+
 export interface GoalCategoryOption {
   value: string;
   label: string;
   icon: string;
+  description?: string;
 }
 
 export interface GoalStatusOption {
@@ -115,19 +149,28 @@ export interface Path {
 }
 
 export interface Milestone {
-  id: string;
-  pathId: string;
+  id: number;
+  goal_id?: number;  // 꿈에 직접 연결된 마일스톤
+  path_id?: number;  // 경로를 통한 마일스톤 (기존)
   title: string;
   description: string;
   order: number;
-  dueDate: string;
-  isCompleted: boolean;
-  completedAt?: string;
-  evidence: Evidence[];
+  target_date?: string; // 목표 날짜
+  completed_at?: string;
+  status: MilestoneStatus;
+  is_completed: boolean;
+  total_support: number;      // 총 응원금
+  supporter_count: number;    // 응원자 수
+  success_probability: number; // 성공 확률 (0-1)
+  evidence: string;           // JSON string
   notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  email_sent: boolean;
+  reminder_sent: boolean;
+  created_at: string;
+  updated_at: string;
 }
+
+export type MilestoneStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
 
 export interface Evidence {
   type: 'image' | 'document' | 'link' | 'text';

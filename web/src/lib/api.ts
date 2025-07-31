@@ -11,6 +11,7 @@ import type {
   Expert,
   MentoringSession,
   CreateGoalRequest,
+  CreateDreamRequest,
   UpdateGoalRequest,
   GoalStatus,
   GoalCategoryOption,
@@ -109,6 +110,14 @@ class ApiClient {
     return this.request('/goals', {
       method: 'POST',
       body: JSON.stringify(goalData),
+    });
+  }
+
+  // ✨ 꿈 등록 (마일스톤 포함)
+  async createDream(dreamData: CreateDreamRequest): Promise<ApiResponse<Goal>> {
+    return this.request('/dreams', {
+      method: 'POST',
+      body: JSON.stringify(dreamData),
     });
   }
 

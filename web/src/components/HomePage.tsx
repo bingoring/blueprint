@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuthStore } from '../stores/useAuthStore';
 import AuthPage from './AuthPage';
 import Dashboard from './Dashboard';
+import CreateDreamModal from './CreateDreamModal';
 
 // 임시 모의 데이터
 const mockGoals = [
@@ -84,6 +85,7 @@ const categories = ["전체", "Career", "Business", "Education", "Life", "Health
 export default function HomePage() {
   const { isAuthenticated, user } = useAuthStore();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showCreateDreamModal, setShowCreateDreamModal] = useState(false);
   const [currentView, setCurrentView] = useState<'home' | 'dashboard'>('home');
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [sortBy, setSortBy] = useState<"trending" | "probability" | "stake">("trending");
@@ -144,8 +146,11 @@ export default function HomePage() {
                   <span className="text-sm text-gray-600">
                     안녕하세요, <span className="font-medium">{user?.username}</span>님!
                   </span>
-                  <button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200">
-                    + 목표 등록
+                  <button
+                    onClick={() => setShowCreateDreamModal(true)}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
+                  >
+                    ✨ 꿈 등록하기
                   </button>
                   <button
                     onClick={() => setCurrentView('dashboard')}
@@ -162,11 +167,11 @@ export default function HomePage() {
                   >
                     로그인
                   </button>
-                  <button
-                    onClick={() => setShowAuthModal(true)}
+                                    <button
+                    onClick={() => setShowCreateDreamModal(true)}
                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
                   >
-                    시작하기
+                    ✨ 꿈 등록하기
                   </button>
                 </>
               )}
@@ -337,6 +342,20 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      {/* Create Dream Modal */}
+      <CreateDreamModal
+        isOpen={showCreateDreamModal}
+        onClose={() => setShowCreateDreamModal(false)}
+        onSuccess={(dream) => {
+          console.log('꿈 등록 성공:', dream);
+          // TODO: 성공 시 홈페이지 새로고침 또는 목록 업데이트
+        }}
+        onLoginRequired={() => {
+          setShowCreateDreamModal(false);
+          setShowAuthModal(true);
+        }}
+      />
     </div>
   );
 }
