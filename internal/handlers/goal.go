@@ -13,10 +13,10 @@ import (
 )
 
 type GoalHandler struct{
-	aiService *services.AIService
+	aiService services.AIServiceInterface
 }
 
-func NewGoalHandler(aiService *services.AIService) *GoalHandler {
+func NewGoalHandler(aiService services.AIServiceInterface) *GoalHandler {
 	return &GoalHandler{
 		aiService: aiService,
 	}

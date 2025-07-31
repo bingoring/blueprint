@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuthStore } from '../stores/useAuthStore';
-import AuthPage from './AuthPage';
 import Dashboard from './Dashboard';
+import AuthModal from './AuthModal';
 import CreateDreamModal from './CreateDreamModal';
 
 // 임시 모의 데이터
@@ -334,22 +334,10 @@ export default function HomePage() {
 
       {/* Auth Modal */}
       {showAuthModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">로그인 / 회원가입</h3>
-                <button
-                  onClick={() => setShowAuthModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
-              </div>
-              <AuthPage />
-            </div>
-          </div>
-        </div>
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+        />
       )}
 
       {/* Create Dream Modal */}

@@ -134,10 +134,26 @@ export default function CreateDreamModal({ isOpen, onClose, onSuccess, onLoginRe
         return;
       }
 
+      // 날짜를 올바른 ISO 형식으로 변환
+      const formatTargetDate = (dateString: string | undefined) => {
+        if (!dateString) return undefined;
+        // "2028-07-31" -> "2028-07-31T00:00:00Z"
+        return new Date(dateString + 'T00:00:00Z').toISOString();
+      };
+
+      // 마일스톤 날짜도 변환
+      const formattedMilestones = validMilestones.map(milestone => ({
+        ...milestone,
+        target_date: formatTargetDate(milestone.target_date),
+      }));
+
       const dreamData: CreateDreamRequest = {
         ...formData,
-        milestones: validMilestones
+        target_date: formatTargetDate(formData.target_date),
+        milestones: formattedMilestones
       };
+
+      console.log('✨ 꿈 등록 데이터:', dreamData); // 디버깅용
 
       const response = await apiClient.createDream(dreamData);
 
@@ -202,16 +218,25 @@ export default function CreateDreamModal({ isOpen, onClose, onSuccess, onLoginRe
     setError(null);
 
     try {
+      // 날짜를 올바른 ISO 형식으로 변환
+      const formatTargetDate = (dateString: string | undefined) => {
+        if (!dateString) return undefined;
+        // "2028-07-31" -> "2028-07-31T00:00:00Z"
+        return new Date(dateString + 'T00:00:00Z').toISOString();
+      };
+
       // 현재 입력된 꿈 정보로 AI 제안 요청
       const dreamData = {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        target_date: formData.target_date,
+        target_date: formatTargetDate(formData.target_date),
         budget: formData.budget,
         priority: formData.priority,
         tags: formData.tags,
       };
+
+      console.log('🤖 AI 요청 데이터:', dreamData); // 디버깅용
 
       const response = await apiClient.generateAIMilestones(dreamData);
 

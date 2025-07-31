@@ -39,8 +39,8 @@ func main() {
 	// 핸들러 초기화
 	authHandler := handlers.NewAuthHandler(cfg)
 
-	// AI 서비스 초기화 (DB 주입)
-	aiService := services.NewAIService(cfg, database.GetDB())
+	// Initialize services
+	aiService := services.NewBridgeAIService(cfg, database.GetDB())
 	goalHandler := handlers.NewGoalHandler(aiService)
 
 	// API 라우트 그룹

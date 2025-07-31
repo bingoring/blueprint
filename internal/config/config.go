@@ -13,7 +13,7 @@ type Config struct {
 	JWT      JWTConfig
 	Google   GoogleConfig
 	Server   ServerConfig
-	OpenAI   OpenAIConfig
+	AI       AIConfig
 }
 
 type DatabaseConfig struct {
@@ -41,9 +41,16 @@ type ServerConfig struct {
 	FrontendURL string
 }
 
+// OpenAIConfig OpenAI 설정
 type OpenAIConfig struct {
 	APIKey string
 	Model  string
+}
+
+// AIConfig AI 전반적인 설정
+type AIConfig struct {
+	Provider string // openai, mock, claude, gemini
+	OpenAI   OpenAIConfig
 }
 
 // LoadConfig .env 파일을 로드하고 설정을 반환합니다 🔧
@@ -77,9 +84,12 @@ func LoadConfig() *Config {
 			Mode:        getEnv("GIN_MODE", "debug"),
 			FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
 		},
-		OpenAI: OpenAIConfig{
-			APIKey: getEnv("OPENAI_API_KEY", ""),
-			Model:  getEnv("OPENAI_MODEL", "gpt-4o-mini"),
+		AI: AIConfig{
+			Provider: getEnv("AI_PROVIDER", "mock"),
+			OpenAI: OpenAIConfig{
+				APIKey: getEnv("OPENAI_API_KEY", ""),
+				Model:  getEnv("OPENAI_MODEL", "gpt-4o-mini"),
+			},
 		},
 	}
 }
