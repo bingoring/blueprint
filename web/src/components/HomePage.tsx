@@ -83,12 +83,17 @@ const mockGoals = [
 const categories = ["전체", "Career", "Business", "Education", "Life", "Health", "Personal"];
 
 export default function HomePage() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, logout } = useAuthStore();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showCreateDreamModal, setShowCreateDreamModal] = useState(false);
   const [currentView, setCurrentView] = useState<'home' | 'dashboard'>('home');
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [sortBy, setSortBy] = useState<"trending" | "probability" | "stake">("trending");
+
+  const handleLogout = async () => {
+    await logout();
+    setCurrentView('home'); // 로그아웃 후 홈으로 이동
+  };
 
   // 대시보드 페이지를 보여주는 경우
   if (currentView === 'dashboard' && isAuthenticated) {
@@ -140,42 +145,46 @@ export default function HomePage() {
               </span>
             </div>
 
-            <div className="flex items-center space-x-4">
-              {isAuthenticated ? (
-                <>
-                  <span className="text-sm text-gray-600">
-                    안녕하세요, <span className="font-medium">{user?.username}</span>님!
-                  </span>
-                  <button
-                    onClick={() => setShowCreateDreamModal(true)}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
-                  >
-                    ✨ 꿈 등록하기
-                  </button>
-                  <button
-                    onClick={() => setCurrentView('dashboard')}
-                    className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:border-gray-400 transition duration-200"
-                  >
-                    📊 대시보드
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setShowAuthModal(true)}
-                    className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium"
-                  >
-                    로그인
-                  </button>
-                                    <button
-                    onClick={() => setShowCreateDreamModal(true)}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
-                  >
-                    ✨ 꿈 등록하기
-                  </button>
-                </>
-              )}
-            </div>
+            {isAuthenticated ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">
+                  안녕하세요, <span className="font-medium">{user?.username}</span>님!
+                </span>
+                <button
+                  onClick={() => setShowCreateDreamModal(true)}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-blue-700 transition duration-200 flex items-center"
+                >
+                  ✨ 꿈 등록하기
+                </button>
+                <button
+                  onClick={() => setCurrentView('dashboard')}
+                  className="bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition duration-200"
+                >
+                  📊 대시보드
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition duration-200 flex items-center"
+                >
+                  🚪 로그아웃
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium"
+                >
+                  로그인
+                </button>
+                <button
+                  onClick={() => setShowCreateDreamModal(true)}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
+                >
+                  ✨ 꿈 등록하기
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </nav>

@@ -4,6 +4,9 @@ import type {
   LoginRequest,
   RegisterRequest,
   AuthResponse,
+  LogoutResponse,
+  RefreshTokenResponse,
+  TokenExpiryResponse,
   User,
   Goal,
   Path,
@@ -188,8 +191,38 @@ class ApiClient {
     return this.request('/goal-statuses');
   }
 
-  async logout(): Promise<void> {
-    this.removeToken();
+  // 🔐 로그아웃
+  async logout(): Promise<ApiResponse<LogoutResponse>> {
+    const response = await this.request('/auth/logout', {
+      method: 'POST',
+    }) as ApiResponse<LogoutResponse>;
+
+    // 로그아웃 성공 시 토큰 제거
+    if (response.success) {
+      this.clearToken();
+    }
+
+    return response;
+  }
+
+  // 🔄 토큰 갱신
+  async refreshToken(): Promise<ApiResponse<RefreshTokenResponse>> {
+    const response = await this.request('/auth/refresh', {
+      method: 'POST',
+    }) as ApiResponse<RefreshTokenResponse>;
+
+    // 토큰 갱신 성공 시 새 토큰 저장
+    if (response.success && response.data && 'token' in response.data) {
+      this.setToken(response.data.token);
+    }
+
+    return response;
+  }
+
+  // 토큰 제거 메서드
+  clearToken(): void {
+    localStorage.removeItem('auth_token');
+    this.token = null;
   }
 
   // Google OAuth 로그인 URL 가져오기
@@ -278,6 +311,11 @@ class ApiClient {
   async healthCheck(): Promise<{ status: string; message: string }> {
     const response = await fetch(`${this.baseURL.replace('/api/v1', '')}/health`);
     return response.json();
+  }
+
+  // ⏰ 토큰 만료 확인
+  async checkTokenExpiry(): Promise<ApiResponse<TokenExpiryResponse>> {
+    return this.request('/auth/token-expiry') as Promise<ApiResponse<TokenExpiryResponse>>;
   }
 }
 

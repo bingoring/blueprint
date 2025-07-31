@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
@@ -299,4 +300,104 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	}
 
 	middleware.Success(c, user, "User information retrieved successfully")
+}
+
+// Logout 로그아웃 처리 🚪
+func (h *AuthHandler) Logout(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		middleware.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	// 현재 JWT 기반이므로 클라이언트에서 토큰 삭제하도록 안내
+	// 향후 Redis 기반 블랙리스트나 세션 관리로 확장 가능
+	middleware.Success(c, gin.H{
+		"message": "로그아웃이 완료되었습니다",
+		"user_id": userID,
+		"logout_time": time.Now(),
+		"instructions": "클라이언트에서 토큰을 삭제해주세요",
+	}, "로그아웃이 성공적으로 처리되었습니다")
+}
+
+// RefreshToken JWT 토큰 갱신 🔄
+func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		middleware.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	// 사용자 정보 조회
+	var user models.User
+	if err := database.GetDB().First(&user, userID).Error; err != nil {
+		middleware.NotFound(c, "사용자를 찾을 수 없습니다")
+		return
+	}
+
+	// 새로운 토큰 생성
+	token, err := utils.GenerateToken(&user, h.cfg.JWT.Secret)
+	if err != nil {
+		middleware.InternalServerError(c, "토큰 생성에 실패했습니다")
+		return
+	}
+
+	middleware.Success(c, gin.H{
+		"token": token,
+		"user":  user,
+		"expires_in": 24 * 60 * 60, // 24시간 (초 단위)
+		"refresh_time": time.Now(),
+	}, "토큰이 성공적으로 갱신되었습니다")
+}
+
+// CheckTokenExpiry 토큰 만료 확인 ⏰
+func (h *AuthHandler) CheckTokenExpiry(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		middleware.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	// Authorization 헤더에서 토큰 추출
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		middleware.Unauthorized(c, "Authorization header missing")
+		return
+	}
+
+	tokenString := ""
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		tokenString = authHeader[7:]
+	} else {
+		middleware.Unauthorized(c, "Invalid authorization format")
+		return
+	}
+
+	// 토큰 만료 시간 확인
+	expirationTime, err := utils.GetTokenExpirationTime(tokenString, h.cfg.JWT.Secret)
+	if err != nil {
+		middleware.Unauthorized(c, "Invalid token")
+		return
+	}
+
+	// 남은 시간 계산
+	remaining, err := utils.GetTokenRemainingTime(tokenString, h.cfg.JWT.Secret)
+	if err != nil {
+		middleware.Unauthorized(c, "Token has expired")
+		return
+	}
+
+	// 만료 여부 확인
+	isExpired := utils.IsTokenExpired(tokenString, h.cfg.JWT.Secret)
+
+	middleware.Success(c, gin.H{
+		"user_id":          userID,
+		"expiration_time":  expirationTime,
+		"remaining_seconds": int(remaining.Seconds()),
+		"remaining_minutes": int(remaining.Minutes()),
+		"remaining_hours":   int(remaining.Hours()),
+		"is_expired":       isExpired,
+		"should_refresh":   remaining.Minutes() < 30, // 30분 이하일 때 갱신 권장
+		"checked_at":       time.Now(),
+	}, "토큰 만료 정보를 성공적으로 조회했습니다")
 }

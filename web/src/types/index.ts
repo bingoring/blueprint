@@ -296,7 +296,7 @@ export interface PaginatedResponse<T> {
   hasPrev: boolean;
 }
 
-// 인증 관련 타입
+// 인증 관련 타입들
 export interface LoginRequest {
   email: string;
   password: string;
@@ -309,9 +309,37 @@ export interface RegisterRequest {
 }
 
 export interface AuthResponse {
-  user: User;
   token: string;
-  refreshToken: string;
+  user: User;
+  message?: string;
+}
+
+// 로그아웃 응답 타입
+export interface LogoutResponse {
+  message: string;
+  user_id: number;
+  logout_time: string;
+  instructions: string;
+}
+
+// 토큰 갱신 응답 타입
+export interface RefreshTokenResponse {
+  token: string;
+  user: User;
+  expires_in: number; // 초 단위
+  refresh_time: string;
+}
+
+// 토큰 만료 확인 응답 타입
+export interface TokenExpiryResponse {
+  user_id: number;
+  expiration_time: string;
+  remaining_seconds: number;
+  remaining_minutes: number;
+  remaining_hours: number;
+  is_expired: boolean;
+  should_refresh: boolean;
+  checked_at: string;
 }
 
 // 차트 및 통계 타입

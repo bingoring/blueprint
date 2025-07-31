@@ -46,7 +46,7 @@ func main() {
 	// API 라우트 그룹
 	api := router.Group("/api/v1")
 
-	// 인증 관련 라우트 (인증 불필요)
+	// 인증 관련 API
 	auth := api.Group("/auth")
 	{
 		auth.POST("/register", authHandler.Register)
@@ -61,6 +61,9 @@ func main() {
 	{
 		// 사용자 관련
 		protected.GET("/me", authHandler.Me)
+		protected.POST("/auth/logout", authHandler.Logout)     // 로그아웃
+		protected.POST("/auth/refresh", authHandler.RefreshToken) // 토큰 갱신
+		protected.GET("/auth/token-expiry", authHandler.CheckTokenExpiry) // 토큰 만료 확인
 
 		// 목표 관리
 		goals := protected.Group("/goals")
