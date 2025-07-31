@@ -16,6 +16,16 @@ const (
 	PathFailed    PathStatus = "failed"    // 실패
 )
 
+// 마일스톤 상태
+type MilestoneStatus string
+
+const (
+	MilestoneStatusPending   MilestoneStatus = "pending"   // 대기중
+	MilestoneStatusCompleted MilestoneStatus = "completed" // 완료
+	MilestoneStatusFailed    MilestoneStatus = "failed"    // 실패
+	MilestoneStatusCancelled MilestoneStatus = "cancelled" // 취소
+)
+
 type Path struct {
 	ID              uint           `json:"id" gorm:"primaryKey"`
 	GoalID          uint           `json:"goal_id" gorm:"not null;index"`
@@ -63,23 +73,47 @@ type PathPrediction struct {
 	Expert User `json:"expert,omitempty" gorm:"foreignKey:ExpertID"`
 }
 
-// 마일스톤 (경로의 단계별 체크포인트)
+// 마일스톤 (꿈의 중간 단계 또는 경로의 체크포인트)
 type Milestone struct {
 	ID          uint           `json:"id" gorm:"primaryKey"`
-	PathID      uint           `json:"path_id" gorm:"not null;index"`
-	Title       string         `json:"title" gorm:"not null"`
+
+	// 연결 관계 (Goal 직접 연결 또는 Path를 통한 연결)
+	GoalID      *uint          `json:"goal_id" gorm:"index"`      // 꿈에 직접 연결된 마일스톤
+	PathID      *uint          `json:"path_id" gorm:"index"`      // 경로를 통한 마일스톤
+
+	// 마일스톤 정보
+	Title       string         `json:"title" gorm:"not null;size:255"`
 	Description string         `json:"description" gorm:"type:text"`
-	Order       int            `json:"order" gorm:"not null"`             // 순서
-	DueDate     *time.Time     `json:"due_date"`
-	IsCompleted bool           `json:"is_completed" gorm:"default:false"`
+	Order       int            `json:"order" gorm:"not null;default:1"`   // 순서 (1-5)
+
+	// 날짜 정보
+	TargetDate  *time.Time     `json:"target_date"`               // 목표 날짜
 	CompletedAt *time.Time     `json:"completed_at"`
+
+	// 상태 정보
+	Status      string         `json:"status" gorm:"default:'pending'"` // pending, completed, failed, cancelled
+	IsCompleted bool           `json:"is_completed" gorm:"default:false"`
+
+	// 응원 (베팅) 관련
+	TotalSupport       int64   `json:"total_support" gorm:"default:0"`        // 총 응원금
+	SupporterCount     int     `json:"supporter_count" gorm:"default:0"`      // 응원자 수
+	SuccessProbability float64 `json:"success_probability" gorm:"default:0"`   // 성공 확률 (0-1)
+
+	// 증빙 및 노트
 	Evidence    string         `json:"evidence" gorm:"type:text"`         // 완료 증빙 (JSON)
 	Notes       string         `json:"notes" gorm:"type:text"`
+
+	// 알림 관련
+	EmailSent    bool          `json:"email_sent" gorm:"default:false"`
+	ReminderSent bool          `json:"reminder_sent" gorm:"default:false"`
+
+	// 메타데이터
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 외래키 참조
+	Goal Goal `json:"goal,omitempty" gorm:"foreignKey:GoalID"`
 	Path Path `json:"path,omitempty" gorm:"foreignKey:PathID"`
 }
 

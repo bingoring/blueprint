@@ -3,7 +3,11 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { apiClient } from '../lib/api';
 import GoalsPage from '../pages/GoalsPage';
 
-export default function Dashboard() {
+interface DashboardProps {
+  onNavigateHome?: () => void;
+}
+
+export default function Dashboard({ onNavigateHome }: DashboardProps = {}) {
   const { user, logout } = useAuthStore();
   const [healthStatus, setHealthStatus] = useState<string>('checking...');
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'goals'>('dashboard');
@@ -29,9 +33,14 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Blueprint</h1>
+              <button
+                onClick={onNavigateHome || (() => window.location.reload())}
+                className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
+              >
+                LifePathDAO
+              </button>
               <span className="ml-4 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                MVP Phase 1
+                대시보드
               </span>
               <nav className="ml-8 flex space-x-4">
                 <button
@@ -42,7 +51,7 @@ export default function Dashboard() {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  대시보드
+                  🏠 홈
                 </button>
                 <button
                   onClick={() => setCurrentPage('goals')}
@@ -58,6 +67,14 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center space-x-4">
+              {onNavigateHome && (
+                <button
+                  onClick={onNavigateHome}
+                  className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:border-gray-400 transition duration-200"
+                >
+                  🏠 메인으로
+                </button>
+              )}
               <div className="text-sm text-gray-600">
                 안녕하세요, <span className="font-medium">{user?.username}</span>님!
               </div>
@@ -82,17 +99,17 @@ export default function Dashboard() {
           <div className="bg-white overflow-hidden shadow rounded-lg mb-8">
             <div className="px-4 py-5 sm:p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">
-                🚀 Blueprint에 오신 것을 환영합니다!
+                🚀 개인 대시보드
               </h2>
               <p className="text-gray-600 mb-4">
-                당신의 꿈을 이룬 사람들이 직접 설계해주는 인생 로드맵 플랫폼입니다.
+                나의 목표 달성 현황과 예측 마켓 참여 내역을 확인하세요.
               </p>
               <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
                 <h3 className="text-sm font-medium text-blue-800 mb-2">현재 개발 단계:</h3>
                 <ul className="text-sm text-blue-700 space-y-1">
                   <li>✅ 사용자 인증 시스템</li>
                   <li>✅ 기본 대시보드</li>
-                  <li>🚧 목표 설정 시스템 (개발 예정)</li>
+                  <li>✅ 목표 설정 시스템</li>
                   <li>🚧 경로 제안 기능 (개발 예정)</li>
                   <li>🚧 예측 마켓 시스템 (개발 예정)</li>
                 </ul>

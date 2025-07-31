@@ -69,6 +69,9 @@ func main() {
 			goals.PATCH("/:id/status", goalHandler.UpdateGoalStatus) // 목표 상태 변경
 		}
 
+		// 꿈 등록 (마일스톤 포함) ✨
+		protected.POST("/dreams", goalHandler.CreateGoalWithMilestones)
+
 		// 목표 메타데이터
 		protected.GET("/goal-categories", goalHandler.GetGoalCategories) // 카테고리 목록
 		protected.GET("/goal-statuses", goalHandler.GetGoalStatuses)     // 상태 목록

@@ -2,8 +2,7 @@ import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from './stores/useAuthStore';
 import { apiClient } from './lib/api';
-import Dashboard from './components/Dashboard';
-import AuthPage from './components/AuthPage';
+import HomePage from './components/HomePage';
 
 import './index.css';
 
@@ -73,9 +72,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-gray-50">
-        {isAuthenticated ? <Dashboard /> : <AuthPage />}
-      </div>
+      <HomePage />
     </QueryClientProvider>
   );
 }

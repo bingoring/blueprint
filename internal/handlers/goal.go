@@ -62,6 +62,96 @@ func (h *GoalHandler) CreateGoal(c *gin.Context) {
 	middleware.SuccessWithStatus(c, 201, goal, "Goal created successfully")
 }
 
+// CreateGoalWithMilestones 꿈과 마일스톤을 함께 생성 ✨
+func (h *GoalHandler) CreateGoalWithMilestones(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		middleware.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	var req models.CreateGoalWithMilestonesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		middleware.BadRequest(c, err.Error())
+		return
+	}
+
+	// 마일스톤 검증 (최대 5개)
+	if len(req.Milestones) > 5 {
+		middleware.BadRequest(c, "최대 5개의 마일스톤만 설정할 수 있습니다")
+		return
+	}
+
+	// 트랜잭션으로 처리
+	tx := database.GetDB().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Tags JSON 변환
+	tagsJSON := ""
+	if len(req.Tags) > 0 {
+		if tagsBytes, err := json.Marshal(req.Tags); err == nil {
+			tagsJSON = string(tagsBytes)
+		}
+	}
+
+	// 꿈 생성
+	goal := models.Goal{
+		UserID:      userID.(uint),
+		Title:       req.Title,
+		Description: req.Description,
+		Category:    req.Category,
+		Status:      models.GoalDraft,
+		TargetDate:  req.TargetDate,
+		Budget:      req.Budget,
+		Priority:    req.Priority,
+		IsPublic:    req.IsPublic,
+		Tags:        tagsJSON,
+		Metrics:     req.Metrics,
+	}
+
+	if err := tx.Create(&goal).Error; err != nil {
+		tx.Rollback()
+		middleware.InternalServerError(c, "꿈 생성에 실패했습니다")
+		return
+	}
+
+	// 마일스톤들 생성
+	var milestones []models.Milestone
+	for _, milestoneReq := range req.Milestones {
+		milestone := models.Milestone{
+			GoalID:      &goal.ID,
+			Title:       milestoneReq.Title,
+			Description: milestoneReq.Description,
+			Order:       milestoneReq.Order,
+			TargetDate:  milestoneReq.TargetDate,
+			Status:      string(models.MilestoneStatusPending),
+		}
+
+		if err := tx.Create(&milestone).Error; err != nil {
+			tx.Rollback()
+			middleware.InternalServerError(c, "마일스톤 생성에 실패했습니다")
+			return
+		}
+
+		milestones = append(milestones, milestone)
+	}
+
+	// 트랜잭션 커밋
+	if err := tx.Commit().Error; err != nil {
+		middleware.InternalServerError(c, "데이터 저장에 실패했습니다")
+		return
+	}
+
+	// 생성된 꿈과 마일스톤들을 함께 반환
+	goal.Milestones = milestones
+
+	middleware.SuccessWithStatus(c, 201, goal, "꿈과 마일스톤이 성공적으로 등록되었습니다! ✨")
+}
+
 // GetGoals 목표 목록 조회 (카테고리별 필터링, 페이지네이션 지원)
 func (h *GoalHandler) GetGoals(c *gin.Context) {
 	userID, exists := c.Get("user_id")
@@ -157,7 +247,8 @@ func (h *GoalHandler) GetGoal(c *gin.Context) {
 	var goal models.Goal
 	err := database.GetDB().
 		Where("id = ? AND user_id = ?", goalID, userID).
-		Preload("Paths"). // 관련 경로도 함께 로드
+		Preload("Paths").      // 관련 경로도 함께 로드
+		Preload("Milestones"). // 마일스톤들도 함께 로드
 		First(&goal).Error
 
 	if err != nil {
@@ -336,28 +427,28 @@ func (h *GoalHandler) UpdateGoalStatus(c *gin.Context) {
 	middleware.Success(c, gin.H{"status": req.Status}, "Goal status updated successfully")
 }
 
-// GetGoalCategories 목표 카테고리 목록 조회
+// GetGoalCategories 꿈 카테고리 목록 조회 ✨
 func (h *GoalHandler) GetGoalCategories(c *gin.Context) {
 	categories := []gin.H{
-		{"value": "career", "label": "커리어", "icon": "💼"},
-		{"value": "business", "label": "비즈니스", "icon": "🚀"},
-		{"value": "education", "label": "교육", "icon": "📚"},
-		{"value": "personal", "label": "개인", "icon": "🌱"},
-		{"value": "life", "label": "라이프", "icon": "🏡"},
+		{"value": "career", "label": "💼 커리어 성장", "icon": "💼", "description": "새로운 직장, 승진, 전직의 꿈"},
+		{"value": "business", "label": "🚀 창업 도전", "icon": "🚀", "description": "사업 시작, 회사 확장의 꿈"},
+		{"value": "education", "label": "📚 배움의 여정", "icon": "📚", "description": "새로운 지식, 자격증, 학위의 꿈"},
+		{"value": "personal", "label": "🌱 자기계발", "icon": "🌱", "description": "취미, 건강, 인간관계의 꿈"},
+		{"value": "life", "label": "🏡 인생 전환", "icon": "🏡", "description": "이민, 이사, 라이프스타일의 꿈"},
 	}
 
-	middleware.Success(c, categories, "Goal categories retrieved successfully")
+	middleware.Success(c, categories, "꿈 카테고리를 성공적으로 가져왔습니다")
 }
 
-// GetGoalStatuses 목표 상태 목록 조회
+// GetGoalStatuses 꿈 상태 목록 조회 ✨
 func (h *GoalHandler) GetGoalStatuses(c *gin.Context) {
 	statuses := []gin.H{
-		{"value": "draft", "label": "초안", "color": "gray"},
-		{"value": "active", "label": "활성", "color": "blue"},
-		{"value": "completed", "label": "완료", "color": "green"},
-		{"value": "cancelled", "label": "취소", "color": "red"},
-		{"value": "on_hold", "label": "보류", "color": "yellow"},
+		{"value": "draft", "label": "💭 구상 중", "color": "gray", "description": "아직 꿈을 다듬고 있어요"},
+		{"value": "active", "label": "🔥 도전 중", "color": "blue", "description": "꿈을 향해 달려가고 있어요"},
+		{"value": "completed", "label": "🎉 꿈 달성", "color": "green", "description": "축하합니다! 꿈을 이루었어요"},
+		{"value": "cancelled", "label": "😔 포기", "color": "red", "description": "다른 꿈을 찾아보세요"},
+		{"value": "on_hold", "label": "⏸️ 잠시 휴식", "color": "yellow", "description": "언젠가 다시 시작할 거예요"},
 	}
 
-	middleware.Success(c, statuses, "Goal statuses retrieved successfully")
+	middleware.Success(c, statuses, "꿈 상태를 성공적으로 가져왔습니다")
 }

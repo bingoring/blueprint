@@ -2,6 +2,7 @@ package models
 
 import (
 	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -48,7 +49,8 @@ type Goal struct {
 	User User `json:"user,omitempty" gorm:"foreignKey:UserID"`
 
 	// 관련 모델들
-	Paths []Path `json:"paths,omitempty" gorm:"foreignKey:GoalID"`
+	Paths      []Path      `json:"paths,omitempty" gorm:"foreignKey:GoalID"`
+	Milestones []Milestone `json:"milestones,omitempty" gorm:"foreignKey:GoalID"`
 }
 
 // 목표 생성 요청
@@ -76,4 +78,28 @@ type UpdateGoalRequest struct {
 	IsPublic    bool         `json:"is_public"`
 	Tags        []string     `json:"tags"`
 	Metrics     string       `json:"metrics"`
+}
+
+// 꿈과 함께 마일스톤을 생성하는 요청
+type CreateGoalWithMilestonesRequest struct {
+	CreateGoalRequest
+	Milestones []CreateGoalMilestoneRequest `json:"milestones" binding:"max=5"`
+}
+
+// 꿈 마일스톤 생성 요청
+type CreateGoalMilestoneRequest struct {
+	Title       string     `json:"title" binding:"required,min=3,max=200"`
+	Description string     `json:"description"`
+	Order       int        `json:"order" binding:"required,min=1,max=5"`
+	TargetDate  *time.Time `json:"target_date"`
+}
+
+// 마일스톤 업데이트 요청
+type UpdateMilestoneRequest struct {
+	Title       string     `json:"title" binding:"min=3,max=200"`
+	Description string     `json:"description"`
+	Status      string     `json:"status"`
+	TargetDate  *time.Time `json:"target_date"`
+	Evidence    string     `json:"evidence"`
+	Notes       string     `json:"notes"`
 }
