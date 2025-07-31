@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { apiClient } from '../lib/api';
+import GoalsPage from '../pages/GoalsPage';
 
 export default function Dashboard() {
   const { user, logout } = useAuthStore();
   const [healthStatus, setHealthStatus] = useState<string>('checking...');
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'goals'>('dashboard');
 
   useEffect(() => {
     // API 서버 연결 상태 확인
@@ -31,6 +33,28 @@ export default function Dashboard() {
               <span className="ml-4 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
                 MVP Phase 1
               </span>
+              <nav className="ml-8 flex space-x-4">
+                <button
+                  onClick={() => setCurrentPage('dashboard')}
+                  className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    currentPage === 'dashboard'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  대시보드
+                </button>
+                <button
+                  onClick={() => setCurrentPage('goals')}
+                  className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    currentPage === 'goals'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  📋 내 목표
+                </button>
+              </nav>
             </div>
 
             <div className="flex items-center space-x-4">
@@ -50,6 +74,9 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {currentPage === 'goals' ? (
+          <GoalsPage />
+        ) : (
         <div className="px-4 py-6 sm:px-0">
           {/* Welcome Section */}
           <div className="bg-white overflow-hidden shadow rounded-lg mb-8">
@@ -177,6 +204,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        )}
       </main>
     </div>
   );

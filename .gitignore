@@ -46,6 +46,17 @@ logs/
 .env.test.local
 .env.production.local
 
+# Google Cloud credentials (보안상 중요!)
+*.json
+!package*.json
+!tsconfig*.json
+!tailwind.config.js
+!**/package*.json
+
+# Environment files with credentials
+.env.local
+.env.production
+
 # Database
 *.db
 *.sqlite

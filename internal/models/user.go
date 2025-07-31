@@ -2,6 +2,7 @@ package models
 
 import (
 	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -11,7 +12,7 @@ type User struct {
 	Username  string         `json:"username" gorm:"uniqueIndex"`
 	Password  string         `json:"-" gorm:"column:password_hash"` // 비밀번호는 JSON에서 제외
 	Provider  string         `json:"provider" gorm:"default:'local'"` // local, google
-	GoogleID  string         `json:"google_id" gorm:"uniqueIndex"`
+	GoogleID  *string        `json:"google_id" gorm:"uniqueIndex"`
 	IsActive  bool           `json:"is_active" gorm:"default:true"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`

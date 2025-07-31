@@ -9,10 +9,16 @@ import type {
   Path,
   PathPrediction,
   Expert,
-  MentoringSession
+  MentoringSession,
+  CreateGoalRequest,
+  UpdateGoalRequest,
+  GoalStatus,
+  GoalCategoryOption,
+  GoalStatusOption,
+  Pagination,
 } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 class ApiClient {
   private baseURL: string;
@@ -58,6 +64,10 @@ class ApiClient {
     localStorage.setItem('authToken', token);
   }
 
+  getToken(): string | null {
+    return this.token;
+  }
+
   removeToken() {
     this.token = null;
     localStorage.removeItem('authToken');
@@ -94,49 +104,80 @@ class ApiClient {
     return this.request<User>('/me');
   }
 
-  async logout(): Promise<void> {
-    this.removeToken();
-  }
-
-  // 목표 관리 API
-  async getGoals(params?: {
-    page?: number;
-    limit?: number;
-    category?: string;
-    status?: string;
-  }): Promise<ApiResponse<PaginatedResponse<Goal>>> {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.category) queryParams.append('category', params.category);
-    if (params?.status) queryParams.append('status', params.status);
-
-    return this.request<PaginatedResponse<Goal>>(`/goals?${queryParams}`);
-  }
-
-  async getGoal(id: string): Promise<ApiResponse<Goal>> {
-    return this.request<Goal>(`/goals/${id}`);
-  }
-
-  async createGoal(goalData: Partial<Goal>): Promise<ApiResponse<Goal>> {
-    return this.request<Goal>('/goals', {
+  // Goal 관리 API
+  async createGoal(goalData: CreateGoalRequest): Promise<ApiResponse<Goal>> {
+    return this.request('/goals', {
       method: 'POST',
       body: JSON.stringify(goalData),
     });
   }
 
-  async updateGoal(id: string, goalData: Partial<Goal>): Promise<ApiResponse<Goal>> {
-    return this.request<Goal>(`/goals/${id}`, {
+  async getGoals(params?: {
+    page?: number;
+    limit?: number;
+    category?: string;
+    status?: string;
+    sort?: string;
+    order?: 'asc' | 'desc';
+  }): Promise<ApiResponse<{ goals: Goal[]; pagination: Pagination }>> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.category) queryParams.append('category', params.category);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.sort) queryParams.append('sort', params.sort);
+    if (params?.order) queryParams.append('order', params.order);
+
+    const query = queryParams.toString();
+    return this.request(`/goals${query ? `?${query}` : ''}`);
+  }
+
+  async getGoal(id: number): Promise<ApiResponse<Goal>> {
+    return this.request(`/goals/${id}`);
+  }
+
+  async updateGoal(id: number, goalData: UpdateGoalRequest): Promise<ApiResponse<Goal>> {
+    return this.request(`/goals/${id}`, {
       method: 'PUT',
       body: JSON.stringify(goalData),
     });
   }
 
-  async deleteGoal(id: string): Promise<ApiResponse<void>> {
-    return this.request<void>(`/goals/${id}`, {
+  async deleteGoal(id: number): Promise<ApiResponse<null>> {
+    return this.request(`/goals/${id}`, {
       method: 'DELETE',
     });
   }
+
+  async updateGoalStatus(id: number, status: GoalStatus): Promise<ApiResponse<{ status: GoalStatus }>> {
+    return this.request(`/goals/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async getGoalCategories(): Promise<ApiResponse<GoalCategoryOption[]>> {
+    return this.request('/goal-categories');
+  }
+
+  async getGoalStatuses(): Promise<ApiResponse<GoalStatusOption[]>> {
+    return this.request('/goal-statuses');
+  }
+
+  async logout(): Promise<void> {
+    this.removeToken();
+  }
+
+  // Google OAuth 로그인 URL 가져오기
+  async getGoogleAuthUrl(): Promise<ApiResponse<{ auth_url: string }>> {
+    return this.request<{ auth_url: string }>('/auth/google/login');
+  }
+
+  // Google OAuth 콜백 처리
+  async handleGoogleCallback(code: string): Promise<ApiResponse<AuthResponse>> {
+    return this.request<AuthResponse>(`/auth/google/callback?code=${code}`);
+  }
+
 
   // 경로 관리 API
   async getPaths(goalId: string): Promise<ApiResponse<Path[]>> {

@@ -102,7 +102,26 @@ make backup-db
 
 ## 🚀 로컬 개발 (Docker 없이)
 
-### 1. 의존성 설치
+### 1. 환경변수 설정 (선택사항)
+
+**Google OAuth 설정**:
+```bash
+# 환경변수 설정 스크립트 실행
+source scripts/setup-env.sh
+
+# 또는 Makefile 사용
+make setup-env
+```
+
+📋 **상세 설정 가이드**: [docs/google-oauth-setup.md](docs/google-oauth-setup.md)
+
+**프로젝트 정보**:
+- 프로젝트 ID: `blueprint-467515` ✅
+- Service Account: 있음 (서버 간 통신용)
+- OAuth Client ID: ✅ **설정 완료!**
+- 클라이언트 ID: `475922118539-g8plhmjifnenttr36956q7a437ols7eq.apps.googleusercontent.com`
+
+### 2. 의존성 설치
 ```bash
 go mod tidy
 ```
@@ -118,7 +137,27 @@ createdb blueprint_db
 docker run --name postgres -e POSTGRES_PASSWORD=password -p 5432:5432 -d postgres:16-alpine
 ```
 
-### 3. 환경 변수 설정
+### 3. 빠른 개발 환경 시작
+
+**데이터베이스만 시작** (권장):
+```bash
+# PostgreSQL, Redis만 Docker로 시작
+make dev-db
+
+# 백엔드 로컬 실행
+make run-backend
+
+# 프론트엔드 로컬 실행 (다른 터미널)
+make run-frontend
+```
+
+**환경변수 자동 설정**:
+```bash
+# 환경변수 설정 후 백엔드 시작
+make run-backend-with-env
+```
+
+**수동 환경 변수 설정**:
 ```bash
 export DB_HOST=localhost
 export DB_PORT=5432
@@ -128,20 +167,23 @@ export DB_NAME=blueprint_db
 export JWT_SECRET=your-super-secret-jwt-key
 export GOOGLE_CLIENT_ID=your-google-client-id
 export GOOGLE_CLIENT_SECRET=your-google-client-secret
-```
 
-### 4. 서버 실행
-```bash
+# 서버 실행
 go run cmd/server/main.go
 ```
+
+### 4. 접속 주소
+- **프론트엔드**: http://localhost:3000
+- **백엔드 API**: http://localhost:8080
+- **Health Check**: http://localhost:8080/health
 
 ## 📡 API 엔드포인트
 
 ### 인증 (Authentication)
 - `POST /api/v1/auth/register` - 회원가입
 - `POST /api/v1/auth/login` - 로그인
-- `GET /api/v1/auth/google` - Google OAuth 시작
-- `GET /api/v1/auth/google/callback` - Google OAuth 콜백
+- `GET /api/v1/auth/google/login` - Google OAuth 시작 ✅
+- `GET /api/v1/auth/google/callback` - Google OAuth 콜백 ✅
 
 ### 사용자 (User)
 - `GET /api/v1/me` - 현재 사용자 정보 조회 (인증 필요)

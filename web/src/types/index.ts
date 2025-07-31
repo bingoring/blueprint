@@ -12,34 +12,82 @@ export interface User {
 
 // 목표 관련 타입
 export interface Goal {
-  id: string;
-  userId: string;
+  id: number;
+  user_id: number;
   title: string;
   description: string;
   category: GoalCategory;
-  targetDate: string;
-  budget?: number;
   status: GoalStatus;
-  priority: Priority;
-  constraints: Constraint[];
-  createdAt: string;
-  updatedAt: string;
+  target_date: string | null;
+  budget: number;
+  priority: number;
+  is_public: boolean;
+  tags: string; // JSON string
+  metrics: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export type GoalCategory =
   | 'career'      // 💼 Career: 이직, 승진, 전직
-  | 'business'    // 💰 Business: 창업, 사업 확장
-  | 'education'   // 🎓 Education: 자격증, 학위, 스킬
-  | 'personal'    // 💑 Personal: 결혼, 건강, 취미
-  | 'lifestyle';  // 🏠 Life: 이민, 이사, 라이프스타일
+  | 'business'    // 🚀 Business: 창업, 사업 확장
+  | 'education'   // 📚 Education: 자격증, 학위, 스킬
+  | 'personal'    // 🌱 Personal: 결혼, 건강, 취미
+  | 'life';       // 🏡 Life: 이민, 이사, 라이프스타일
 
 export type GoalStatus =
   | 'draft'       // 초안
-  | 'active'      // 진행중
+  | 'active'      // 활성
   | 'completed'   // 완료
-  | 'paused'      // 일시정지
-  | 'failed';     // 실패
+  | 'cancelled'   // 취소
+  | 'on_hold';    // 보류
 
+// Goal API 요청/응답 타입들
+export interface CreateGoalRequest {
+  title: string;
+  description?: string;
+  category: GoalCategory;
+  target_date?: string;
+  budget?: number;
+  priority?: number;
+  is_public?: boolean;
+  tags?: string[];
+  metrics?: string;
+}
+
+export interface UpdateGoalRequest {
+  title?: string;
+  description?: string;
+  category?: GoalCategory;
+  status?: GoalStatus;
+  target_date?: string;
+  budget?: number;
+  priority?: number;
+  is_public?: boolean;
+  tags?: string[];
+  metrics?: string;
+}
+
+export interface GoalCategoryOption {
+  value: string;
+  label: string;
+  icon: string;
+}
+
+export interface GoalStatusOption {
+  value: string;
+  label: string;
+  color: string;
+}
+
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+}
+
+// Legacy types (for backward compatibility)
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
 
 export interface Constraint {

@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+
 	"github.com/joho/godotenv"
 )
 
@@ -47,7 +48,7 @@ func LoadConfig() *Config {
 			Port:     getEnv("DB_PORT", "5432"),
 			User:     getEnv("DB_USER", "postgres"),
 			Password: getEnv("DB_PASSWORD", "password"),
-			Name:     getEnv("DB_NAME", "lifepath_dao"),
+			Name:     getEnv("DB_NAME", "blueprint_db"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		JWT: JWTConfig{

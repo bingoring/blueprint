@@ -33,9 +33,11 @@ func main() {
 
 	// 미들웨어 설정
 	router.Use(middleware.CORSMiddleware(cfg))
+	router.Use(middleware.ResponseWrapper()) // 응답 래핑 미들웨어 추가
 
 	// 핸들러 초기화
 	authHandler := handlers.NewAuthHandler(cfg)
+	goalHandler := handlers.NewGoalHandler()
 
 	// API 라우트 그룹
 	api := router.Group("/api/v1")
@@ -45,7 +47,7 @@ func main() {
 	{
 		auth.POST("/register", authHandler.Register)
 		auth.POST("/login", authHandler.Login)
-		auth.GET("/google", authHandler.GoogleLogin)
+		auth.GET("/google/login", authHandler.GoogleLogin)
 		auth.GET("/google/callback", authHandler.GoogleCallback)
 	}
 
@@ -53,8 +55,23 @@ func main() {
 	protected := api.Group("/")
 	protected.Use(middleware.AuthMiddleware(cfg))
 	{
+		// 사용자 관련
 		protected.GET("/me", authHandler.Me)
-		// TODO: 추후 사용자 프로필, 목표 관련 라우트 추가
+
+		// 목표 관리
+		goals := protected.Group("/goals")
+		{
+			goals.POST("", goalHandler.CreateGoal)                    // 목표 생성
+			goals.GET("", goalHandler.GetGoals)                      // 목표 목록 조회 (필터링, 페이지네이션)
+			goals.GET("/:id", goalHandler.GetGoal)                   // 특정 목표 조회
+			goals.PUT("/:id", goalHandler.UpdateGoal)                // 목표 수정
+			goals.DELETE("/:id", goalHandler.DeleteGoal)             // 목표 삭제
+			goals.PATCH("/:id/status", goalHandler.UpdateGoalStatus) // 목표 상태 변경
+		}
+
+		// 목표 메타데이터
+		protected.GET("/goal-categories", goalHandler.GetGoalCategories) // 카테고리 목록
+		protected.GET("/goal-statuses", goalHandler.GetGoalStatuses)     // 상태 목록
 	}
 
 	// 헬스 체크

@@ -80,9 +80,22 @@ run-backend: ## 로컬에서 백엔드 실행
 	export DB_NAME=blueprint_db && \
 	export DB_SSLMODE=disable && \
 	export JWT_SECRET=your-super-secret-jwt-key && \
+	export GOOGLE_PROJECT_ID=blueprint-467515 && \
+	export GOOGLE_CLIENT_ID=$${GOOGLE_CLIENT_ID:-your-google-client-id} && \
+	export GOOGLE_CLIENT_SECRET=$${GOOGLE_CLIENT_SECRET:-your-google-client-secret} && \
+	export GOOGLE_REDIRECT_URL=http://localhost:8080/api/v1/auth/google/callback && \
 	export PORT=8080 && \
 	export GIN_MODE=debug && \
 	go run cmd/server/main.go
+
+setup-env: ## 환경변수 설정 (현재 셸에 적용)
+	@echo "🔧 환경변수 설정 스크립트 실행..."
+	@echo "💡 사용법: source scripts/setup-env.sh"
+	@chmod +x scripts/setup-env.sh
+
+run-backend-with-env: setup-env ## 환경변수 설정 후 백엔드 실행
+	@echo "🚀 환경변수 설정 후 백엔드 시작..."
+	@source scripts/setup-env.sh && go run cmd/server/main.go
 
 run-frontend: ## 로컬에서 프론트엔드 실행
 	@echo "🌐 Starting frontend locally..."
