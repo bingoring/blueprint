@@ -23,9 +23,9 @@ type User struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 
-	// 관계
-	Profile UserProfile `json:"profile,omitempty" gorm:"foreignKey:UserID"`
-	Goals   []Goal      `json:"goals,omitempty" gorm:"foreignKey:UserID"`
+	// 관계 (순환 참조 방지를 위해 포인터 사용)
+	Profile *UserProfile `json:"profile,omitempty" gorm:"foreignKey:UserID"`
+	Goals   []Goal       `json:"goals,omitempty" gorm:"foreignKey:UserID"`
 }
 
 type UserProfile struct {

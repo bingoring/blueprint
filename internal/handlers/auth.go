@@ -84,7 +84,7 @@ type AuthHandler struct {
 }
 
 func NewAuthHandler(cfg *config.Config) *AuthHandler {
-	googleOAuth := &oauth2.Config{
+	googleConfig := &oauth2.Config{
 		ClientID:     cfg.Google.ClientID,
 		ClientSecret: cfg.Google.ClientSecret,
 		RedirectURL:  cfg.Google.RedirectURL,
@@ -94,7 +94,7 @@ func NewAuthHandler(cfg *config.Config) *AuthHandler {
 
 	return &AuthHandler{
 		cfg:         cfg,
-		googleOAuth: googleOAuth,
+		googleOAuth: googleConfig,
 	}
 }
 

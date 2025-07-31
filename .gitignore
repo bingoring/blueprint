@@ -79,3 +79,23 @@ build/
 
 # Local development
 .local/
+
+# Node.js (frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Production builds
+dist/
+build/
+
+# Environment variables 🔒
+.env
+.env.local
+.env.production
+
+# Sensitive files
+*.pem
+*.key
+*.crt

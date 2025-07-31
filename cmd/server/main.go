@@ -17,7 +17,7 @@ func main() {
 	cfg := config.LoadConfig()
 
 	// Gin 모드 설정
-	gin.SetMode(cfg.Server.GinMode)
+	gin.SetMode(cfg.Server.Mode)
 
 	// 데이터베이스 연결
 	if err := database.Connect(cfg); err != nil {

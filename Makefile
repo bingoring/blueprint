@@ -1,139 +1,128 @@
-# Blueprint Makefile
+# 🚀 LifePathDAO Development Makefile
 
-.PHONY: help build up down restart logs clean test
+# 🔧 Environment Setup
+.PHONY: setup
+setup:
+	@echo "🔧 Setting up development environment..."
+	@if [ ! -f .env ]; then \
+		echo "📁 Copying .env.example to .env..."; \
+		cp .env.example .env; \
+		echo "⚠️  Please edit .env file with your actual configuration values"; \
+	else \
+		echo "✅ .env file already exists"; \
+	fi
 
-# 기본 타겟
-help: ## 사용 가능한 명령어 목록 표시
-	@echo "Blueprint Docker Commands:"
-	@echo ""
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+# 🐳 Docker Commands
+.PHONY: build up down logs clean install run-dev run-backend run-frontend run-backend-with-env
 
-build: ## Docker 이미지 빌드
-	@echo "Building Blueprint Docker image..."
-	docker-compose build --no-cache
+# Build all containers
+build:
+	@echo "🏗️  Building Docker containers..."
+	docker-compose build
 
-up: ## 모든 서비스 시작 (백그라운드)
-	@echo "Starting Blueprint services..."
+# Start all services (with database)
+up:
+	@echo "🚀 Starting all services..."
 	docker-compose up -d
 
-up-logs: ## 모든 서비스 시작 (로그 표시)
-	@echo "Starting Blueprint services with logs..."
-	docker-compose up
-
-down: ## 모든 서비스 중지 및 제거
-	@echo "Stopping Blueprint services..."
+# Stop all services
+down:
+	@echo "🛑 Stopping all services..."
 	docker-compose down
 
-restart: ## 모든 서비스 재시작
-	@echo "Restarting Blueprint services..."
-	docker-compose restart
-
-logs: ## 모든 서비스 로그 표시
+# Show logs for all services
+logs:
+	@echo "📋 Showing logs..."
 	docker-compose logs -f
 
-logs-app: ## 백엔드 애플리케이션 로그만 표시
-	docker-compose logs -f app
-
-logs-web: ## 프론트엔드 애플리케이션 로그만 표시
-	docker-compose logs -f web
-
-logs-db: ## 데이터베이스 로그만 표시
-	docker-compose logs -f postgres
-
-status: ## 서비스 상태 확인
-	docker-compose ps
-
-clean: ## 모든 컨테이너, 볼륨, 네트워크 제거
-	@echo "Cleaning up Blueprint Docker resources..."
+# Clean up everything (containers, volumes, images)
+clean:
+	@echo "🧹 Cleaning up Docker resources..."
 	docker-compose down -v --remove-orphans
 	docker system prune -f
 
-clean-all: ## 모든 Docker 리소스 제거 (이미지 포함)
-	@echo "Cleaning up all Blueprint Docker resources..."
-	docker-compose down -v --remove-orphans --rmi all
-	docker system prune -af
+# Build and start all services
+install: build up
 
-dev: ## 개발 모드로 시작 (rebuild + logs)
-	@echo "Starting development environment..."
-	docker-compose up --build
-
-dev-db: ## 데이터베이스만 시작 (로컬 개발용)
-	@echo "Starting development databases..."
+# 🚀 Development Commands (Local)
+# Start only database and Redis for local development
+run-dev:
+	@echo "🗄️  Starting database and Redis only..."
 	docker-compose -f docker-compose.dev.yml up -d
-	@echo "✅ Development databases started!"
-	@echo "🗄️  PostgreSQL: localhost:5432"
-	@echo "🔴 Redis: localhost:6379"
-	@echo ""
-	@echo "이제 백엔드와 프론트엔드를 로컬에서 실행하세요:"
-	@echo "  Backend:  make run-backend"
-	@echo "  Frontend: make run-frontend"
 
-dev-db-down: ## 개발 데이터베이스 중지
-	docker-compose -f docker-compose.dev.yml down
+# Run backend locally (requires Go)
+run-backend:
+	@echo "🔙 Starting backend server locally..."
+	@if [ -f .env ]; then \
+		echo "📁 Loading environment from .env file..."; \
+		set -a && . ./.env && set +a && go run cmd/server/main.go; \
+	else \
+		echo "❌ .env file not found. Run 'make setup' first."; \
+		exit 1; \
+	fi
 
-run-backend: ## 로컬에서 백엔드 실행
-	@echo "🚀 Starting backend locally..."
-	export DB_HOST=localhost && \
-	export DB_PORT=5432 && \
-	export DB_USER=postgres && \
-	export DB_PASSWORD=password && \
-	export DB_NAME=blueprint_db && \
-	export DB_SSLMODE=disable && \
-	export JWT_SECRET=your-super-secret-jwt-key && \
-	export GOOGLE_PROJECT_ID=blueprint-467515 && \
-	export GOOGLE_CLIENT_ID=$${GOOGLE_CLIENT_ID:-your-google-client-id} && \
-	export GOOGLE_CLIENT_SECRET=$${GOOGLE_CLIENT_SECRET:-your-google-client-secret} && \
-	export GOOGLE_REDIRECT_URL=http://localhost:8080/api/v1/auth/google/callback && \
-	export PORT=8080 && \
-	export GIN_MODE=debug && \
-	go run cmd/server/main.go
+# Run backend with explicit environment loading (alternative method)
+run-backend-with-env:
+	@echo "🔙 Starting backend server with environment..."
+	@if [ -f .env ]; then \
+		echo "📁 Loading .env and starting server..."; \
+		env $$(cat .env | grep -v '^#' | xargs) go run cmd/server/main.go; \
+	else \
+		echo "❌ .env file not found. Run 'make setup' first."; \
+		exit 1; \
+	fi
 
-setup-env: ## 환경변수 설정 (현재 셸에 적용)
-	@echo "🔧 환경변수 설정 스크립트 실행..."
-	@echo "💡 사용법: source scripts/setup-env.sh"
-	@chmod +x scripts/setup-env.sh
-
-run-backend-with-env: setup-env ## 환경변수 설정 후 백엔드 실행
-	@echo "🚀 환경변수 설정 후 백엔드 시작..."
-	@source scripts/setup-env.sh && go run cmd/server/main.go
-
-run-frontend: ## 로컬에서 프론트엔드 실행
-	@echo "🌐 Starting frontend locally..."
+# Run frontend locally (requires Node.js)
+run-frontend:
+	@echo "🎨 Starting frontend server locally..."
 	cd web && npm run dev
 
-test: ## 애플리케이션 테스트 실행
-	@echo "Running tests..."
-	docker-compose exec app go test ./...
+# 🔍 Utility Commands
+.PHONY: status db-logs redis-logs
 
-shell-app: ## 백엔드 애플리케이션 컨테이너 셸 접속
-	docker-compose exec app /bin/sh
-
-shell-web: ## 프론트엔드 애플리케이션 컨테이너 셸 접속
-	docker-compose exec web /bin/sh
-
-shell-db: ## 데이터베이스 컨테이너 셸 접속
-	docker-compose exec postgres psql -U postgres -d blueprint_db
-
-backup-db: ## 데이터베이스 백업
-	@echo "Creating database backup..."
-	docker-compose exec postgres pg_dump -U postgres blueprint_db > backup_$(shell date +%Y%m%d_%H%M%S).sql
-
-install: ## 첫 실행을 위한 전체 설정
-	@echo "Setting up Blueprint for the first time..."
-	@echo "1. Building images..."
-	docker-compose build
-	@echo "2. Starting services..."
-	docker-compose up -d
-	@echo "3. Waiting for services to be ready..."
-	sleep 10
-	@echo "4. Checking status..."
+# Show status of all containers
+status:
+	@echo "📊 Container status:"
 	docker-compose ps
+
+# Show database logs
+db-logs:
+	@echo "🗄️  Database logs:"
+	docker-compose logs -f postgres
+
+# Show Redis logs
+redis-logs:
+	@echo "🔴 Redis logs:"
+	docker-compose logs -f redis
+
+# 📋 Help
+.PHONY: help
+help:
+	@echo "🚀 LifePathDAO Development Commands:"
 	@echo ""
-	@echo "🚀 Blueprint is now running!"
-	@echo "🌐 Frontend: http://localhost:3000"
-	@echo "📡 API Server: http://localhost:8080"
-	@echo "🗄️  PostgreSQL: localhost:5432"
-	@echo "🔴 Redis: localhost:6379"
+	@echo "🔧 Setup:"
+	@echo "  make setup           - Initialize .env file from template"
 	@echo ""
-	@echo "Use 'make logs' to see the logs"
-	@echo "Use 'make down' to stop all services"
+	@echo "🐳 Docker (Full Stack):"
+	@echo "  make build          - Build all Docker containers"
+	@echo "  make install        - Build and start all services"
+	@echo "  make up             - Start all services"
+	@echo "  make down           - Stop all services"
+	@echo "  make logs           - Show logs for all services"
+	@echo "  make clean          - Clean up Docker resources"
+	@echo ""
+	@echo "🚀 Local Development:"
+	@echo "  make run-dev        - Start only database and Redis"
+	@echo "  make run-backend    - Run backend server locally"
+	@echo "  make run-frontend   - Run frontend server locally"
+	@echo ""
+	@echo "🔍 Monitoring:"
+	@echo "  make status         - Show container status"
+	@echo "  make db-logs        - Show database logs"
+	@echo "  make redis-logs     - Show Redis logs"
+	@echo ""
+	@echo "🆘 Example workflow:"
+	@echo "  1. make setup       # Setup environment"
+	@echo "  2. make run-dev     # Start database"
+	@echo "  3. make run-backend # Start backend in another terminal"
+	@echo "  4. make run-frontend # Start frontend in another terminal"
