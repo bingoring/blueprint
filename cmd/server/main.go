@@ -5,6 +5,7 @@ import (
 	"blueprint/internal/database"
 	"blueprint/internal/handlers"
 	"blueprint/internal/middleware"
+	"blueprint/internal/services"
 	"log"
 	"net/http"
 
@@ -37,7 +38,10 @@ func main() {
 
 	// 핸들러 초기화
 	authHandler := handlers.NewAuthHandler(cfg)
-	goalHandler := handlers.NewGoalHandler()
+
+	// AI 서비스 초기화
+	aiService := services.NewAIService(cfg)
+	goalHandler := handlers.NewGoalHandler(aiService)
 
 	// API 라우트 그룹
 	api := router.Group("/api/v1")
@@ -71,6 +75,9 @@ func main() {
 
 		// 꿈 등록 (마일스톤 포함) ✨
 		protected.POST("/dreams", goalHandler.CreateGoalWithMilestones)
+
+		// AI 마일스톤 제안 🤖
+		protected.POST("/ai/milestones", goalHandler.GenerateAIMilestones)
 
 		// 목표 메타데이터
 		protected.GET("/goal-categories", goalHandler.GetGoalCategories) // 카테고리 목록

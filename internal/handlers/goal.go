@@ -4,6 +4,7 @@ import (
 	"blueprint/internal/database"
 	"blueprint/internal/middleware"
 	"blueprint/internal/models"
+	"blueprint/internal/services"
 	"encoding/json"
 	"strconv"
 
@@ -11,10 +12,14 @@ import (
 	"gorm.io/gorm"
 )
 
-type GoalHandler struct{}
+type GoalHandler struct{
+	aiService *services.AIService
+}
 
-func NewGoalHandler() *GoalHandler {
-	return &GoalHandler{}
+func NewGoalHandler(aiService *services.AIService) *GoalHandler {
+	return &GoalHandler{
+		aiService: aiService,
+	}
 }
 
 // CreateGoal 목표 생성
@@ -451,4 +456,52 @@ func (h *GoalHandler) GetGoalStatuses(c *gin.Context) {
 	}
 
 	middleware.Success(c, statuses, "꿈 상태를 성공적으로 가져왔습니다")
+}
+
+// GenerateAIMilestones AI를 사용해서 마일스톤을 제안합니다 🤖
+func (h *GoalHandler) GenerateAIMilestones(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		middleware.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	var req models.CreateGoalRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		middleware.BadRequest(c, err.Error())
+		return
+	}
+
+	// 필수 필드 검증
+	if req.Title == "" {
+		middleware.BadRequest(c, "꿈의 제목이 필요합니다")
+		return
+	}
+
+	// TODO: AI 사용 횟수 제한 체크 (추후 구현)
+	// if !h.checkAIUsageLimit(userID.(uint)) {
+	//     middleware.BadRequest(c, "AI 사용 횟수를 초과했습니다 (최대 5회)")
+	//     return
+	// }
+
+	// AI 마일스톤 생성
+	aiResponse, err := h.aiService.GenerateMilestones(req)
+	if err != nil {
+		middleware.InternalServerError(c, "AI 마일스톤 생성에 실패했습니다: "+err.Error())
+		return
+	}
+
+	// 사용 횟수 업데이트 (추후 구현)
+	// h.incrementAIUsage(userID.(uint))
+
+	middleware.Success(c, gin.H{
+		"milestones": aiResponse.Milestones,
+		"tips":       aiResponse.Tips,
+		"warnings":   aiResponse.Warnings,
+		"meta": gin.H{
+			"model":        "GPT-4o-mini",
+			"generated_at": "now",
+			"user_id":      userID, // userID 사용으로 linter 에러 해결
+		},
+	}, "🤖 AI 마일스톤 제안이 완성되었습니다!")
 }

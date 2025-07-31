@@ -11,6 +11,7 @@ type Config struct {
 	JWT      JWTConfig
 	Google   GoogleOAuthConfig
 	Server   ServerConfig
+	OpenAI   OpenAIConfig
 }
 
 type DatabaseConfig struct {
@@ -38,6 +39,11 @@ type ServerConfig struct {
 	FrontendURL string
 }
 
+type OpenAIConfig struct {
+	APIKey string
+	Model  string
+}
+
 func LoadConfig() *Config {
 	// 환경 변수 파일 로드 (있는 경우)
 	godotenv.Load()
@@ -63,6 +69,10 @@ func LoadConfig() *Config {
 			Port:        getEnv("PORT", "8080"),
 			GinMode:     getEnv("GIN_MODE", "debug"),
 			FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
+		},
+		OpenAI: OpenAIConfig{
+			APIKey: getEnv("OPENAI_API_KEY", ""),
+			Model:  getEnv("OPENAI_MODEL", "gpt-4o-mini"), // 비용 효율적인 모델
 		},
 	}
 }
