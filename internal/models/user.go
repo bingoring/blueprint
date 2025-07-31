@@ -8,19 +8,24 @@ import (
 
 type User struct {
 	ID        uint           `json:"id" gorm:"primaryKey"`
-	Email     string         `json:"email" gorm:"uniqueIndex;not null"`
-	Username  string         `json:"username" gorm:"uniqueIndex"`
-	Password  string         `json:"-" gorm:"column:password_hash"` // 비밀번호는 JSON에서 제외
-	Provider  string         `json:"provider" gorm:"default:'local'"` // local, google
-	GoogleID  *string        `json:"google_id" gorm:"uniqueIndex"`
+	Email     string         `json:"email" gorm:"unique;not null"`
+	Username  string         `json:"username" gorm:"unique;not null"`
+	Password  string         `json:"-" gorm:"not null"` // JSON에서 제외
+	Provider  string         `json:"provider" gorm:"default:'local'"`
+	GoogleID  *string        `json:"google_id" gorm:"unique"`
 	IsActive  bool           `json:"is_active" gorm:"default:true"`
+
+	// AI 사용 횟수 추적 🤖
+	AIUsageCount int `json:"ai_usage_count" gorm:"default:0"` // 사용한 횟수
+	AIUsageLimit int `json:"ai_usage_limit" gorm:"default:5"` // 최대 사용 가능 횟수
+
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 
-	// 관련 모델들
-	Profile *UserProfile `json:"profile,omitempty" gorm:"foreignKey:UserID"`
-	Goals   []Goal       `json:"goals,omitempty" gorm:"foreignKey:UserID"`
+	// 관계
+	Profile UserProfile `json:"profile,omitempty" gorm:"foreignKey:UserID"`
+	Goals   []Goal      `json:"goals,omitempty" gorm:"foreignKey:UserID"`
 }
 
 type UserProfile struct {

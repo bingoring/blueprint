@@ -18,6 +18,7 @@ import type {
   GoalStatusOption,
   Pagination,
   AIMilestoneResponse,
+  AIUsageInfo,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -128,6 +129,11 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(dreamData),
     });
+  }
+
+  // 📊 AI 사용 정보 조회
+  async getAIUsageInfo(): Promise<ApiResponse<AIUsageInfo>> {
+    return this.request('/ai/usage');
   }
 
   async getGoals(params?: {

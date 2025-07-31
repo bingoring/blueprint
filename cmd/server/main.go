@@ -39,8 +39,8 @@ func main() {
 	// 핸들러 초기화
 	authHandler := handlers.NewAuthHandler(cfg)
 
-	// AI 서비스 초기화
-	aiService := services.NewAIService(cfg)
+	// AI 서비스 초기화 (DB 주입)
+	aiService := services.NewAIService(cfg, database.GetDB())
 	goalHandler := handlers.NewGoalHandler(aiService)
 
 	// API 라우트 그룹
@@ -78,6 +78,9 @@ func main() {
 
 		// AI 마일스톤 제안 🤖
 		protected.POST("/ai/milestones", goalHandler.GenerateAIMilestones)
+
+		// AI 사용 정보 조회 📊
+		protected.GET("/ai/usage", goalHandler.GetAIUsageInfo)
 
 		// 목표 메타데이터
 		protected.GET("/goal-categories", goalHandler.GetGoalCategories) // 카테고리 목록

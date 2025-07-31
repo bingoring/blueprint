@@ -478,11 +478,17 @@ func (h *GoalHandler) GenerateAIMilestones(c *gin.Context) {
 		return
 	}
 
-	// TODO: AI 사용 횟수 제한 체크 (추후 구현)
-	// if !h.checkAIUsageLimit(userID.(uint)) {
-	//     middleware.BadRequest(c, "AI 사용 횟수를 초과했습니다 (최대 5회)")
-	//     return
-	// }
+	// AI 사용 횟수 제한 체크 🚫
+	canUse, remaining, err := h.aiService.CheckAIUsageLimit(userID.(uint))
+	if err != nil {
+		middleware.InternalServerError(c, "사용자 정보 확인에 실패했습니다")
+		return
+	}
+
+	if !canUse {
+		middleware.BadRequest(c, "AI 사용 횟수를 초과했습니다 (최대 5회)")
+		return
+	}
 
 	// AI 마일스톤 생성
 	aiResponse, err := h.aiService.GenerateMilestones(req)
@@ -491,17 +497,42 @@ func (h *GoalHandler) GenerateAIMilestones(c *gin.Context) {
 		return
 	}
 
-	// 사용 횟수 업데이트 (추후 구현)
-	// h.incrementAIUsage(userID.(uint))
+	// 사용 횟수 업데이트 📈
+	if err := h.aiService.IncrementAIUsage(userID.(uint)); err != nil {
+		// 로그만 남기고 응답은 정상적으로 반환 (이미 AI 호출은 성공)
+		middleware.InternalServerError(c, "AI 사용 횟수 업데이트에 실패했습니다")
+		return
+	}
 
 	middleware.Success(c, gin.H{
 		"milestones": aiResponse.Milestones,
 		"tips":       aiResponse.Tips,
 		"warnings":   aiResponse.Warnings,
+		"usage": gin.H{
+			"remaining": remaining - 1, // 방금 사용했으므로 -1
+			"total":     5,
+		},
 		"meta": gin.H{
 			"model":        "GPT-4o-mini",
 			"generated_at": "now",
-			"user_id":      userID, // userID 사용으로 linter 에러 해결
+			"user_id":      userID,
 		},
 	}, "🤖 AI 마일스톤 제안이 완성되었습니다!")
+}
+
+// GetAIUsageInfo 사용자의 AI 사용 정보를 반환합니다 📊
+func (h *GoalHandler) GetAIUsageInfo(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		middleware.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	usageInfo, err := h.aiService.GetAIUsageInfo(userID.(uint))
+	if err != nil {
+		middleware.InternalServerError(c, "AI 사용 정보 조회에 실패했습니다")
+		return
+	}
+
+	middleware.Success(c, usageInfo, "AI 사용 정보를 성공적으로 가져왔습니다")
 }

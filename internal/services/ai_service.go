@@ -9,18 +9,21 @@ import (
 	"time"
 
 	"github.com/sashabaranov/go-openai"
+	"gorm.io/gorm"
 )
 
 type AIService struct {
 	client *openai.Client
 	config *config.Config
+	db     *gorm.DB
 }
 
-func NewAIService(cfg *config.Config) *AIService {
+func NewAIService(cfg *config.Config, db *gorm.DB) *AIService {
 	client := openai.NewClient(cfg.OpenAI.APIKey)
 	return &AIService{
 		client: client,
 		config: cfg,
+		db:     db,
 	}
 }
 
@@ -188,4 +191,65 @@ func (s *AIService) ValidateAPIKey() error {
 
 	_, err := s.client.CreateChatCompletion(ctx, req)
 	return err
+}
+
+// CheckAIUsageLimit 사용자의 AI 사용 횟수를 체크합니다 🚫
+func (s *AIService) CheckAIUsageLimit(userID uint) (bool, int, error) {
+	var user models.User
+	if err := s.db.First(&user, userID).Error; err != nil {
+		return false, 0, fmt.Errorf("사용자 정보를 찾을 수 없습니다: %w", err)
+	}
+
+	canUse := user.AIUsageCount < user.AIUsageLimit
+	remaining := user.AIUsageLimit - user.AIUsageCount
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	return canUse, remaining, nil
+}
+
+// IncrementAIUsage 사용자의 AI 사용 횟수를 증가시킵니다 📈
+func (s *AIService) IncrementAIUsage(userID uint) error {
+	result := s.db.Model(&models.User{}).
+		Where("id = ?", userID).
+		Update("ai_usage_count", gorm.Expr("ai_usage_count + 1"))
+
+	if result.Error != nil {
+		return fmt.Errorf("AI 사용 횟수 업데이트 실패: %w", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("사용자를 찾을 수 없습니다")
+	}
+
+	return nil
+}
+
+// GetAIUsageInfo 사용자의 AI 사용 정보를 반환합니다 📊
+func (s *AIService) GetAIUsageInfo(userID uint) (*AIUsageInfo, error) {
+	var user models.User
+	if err := s.db.First(&user, userID).Error; err != nil {
+		return nil, fmt.Errorf("사용자 정보를 찾을 수 없습니다: %w", err)
+	}
+
+	remaining := user.AIUsageLimit - user.AIUsageCount
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	return &AIUsageInfo{
+		Used:      user.AIUsageCount,
+		Limit:     user.AIUsageLimit,
+		Remaining: remaining,
+		CanUse:    user.AIUsageCount < user.AIUsageLimit,
+	}, nil
+}
+
+// AI 사용 정보 구조체
+type AIUsageInfo struct {
+	Used      int  `json:"used"`      // 사용한 횟수
+	Limit     int  `json:"limit"`     // 최대 사용 가능 횟수
+	Remaining int  `json:"remaining"` // 남은 횟수
+	CanUse    bool `json:"can_use"`   // 사용 가능 여부
 }

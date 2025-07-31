@@ -115,11 +115,23 @@ export interface AIMilestoneResponse {
   milestones: AIMilestone[];
   tips: string[];       // 추가 팁
   warnings: string[];   // 주의사항
+  usage: {              // 사용 정보 추가
+    remaining: number;
+    total: number;
+  };
   meta: {
     model: string;
     generated_at: string;
     user_id: number;
   };
+}
+
+// AI 사용 정보 타입
+export interface AIUsageInfo {
+  used: number;      // 사용한 횟수
+  limit: number;     // 최대 사용 가능 횟수
+  remaining: number; // 남은 횟수
+  can_use: boolean;  // 사용 가능 여부
 }
 
 export interface GoalCategoryOption {

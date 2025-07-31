@@ -8,7 +8,8 @@ import type {
   GoalCategory,
   Goal,
   AIMilestone,
-  AIMilestoneResponse
+  AIMilestoneResponse,
+  AIUsageInfo
 } from '../types';
 
 interface CreateDreamModalProps {
@@ -28,6 +29,7 @@ export default function CreateDreamModal({ isOpen, onClose, onSuccess, onLoginRe
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AIMilestoneResponse | null>(null);
   const [showAiResults, setShowAiResults] = useState(false);
+  const [aiUsageInfo, setAiUsageInfo] = useState<AIUsageInfo | null>(null);
 
   // 폼 상태
   const [formData, setFormData] = useState<Omit<CreateDreamRequest, 'milestones'>>({
@@ -49,12 +51,13 @@ export default function CreateDreamModal({ isOpen, onClose, onSuccess, onLoginRe
   // 현재 단계 (1: 꿈 정보, 2: 마일스톤 설정)
   const [currentStep, setCurrentStep] = useState(1);
 
-  // 카테고리 로드
+  // 카테고리 및 AI 사용 정보 로드
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && isAuthenticated) {
       loadCategories();
+      loadAIUsageInfo();
     }
-  }, [isOpen]);
+  }, [isOpen, isAuthenticated]);
 
   const loadCategories = async () => {
     try {
@@ -64,6 +67,17 @@ export default function CreateDreamModal({ isOpen, onClose, onSuccess, onLoginRe
       }
     } catch (err) {
       console.error('카테고리 로드 실패:', err);
+    }
+  };
+
+  const loadAIUsageInfo = async () => {
+    try {
+      const response = await apiClient.getAIUsageInfo();
+      if (response.success && response.data) {
+        setAiUsageInfo(response.data);
+      }
+    } catch (err) {
+      console.error('AI 사용 정보 로드 실패:', err);
     }
   };
 
@@ -178,6 +192,12 @@ export default function CreateDreamModal({ isOpen, onClose, onSuccess, onLoginRe
       return;
     }
 
+    // AI 사용 가능 여부 체크
+    if (aiUsageInfo && !aiUsageInfo.can_use) {
+      setError(`AI 사용 횟수를 모두 사용했습니다 (${aiUsageInfo.used}/${aiUsageInfo.limit})`);
+      return;
+    }
+
     setAiLoading(true);
     setError(null);
 
@@ -198,9 +218,15 @@ export default function CreateDreamModal({ isOpen, onClose, onSuccess, onLoginRe
       if (response.success && response.data) {
         setAiSuggestions(response.data);
         setShowAiResults(true);
+        // AI 사용 정보 업데이트
+        loadAIUsageInfo();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI 제안을 받는데 실패했습니다');
+      if (err instanceof Error && err.message.includes('사용 횟수를 초과')) {
+        setError('AI 사용 횟수를 초과했습니다. 더 이상 AI 제안을 받을 수 없습니다.');
+      } else {
+        setError(err instanceof Error ? err.message : 'AI 제안을 받는데 실패했습니다');
+      }
     } finally {
       setAiLoading(false);
     }
@@ -419,19 +445,35 @@ export default function CreateDreamModal({ isOpen, onClose, onSuccess, onLoginRe
               {/* AI 제안 받기 버튼 */}
               <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4 mb-6">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex-1">
                     <h4 className="text-sm font-medium text-purple-900 mb-1">
                       🤖 AI 마일스톤 제안
                     </h4>
-                    <p className="text-sm text-purple-700">
+                    <p className="text-sm text-purple-700 mb-2">
                       AI가 당신의 꿈에 맞는 구체적인 마일스톤을 제안해드려요
                     </p>
+                    {/* AI 사용 정보 표시 */}
+                    {aiUsageInfo && (
+                      <div className="flex items-center space-x-4 text-xs text-purple-600">
+                        <span className="flex items-center">
+                          📊 사용: {aiUsageInfo.used}/{aiUsageInfo.limit}회
+                        </span>
+                        <span className="flex items-center">
+                          🎯 남은 횟수: {aiUsageInfo.remaining}회
+                        </span>
+                        {!aiUsageInfo.can_use && (
+                          <span className="text-red-600 font-medium">
+                            ⚠️ 사용 한도 초과
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={handleAISuggestions}
-                    disabled={aiLoading || !formData.title.trim()}
+                    disabled={aiLoading || !formData.title.trim() || (aiUsageInfo?.can_use === false)}
                     className={`px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg text-sm font-medium transition duration-200 ${
-                      aiLoading || !formData.title.trim()
+                      aiLoading || !formData.title.trim() || (aiUsageInfo?.can_use === false)
                         ? 'opacity-50 cursor-not-allowed'
                         : 'hover:from-purple-700 hover:to-blue-700'
                     }`}
