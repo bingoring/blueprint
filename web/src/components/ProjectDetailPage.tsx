@@ -39,8 +39,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/useAuthStore';
 import type {
   Project,
-  ProjectCategory,
-  ProjectMilestone
+  ProjectCategory
 } from '../types';
 import dayjs from 'dayjs';
 
@@ -83,7 +82,6 @@ const ProjectDetailPage: React.FC = () => {
   // 상태 관리
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
-  const [projectMilestones, setProjectMilestones] = useState<ProjectMilestone[]>([]);
   const [projectStats, setProjectStats] = useState<ProjectStats | null>(null);
   const [investors, setInvestors] = useState<Investor[]>([]);
   const [isOwner, setIsOwner] = useState(false);
@@ -206,7 +204,7 @@ const ProjectDetailPage: React.FC = () => {
       setProject(mockProject);
       setProjectStats(mockStats);
       setInvestors(mockInvestors);
-      setIsOwner(user?.id === mockProject.user_id);
+      setIsOwner(Number(user?.id) === mockProject.user_id);
 
     } catch (error) {
       console.error('프로젝트 데이터 로드 실패:', error);
@@ -599,7 +597,7 @@ const ProjectDetailPage: React.FC = () => {
               </div>
 
               <div className="space-y-6">
-                {project.milestones?.map((milestone, index) => (
+                {project.milestones?.map((milestone) => (
                   <Card key={milestone.order} size="small" className="border-gray-200">
                     <div className="mb-3">
                       <Title level={5} className="mb-1">
@@ -644,7 +642,7 @@ const ProjectDetailPage: React.FC = () => {
                             step={1000}
                             placeholder="투자할 금액"
                             formatter={value => `₩ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                            parser={value => value!.replace(/₩\s?|(,*)/g, '')}
+                            parser={value => Number(value!.replace(/₩\s?|(,*)/g, '')) || 0}
                             value={milestoneInvestments.find(inv => inv.milestone_id === milestone.order)?.amount}
                             onChange={(value) => updateMilestoneInvestment(milestone.order, 'amount', value || 0)}
                           />

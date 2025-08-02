@@ -181,25 +181,29 @@ export interface Path {
 }
 
 export interface Milestone {
-  id: number;
-  project_id?: number;  // 프로젝트에 직접 연결된 마일스톤
-  path_id?: number;     // 경로를 통한 마일스톤 (기존)
+  id?: number;                // 선택적으로 변경 (생성시에는 없음)
+  project_id?: number;        // 프로젝트에 직접 연결된 마일스톤
+  path_id?: number;           // 경로를 통한 마일스톤 (기존)
   title: string;
   description: string;
   order: number;
-  target_date?: string; // 목표 날짜
+  target_date?: string;       // 목표 날짜
   completed_at?: string;
-  status: MilestoneStatus;
-  is_completed: boolean;
-  total_support: number;      // 총 응원금
-  supporter_count: number;    // 응원자 수
-  success_probability: number; // 성공 확률 (0-1)
-  evidence: string;           // JSON string
+  status?: MilestoneStatus;   // 선택적으로 변경 (기본값 pending)
+  is_completed?: boolean;     // 선택적으로 변경 (기본값 false)
+  total_support?: number;     // 선택적으로 변경 (기본값 0)
+  supporter_count?: number;   // 선택적으로 변경 (기본값 0)
+  success_probability?: number; // 선택적으로 변경 (기본값 0)
+  evidence?: string;          // 선택적으로 변경 (기본값 빈 JSON)
   notes?: string;
-  email_sent: boolean;
-  reminder_sent: boolean;
-  created_at: string;
-  updated_at: string;
+  email_sent?: boolean;       // 선택적으로 변경 (기본값 false)
+  reminder_sent?: boolean;    // 선택적으로 변경 (기본값 false)
+  created_at?: string;        // 선택적으로 변경 (DB에서만 필요)
+  updated_at?: string;        // 선택적으로 변경 (DB에서만 필요)
+
+  // 투자 관련 새 필드들
+  betting_type?: 'simple' | 'custom';
+  betting_options?: string[];
 }
 
 export type MilestoneStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
@@ -430,15 +434,8 @@ export interface ActivityRecord {
   time: string;
 }
 
-// 프로젝트 생성 관련 타입
-export interface ProjectMilestone {
-  title: string;
-  description: string;
-  target_date: string;
-  order: number;
-  betting_type?: 'simple' | 'custom';
-  betting_options?: string[]; // 사용자 정의 옵션들
-}
+// 프로젝트 생성 관련 타입 - 이제 Milestone과 통합
+export type ProjectMilestone = Milestone;
 
 // 기존 타입도 호환성을 위해 유지
 export type ProjectPhase = ProjectMilestone;
