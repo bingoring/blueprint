@@ -12,25 +12,25 @@ import (
 	"gorm.io/gorm"
 )
 
-type GoalHandler struct{
+type ProjectHandler struct{
 	aiService services.AIServiceInterface
 }
 
-func NewGoalHandler(aiService services.AIServiceInterface) *GoalHandler {
-	return &GoalHandler{
+func NewProjectHandler(aiService services.AIServiceInterface) *ProjectHandler {
+	return &ProjectHandler{
 		aiService: aiService,
 	}
 }
 
-// CreateGoal 목표 생성
-func (h *GoalHandler) CreateGoal(c *gin.Context) {
+// CreateProject 프로젝트 생성
+func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		middleware.Unauthorized(c, "User not authenticated")
 		return
 	}
 
-	var req models.CreateGoalRequest
+	var req models.CreateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		middleware.BadRequest(c, err.Error())
 		return
@@ -44,13 +44,13 @@ func (h *GoalHandler) CreateGoal(c *gin.Context) {
 		}
 	}
 
-	// Goal 생성
-	goal := models.Goal{
+	// Project 생성
+	project := models.Project{
 		UserID:      userID.(uint),
 		Title:       req.Title,
 		Description: req.Description,
 		Category:    req.Category,
-		Status:      models.GoalDraft, // 기본값: 초안
+		Status:      models.ProjectDraft, // 기본값: 초안
 		TargetDate:  req.TargetDate,
 		Budget:      req.Budget,
 		Priority:    req.Priority,
@@ -59,23 +59,23 @@ func (h *GoalHandler) CreateGoal(c *gin.Context) {
 		Metrics:     req.Metrics,
 	}
 
-	if err := database.GetDB().Create(&goal).Error; err != nil {
-		middleware.InternalServerError(c, "Failed to create goal")
+	if err := database.GetDB().Create(&project).Error; err != nil {
+		middleware.InternalServerError(c, "Failed to create project")
 		return
 	}
 
-	middleware.SuccessWithStatus(c, 201, goal, "Goal created successfully")
+	middleware.SuccessWithStatus(c, 201, project, "Project created successfully")
 }
 
-// CreateGoalWithMilestones 꿈과 마일스톤을 함께 생성 ✨
-func (h *GoalHandler) CreateGoalWithMilestones(c *gin.Context) {
+// CreateProjectWithMilestones 프로젝트와 마일스톤을 함께 생성 ✨
+func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		middleware.Unauthorized(c, "User not authenticated")
 		return
 	}
 
-	var req models.CreateGoalWithMilestonesRequest
+	var req models.CreateProjectWithMilestonesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		middleware.BadRequest(c, err.Error())
 		return
@@ -103,13 +103,13 @@ func (h *GoalHandler) CreateGoalWithMilestones(c *gin.Context) {
 		}
 	}
 
-	// 꿈 생성
-	goal := models.Goal{
+	// 프로젝트 생성
+	project := models.Project{
 		UserID:      userID.(uint),
 		Title:       req.Title,
 		Description: req.Description,
 		Category:    req.Category,
-		Status:      models.GoalDraft,
+		Status:      models.ProjectDraft,
 		TargetDate:  req.TargetDate,
 		Budget:      req.Budget,
 		Priority:    req.Priority,
@@ -118,9 +118,9 @@ func (h *GoalHandler) CreateGoalWithMilestones(c *gin.Context) {
 		Metrics:     req.Metrics,
 	}
 
-	if err := tx.Create(&goal).Error; err != nil {
+	if err := tx.Create(&project).Error; err != nil {
 		tx.Rollback()
-		middleware.InternalServerError(c, "꿈 생성에 실패했습니다")
+		middleware.InternalServerError(c, "프로젝트 생성에 실패했습니다")
 		return
 	}
 
@@ -128,7 +128,7 @@ func (h *GoalHandler) CreateGoalWithMilestones(c *gin.Context) {
 	var milestones []models.Milestone
 	for _, milestoneReq := range req.Milestones {
 		milestone := models.Milestone{
-			GoalID:      &goal.ID,
+			ProjectID:   &project.ID,
 			Title:       milestoneReq.Title,
 			Description: milestoneReq.Description,
 			Order:       milestoneReq.Order,
@@ -151,14 +151,14 @@ func (h *GoalHandler) CreateGoalWithMilestones(c *gin.Context) {
 		return
 	}
 
-	// 생성된 꿈과 마일스톤들을 함께 반환
-	goal.Milestones = milestones
+	// 생성된 프로젝트와 마일스톤들을 함께 반환
+	project.Milestones = milestones
 
-	middleware.SuccessWithStatus(c, 201, goal, "꿈과 마일스톤이 성공적으로 등록되었습니다! ✨")
+	middleware.SuccessWithStatus(c, 201, project, "프로젝트와 마일스톤이 성공적으로 등록되었습니다! ✨")
 }
 
-// GetGoals 목표 목록 조회 (카테고리별 필터링, 페이지네이션 지원)
-func (h *GoalHandler) GetGoals(c *gin.Context) {
+// GetProjects 목표 목록 조회 (카테고리별 필터링, 페이지네이션 지원)
+func (h *ProjectHandler) GetProjects(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		middleware.Unauthorized(c, "User not authenticated")
@@ -204,26 +204,26 @@ func (h *GoalHandler) GetGoals(c *gin.Context) {
 		order = "desc"
 	}
 
-	var goals []models.Goal
+	var projects []models.Project
 	var total int64
 
 	// 총 개수 조회
-	query.Model(&models.Goal{}).Count(&total)
+	query.Model(&models.Project{}).Count(&total)
 
 	// 데이터 조회
 	err := query.
 		Order(sortBy + " " + order).
 		Offset(offset).
 		Limit(limit).
-		Find(&goals).Error
+		Find(&projects).Error
 
 	if err != nil {
-		middleware.InternalServerError(c, "Failed to fetch goals")
+		middleware.InternalServerError(c, "Failed to fetch projects")
 		return
 	}
 
 	result := gin.H{
-		"goals": goals,
+		"projects": projects,
 		"pagination": gin.H{
 			"page":       page,
 			"limit":      limit,
@@ -232,74 +232,74 @@ func (h *GoalHandler) GetGoals(c *gin.Context) {
 		},
 	}
 
-	middleware.Success(c, result, "Goals retrieved successfully")
+	middleware.Success(c, result, "Projects retrieved successfully")
 }
 
-// GetGoal 단일 목표 조회
-func (h *GoalHandler) GetGoal(c *gin.Context) {
+// GetProject 단일 목표 조회
+func (h *ProjectHandler) GetProject(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		middleware.Unauthorized(c, "User not authenticated")
 		return
 	}
 
-	goalID := c.Param("id")
-	if goalID == "" {
-		middleware.BadRequest(c, "Goal ID is required")
+	projectID := c.Param("id")
+	if projectID == "" {
+		middleware.BadRequest(c, "Project ID is required")
 		return
 	}
 
-	var goal models.Goal
+	var project models.Project
 	err := database.GetDB().
-		Where("id = ? AND user_id = ?", goalID, userID).
+		Where("id = ? AND user_id = ?", projectID, userID).
 		Preload("Paths").      // 관련 경로도 함께 로드
 		Preload("Milestones"). // 마일스톤들도 함께 로드
-		First(&goal).Error
+		First(&project).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			middleware.NotFound(c, "Goal not found")
+			middleware.NotFound(c, "Project not found")
 			return
 		}
-		middleware.InternalServerError(c, "Failed to fetch goal")
+		middleware.InternalServerError(c, "Failed to fetch project")
 		return
 	}
 
-	middleware.Success(c, goal, "Goal retrieved successfully")
+	middleware.Success(c, project, "Project retrieved successfully")
 }
 
-// UpdateGoal 목표 수정
-func (h *GoalHandler) UpdateGoal(c *gin.Context) {
+// UpdateProject 목표 수정
+func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		middleware.Unauthorized(c, "User not authenticated")
 		return
 	}
 
-	goalID := c.Param("id")
-	if goalID == "" {
-		middleware.BadRequest(c, "Goal ID is required")
+	projectID := c.Param("id")
+	if projectID == "" {
+		middleware.BadRequest(c, "Project ID is required")
 		return
 	}
 
-	var req models.UpdateGoalRequest
+	var req models.UpdateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		middleware.BadRequest(c, err.Error())
 		return
 	}
 
 	// 기존 목표 조회
-	var goal models.Goal
+	var project models.Project
 	err := database.GetDB().
-		Where("id = ? AND user_id = ?", goalID, userID).
-		First(&goal).Error
+		Where("id = ? AND user_id = ?", projectID, userID).
+		First(&project).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			middleware.NotFound(c, "Goal not found")
+			middleware.NotFound(c, "Project not found")
 			return
 		}
-		middleware.InternalServerError(c, "Failed to fetch goal")
+		middleware.InternalServerError(c, "Failed to fetch project")
 		return
 	}
 
@@ -341,71 +341,71 @@ func (h *GoalHandler) UpdateGoal(c *gin.Context) {
 	}
 
 	// 업데이트 실행
-	if err := database.GetDB().Model(&goal).Updates(updates).Error; err != nil {
-		middleware.InternalServerError(c, "Failed to update goal")
+	if err := database.GetDB().Model(&project).Updates(updates).Error; err != nil {
+		middleware.InternalServerError(c, "Failed to update project")
 		return
 	}
 
 	// 업데이트된 목표 다시 조회
-	database.GetDB().Where("id = ?", goalID).First(&goal)
+	database.GetDB().Where("id = ?", projectID).First(&project)
 
-	middleware.Success(c, goal, "Goal updated successfully")
+	middleware.Success(c, project, "Project updated successfully")
 }
 
-// DeleteGoal 목표 삭제 (소프트 삭제)
-func (h *GoalHandler) DeleteGoal(c *gin.Context) {
+// DeleteProject 목표 삭제 (소프트 삭제)
+func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		middleware.Unauthorized(c, "User not authenticated")
 		return
 	}
 
-	goalID := c.Param("id")
-	if goalID == "" {
-		middleware.BadRequest(c, "Goal ID is required")
+	projectID := c.Param("id")
+	if projectID == "" {
+		middleware.BadRequest(c, "Project ID is required")
 		return
 	}
 
 	// 목표 존재 확인
-	var goal models.Goal
+	var project models.Project
 	err := database.GetDB().
-		Where("id = ? AND user_id = ?", goalID, userID).
-		First(&goal).Error
+		Where("id = ? AND user_id = ?", projectID, userID).
+		First(&project).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			middleware.NotFound(c, "Goal not found")
+			middleware.NotFound(c, "Project not found")
 			return
 		}
-		middleware.InternalServerError(c, "Failed to fetch goal")
+		middleware.InternalServerError(c, "Failed to fetch project")
 		return
 	}
 
 	// 소프트 삭제
-	if err := database.GetDB().Delete(&goal).Error; err != nil {
-		middleware.InternalServerError(c, "Failed to delete goal")
+	if err := database.GetDB().Delete(&project).Error; err != nil {
+		middleware.InternalServerError(c, "Failed to delete project")
 		return
 	}
 
-	middleware.Success(c, nil, "Goal deleted successfully")
+	middleware.Success(c, nil, "Project deleted successfully")
 }
 
-// UpdateGoalStatus 목표 상태 변경
-func (h *GoalHandler) UpdateGoalStatus(c *gin.Context) {
+// UpdateProjectStatus 목표 상태 변경
+func (h *ProjectHandler) UpdateProjectStatus(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		middleware.Unauthorized(c, "User not authenticated")
 		return
 	}
 
-	goalID := c.Param("id")
-	if goalID == "" {
-		middleware.BadRequest(c, "Goal ID is required")
+	projectID := c.Param("id")
+	if projectID == "" {
+		middleware.BadRequest(c, "Project ID is required")
 		return
 	}
 
 	var req struct {
-		Status models.GoalStatus `json:"status" binding:"required"`
+		Status models.ProjectStatus `json:"status" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -415,25 +415,25 @@ func (h *GoalHandler) UpdateGoalStatus(c *gin.Context) {
 
 	// 목표 존재 확인 및 상태 업데이트
 	result := database.GetDB().
-		Model(&models.Goal{}).
-		Where("id = ? AND user_id = ?", goalID, userID).
+		Model(&models.Project{}).
+		Where("id = ? AND user_id = ?", projectID, userID).
 		Update("status", req.Status)
 
 	if result.Error != nil {
-		middleware.InternalServerError(c, "Failed to update goal status")
+		middleware.InternalServerError(c, "Failed to update project status")
 		return
 	}
 
 	if result.RowsAffected == 0 {
-		middleware.NotFound(c, "Goal not found")
+		middleware.NotFound(c, "Project not found")
 		return
 	}
 
-	middleware.Success(c, gin.H{"status": req.Status}, "Goal status updated successfully")
+	middleware.Success(c, gin.H{"status": req.Status}, "Project status updated successfully")
 }
 
-// GetGoalCategories 꿈 카테고리 목록 조회 ✨
-func (h *GoalHandler) GetGoalCategories(c *gin.Context) {
+// GetProjectCategories 꿈 카테고리 목록 조회 ✨
+func (h *ProjectHandler) GetProjectCategories(c *gin.Context) {
 	categories := []gin.H{
 		{"value": "career", "label": "💼 커리어 성장", "icon": "💼", "description": "새로운 직장, 승진, 전직의 꿈"},
 		{"value": "business", "label": "🚀 창업 도전", "icon": "🚀", "description": "사업 시작, 회사 확장의 꿈"},
@@ -445,8 +445,8 @@ func (h *GoalHandler) GetGoalCategories(c *gin.Context) {
 	middleware.Success(c, categories, "꿈 카테고리를 성공적으로 가져왔습니다")
 }
 
-// GetGoalStatuses 꿈 상태 목록 조회 ✨
-func (h *GoalHandler) GetGoalStatuses(c *gin.Context) {
+// GetProjectStatuses 꿈 상태 목록 조회 ✨
+func (h *ProjectHandler) GetProjectStatuses(c *gin.Context) {
 	statuses := []gin.H{
 		{"value": "draft", "label": "💭 구상 중", "color": "gray", "description": "아직 꿈을 다듬고 있어요"},
 		{"value": "active", "label": "🔥 도전 중", "color": "blue", "description": "꿈을 향해 달려가고 있어요"},
@@ -459,14 +459,14 @@ func (h *GoalHandler) GetGoalStatuses(c *gin.Context) {
 }
 
 // GenerateAIMilestones AI를 사용해서 마일스톤을 제안합니다 🤖
-func (h *GoalHandler) GenerateAIMilestones(c *gin.Context) {
+func (h *ProjectHandler) GenerateAIMilestones(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		middleware.Unauthorized(c, "User not authenticated")
 		return
 	}
 
-	var req models.CreateGoalRequest
+	var req models.CreateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		middleware.BadRequest(c, err.Error())
 		return
@@ -474,7 +474,7 @@ func (h *GoalHandler) GenerateAIMilestones(c *gin.Context) {
 
 	// 필수 필드 검증
 	if req.Title == "" {
-		middleware.BadRequest(c, "꿈의 제목이 필요합니다")
+		middleware.BadRequest(c, "프로젝트 제목이 필요합니다")
 		return
 	}
 
@@ -521,7 +521,7 @@ func (h *GoalHandler) GenerateAIMilestones(c *gin.Context) {
 }
 
 // GetAIUsageInfo 사용자의 AI 사용 정보를 반환합니다 📊
-func (h *GoalHandler) GetAIUsageInfo(c *gin.Context) {
+func (h *ProjectHandler) GetAIUsageInfo(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		middleware.Unauthorized(c, "User not authenticated")

@@ -24,8 +24,8 @@ type User struct {
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 관계 (순환 참조 방지를 위해 포인터 사용)
-	Profile *UserProfile `json:"profile,omitempty" gorm:"foreignKey:UserID"`
-	Goals   []Goal       `json:"goals,omitempty" gorm:"foreignKey:UserID"`
+	Profile  *UserProfile `json:"profile,omitempty" gorm:"foreignKey:UserID"`
+	Projects []Project    `json:"projects,omitempty" gorm:"foreignKey:UserID"`
 }
 
 type UserProfile struct {

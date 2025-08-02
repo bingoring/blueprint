@@ -8,17 +8,16 @@ import type {
   RefreshTokenResponse,
   TokenExpiryResponse,
   User,
-  Goal,
+  Project,
   Path,
   PathPrediction,
   Expert,
   MentoringSession,
-  CreateGoalRequest,
-  CreateDreamRequest,
-  UpdateGoalRequest,
-  GoalStatus,
-  GoalCategoryOption,
-  GoalStatusOption,
+  CreateProjectRequest,
+  UpdateProjectRequest,
+  ProjectStatus,
+  ProjectCategoryOption,
+  ProjectStatusOption,
   Pagination,
   AIMilestoneResponse,
   AIUsageInfo,
@@ -110,27 +109,19 @@ class ApiClient {
     return this.request<User>('/me');
   }
 
-  // Goal 관리 API
-  async createGoal(goalData: CreateGoalRequest): Promise<ApiResponse<Goal>> {
-    return this.request('/goals', {
+  // Project 관리 API
+  async createProject(projectData: CreateProjectRequest): Promise<ApiResponse<Project>> {
+    return this.request('/projects', {
       method: 'POST',
-      body: JSON.stringify(goalData),
-    });
-  }
-
-  // ✨ 꿈 등록 (마일스톤 포함)
-  async createDream(dreamData: CreateDreamRequest): Promise<ApiResponse<Goal>> {
-    return this.request('/dreams', {
-      method: 'POST',
-      body: JSON.stringify(dreamData),
+      body: JSON.stringify(projectData),
     });
   }
 
   // 🤖 AI 마일스톤 제안 받기
-  async generateAIMilestones(dreamData: CreateGoalRequest): Promise<ApiResponse<AIMilestoneResponse>> {
+  async generateAIMilestones(projectData: CreateProjectRequest): Promise<ApiResponse<AIMilestoneResponse>> {
     return this.request('/ai/milestones', {
       method: 'POST',
-      body: JSON.stringify(dreamData),
+      body: JSON.stringify(projectData),
     });
   }
 
@@ -139,14 +130,14 @@ class ApiClient {
     return this.request('/ai/usage');
   }
 
-  async getGoals(params?: {
+  async getProjects(params?: {
     page?: number;
     limit?: number;
     category?: string;
     status?: string;
     sort?: string;
     order?: 'asc' | 'desc';
-  }): Promise<ApiResponse<{ goals: Goal[]; pagination: Pagination }>> {
+  }): Promise<ApiResponse<{ projects: Project[]; pagination: Pagination }>> {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
@@ -156,39 +147,39 @@ class ApiClient {
     if (params?.order) queryParams.append('order', params.order);
 
     const query = queryParams.toString();
-    return this.request(`/goals${query ? `?${query}` : ''}`);
+    return this.request(`/projects${query ? `?${query}` : ''}`);
   }
 
-  async getGoal(id: number): Promise<ApiResponse<Goal>> {
-    return this.request(`/goals/${id}`);
+  async getProject(id: number): Promise<ApiResponse<Project>> {
+    return this.request(`/projects/${id}`);
   }
 
-  async updateGoal(id: number, goalData: UpdateGoalRequest): Promise<ApiResponse<Goal>> {
-    return this.request(`/goals/${id}`, {
+  async updateProject(id: number, projectData: UpdateProjectRequest): Promise<ApiResponse<Project>> {
+    return this.request(`/projects/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(goalData),
+      body: JSON.stringify(projectData),
     });
   }
 
-  async deleteGoal(id: number): Promise<ApiResponse<null>> {
-    return this.request(`/goals/${id}`, {
+  async deleteProject(id: number): Promise<ApiResponse<null>> {
+    return this.request(`/projects/${id}`, {
       method: 'DELETE',
     });
   }
 
-  async updateGoalStatus(id: number, status: GoalStatus): Promise<ApiResponse<{ status: GoalStatus }>> {
-    return this.request(`/goals/${id}/status`, {
+  async updateProjectStatus(id: number, status: ProjectStatus): Promise<ApiResponse<{ status: ProjectStatus }>> {
+    return this.request(`/projects/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     });
   }
 
-  async getGoalCategories(): Promise<ApiResponse<GoalCategoryOption[]>> {
-    return this.request('/goal-categories');
+  async getProjectCategories(): Promise<ApiResponse<ProjectCategoryOption[]>> {
+    return this.request('/project-categories');
   }
 
-  async getGoalStatuses(): Promise<ApiResponse<GoalStatusOption[]>> {
-    return this.request('/goal-statuses');
+  async getProjectStatuses(): Promise<ApiResponse<ProjectStatusOption[]>> {
+    return this.request('/project-statuses');
   }
 
   // 🔐 로그아웃
@@ -237,8 +228,8 @@ class ApiClient {
 
 
   // 경로 관리 API
-  async getPaths(goalId: string): Promise<ApiResponse<Path[]>> {
-    return this.request<Path[]>(`/goals/${goalId}/paths`);
+  async getPaths(projectId: string): Promise<ApiResponse<Path[]>> {
+    return this.request<Path[]>(`/projects/${projectId}/paths`);
   }
 
   async getPath(id: string): Promise<ApiResponse<Path>> {

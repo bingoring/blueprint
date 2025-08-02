@@ -41,7 +41,7 @@ func main() {
 
 	// Initialize services
 	aiService := services.NewBridgeAIService(cfg, database.GetDB())
-	goalHandler := handlers.NewGoalHandler(aiService)
+	projectHandler := handlers.NewProjectHandler(aiService)
 
 	// API 라우트 그룹
 	api := router.Group("/api/v1")
@@ -66,28 +66,28 @@ func main() {
 		protected.GET("/auth/token-expiry", authHandler.CheckTokenExpiry) // 토큰 만료 확인
 
 		// 목표 관리
-		goals := protected.Group("/goals")
+		projects := protected.Group("/projects")
 		{
-			goals.POST("", goalHandler.CreateGoal)                    // 목표 생성
-			goals.GET("", goalHandler.GetGoals)                      // 목표 목록 조회 (필터링, 페이지네이션)
-			goals.GET("/:id", goalHandler.GetGoal)                   // 특정 목표 조회
-			goals.PUT("/:id", goalHandler.UpdateGoal)                // 목표 수정
-			goals.DELETE("/:id", goalHandler.DeleteGoal)             // 목표 삭제
-			goals.PATCH("/:id/status", goalHandler.UpdateGoalStatus) // 목표 상태 변경
+			projects.POST("", projectHandler.CreateProject)                    // 목표 생성
+			projects.GET("", projectHandler.GetProjects)                      // 목표 목록 조회 (필터링, 페이지네이션)
+			projects.GET("/:id", projectHandler.GetProject)                   // 특정 목표 조회
+			projects.PUT("/:id", projectHandler.UpdateProject)                // 목표 수정
+			projects.DELETE("/:id", projectHandler.DeleteProject)             // 목표 삭제
+			projects.PATCH("/:id/status", projectHandler.UpdateProjectStatus) // 목표 상태 변경
 		}
 
-		// 꿈 등록 (마일스톤 포함) ✨
-		protected.POST("/dreams", goalHandler.CreateGoalWithMilestones)
+		// 프로젝트 등록 (마일스톤 포함) ✨
+		protected.POST("/dreams", projectHandler.CreateProjectWithMilestones)
 
 		// AI 마일스톤 제안 🤖
-		protected.POST("/ai/milestones", goalHandler.GenerateAIMilestones)
+		protected.POST("/ai/milestones", projectHandler.GenerateAIMilestones)
 
 		// AI 사용 정보 조회 📊
-		protected.GET("/ai/usage", goalHandler.GetAIUsageInfo)
+		protected.GET("/ai/usage", projectHandler.GetAIUsageInfo)
 
 		// 목표 메타데이터
-		protected.GET("/goal-categories", goalHandler.GetGoalCategories) // 카테고리 목록
-		protected.GET("/goal-statuses", goalHandler.GetGoalStatuses)     // 상태 목록
+		protected.GET("/project-categories", projectHandler.GetProjectCategories) // 카테고리 목록
+		protected.GET("/project-statuses", projectHandler.GetProjectStatuses)     // 상태 목록
 	}
 
 	// 헬스 체크

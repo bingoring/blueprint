@@ -5,7 +5,7 @@ import "blueprint/internal/models"
 // AIServiceInterface AI 서비스의 공통 인터페이스
 type AIServiceInterface interface {
 	// GenerateMilestones AI를 사용해서 마일스톤을 생성합니다
-	GenerateMilestones(dream models.CreateGoalRequest) (*AIMilestoneResponse, error)
+	GenerateMilestones(project models.CreateProjectRequest) (*AIMilestoneResponse, error)
 
 	// CheckAIUsageLimit 사용자의 AI 사용 횟수를 체크합니다
 	CheckAIUsageLimit(userID uint) (bool, int, error)

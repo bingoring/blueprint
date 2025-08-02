@@ -1,8 +1,13 @@
 import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useAuthStore } from './stores/useAuthStore';
 import { apiClient } from './lib/api';
-import HomePage from './components/HomePage';
+import HomePage from './components/NewHomePage';
+import CreateProjectPage from './components/CreateProjectPage';
+import EditProjectPage from './components/EditProjectPage';
+import ProjectDetailPage from './components/ProjectDetailPage';
+import NewDashboard from './components/NewDashboard';
 
 import './index.css';
 
@@ -72,7 +77,15 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <HomePage />
+      <Router>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/create-project" element={<CreateProjectPage />} />
+          <Route path="/edit-project/:id" element={<EditProjectPage />} />
+          <Route path="/project/:id" element={<ProjectDetailPage />} />
+          <Route path="/dashboard" element={<NewDashboard />} />
+        </Routes>
+      </Router>
     </QueryClientProvider>
   );
 }

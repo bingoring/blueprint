@@ -11,13 +11,13 @@ export interface User {
 }
 
 // 목표 관련 타입
-export interface Goal {
+export interface Project {
   id: number;
   user_id: number;
   title: string;
   description: string;
-  category: GoalCategory;
-  status: GoalStatus;
+  category: ProjectCategory;
+  status: ProjectStatus;
   target_date: string | null;
   budget: number;
   priority: number;
@@ -26,28 +26,28 @@ export interface Goal {
   metrics: string;
   created_at: string;
   updated_at: string;
-  milestones?: Milestone[]; // 꿈의 마일스톤들
+  milestones?: Milestone[]; // 프로젝트의 마일스톤들
 }
 
-export type GoalCategory =
+export type ProjectCategory =
   | 'career'      // 💼 Career: 이직, 승진, 전직
   | 'business'    // 🚀 Business: 창업, 사업 확장
   | 'education'   // 📚 Education: 자격증, 학위, 스킬
   | 'personal'    // 🌱 Personal: 결혼, 건강, 취미
   | 'life';       // 🏡 Life: 이민, 이사, 라이프스타일
 
-export type GoalStatus =
+export type ProjectStatus =
   | 'draft'       // 초안
   | 'active'      // 활성
   | 'completed'   // 완료
   | 'cancelled'   // 취소
   | 'on_hold';    // 보류
 
-// Goal API 요청/응답 타입들
-export interface CreateGoalRequest {
+// Project API 요청/응답 타입들
+export interface CreateProjectRequest {
   title: string;
   description?: string;
-  category: GoalCategory;
+  category: ProjectCategory;
   target_date?: string;
   budget?: number;
   priority?: number;
@@ -56,11 +56,11 @@ export interface CreateGoalRequest {
   metrics?: string;
 }
 
-export interface UpdateGoalRequest {
+export interface UpdateProjectRequest {
   title?: string;
   description?: string;
-  category?: GoalCategory;
-  status?: GoalStatus;
+  category?: ProjectCategory;
+  status?: ProjectStatus;
   target_date?: string;
   budget?: number;
   priority?: number;
@@ -69,11 +69,11 @@ export interface UpdateGoalRequest {
   metrics?: string;
 }
 
-// 꿈과 마일스톤을 함께 생성하는 요청 ✨
-export interface CreateDreamRequest {
+// 프로젝트와 마일스톤을 함께 생성하는 요청 ✨
+export interface CreateProjectWithMilestonesRequest {
   title: string;
   description?: string;
-  category: GoalCategory;
+  category: ProjectCategory;
   target_date?: string;
   budget?: number;
   priority?: number;
@@ -112,7 +112,7 @@ export interface AIMilestone {
 }
 
 export interface AIMilestoneResponse {
-  milestones: AIMilestone[];
+  milestones: AIMilestone[];  // 백엔드 호환성을 위해 milestones 유지
   tips: string[];       // 추가 팁
   warnings: string[];   // 주의사항
   usage: {              // 사용 정보 추가
@@ -126,7 +126,6 @@ export interface AIMilestoneResponse {
   };
 }
 
-// AI 사용 정보 타입
 export interface AIUsageInfo {
   used: number;      // 사용한 횟수
   limit: number;     // 최대 사용 가능 횟수
@@ -134,14 +133,14 @@ export interface AIUsageInfo {
   can_use: boolean;  // 사용 가능 여부
 }
 
-export interface GoalCategoryOption {
+export interface ProjectCategoryOption {
   value: string;
   label: string;
   icon: string;
   description?: string;
 }
 
-export interface GoalStatusOption {
+export interface ProjectStatusOption {
   value: string;
   label: string;
   color: string;
@@ -166,7 +165,7 @@ export interface Constraint {
 // 경로 관련 타입
 export interface Path {
   id: string;
-  goalId: string;
+  projectId: string;
   title: string;
   description: string;
   estimatedDuration: number; // 개월 단위
@@ -183,8 +182,8 @@ export interface Path {
 
 export interface Milestone {
   id: number;
-  goal_id?: number;  // 꿈에 직접 연결된 마일스톤
-  path_id?: number;  // 경로를 통한 마일스톤 (기존)
+  project_id?: number;  // 프로젝트에 직접 연결된 마일스톤
+  path_id?: number;     // 경로를 통한 마일스톤 (기존)
   title: string;
   description: string;
   order: number;
@@ -204,6 +203,10 @@ export interface Milestone {
 }
 
 export type MilestoneStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
+
+// 기존 Phase 타입도 호환성을 위해 유지
+export type Phase = Milestone;
+export type PhaseStatus = MilestoneStatus;
 
 export interface Evidence {
   type: 'image' | 'document' | 'link' | 'text';
@@ -244,7 +247,7 @@ export interface PricePoint {
 export interface Expert {
   id: string;
   userId: string;
-  specialties: GoalCategory[];
+  specialties: ProjectCategory[];
   experienceYears: number;
   successRate: number;
   totalMentees: number;
@@ -363,10 +366,10 @@ export interface ChartData {
 }
 
 // 폼 관련 타입
-export interface GoalFormData {
+export interface ProjectFormData {
   title: string;
   description: string;
-  category: GoalCategory;
+  category: ProjectCategory;
   targetDate: string;
   budget?: number;
   priority: Priority;
@@ -386,9 +389,56 @@ export interface PathFormData {
 export interface AppState {
   user: User | null;
   isAuthenticated: boolean;
-  currentGoal: Goal | null;
+  currentProject: Project | null;
   selectedPath: Path | null;
   predictions: PathPrediction[];
   isLoading: boolean;
   error: string | null;
 }
+
+// 대시보드 관련 타입들
+export interface ProjectTableRecord {
+  id: number;
+  title: string;
+  category: ProjectCategory;
+  status: ProjectStatus;
+  progress: number;
+  totalInvestment: number;
+  investors: number;
+  milestones: number;
+  currentMilestone: number;
+  createdAt: string;
+  targetDate: string;
+}
+
+export interface InvestmentTableRecord {
+  id: number;
+  projectId: number;
+  projectTitle: string;
+  developer: string;
+  amount: number;
+  investedAt: string;
+  status: 'active' | 'completed' | 'cancelled';
+  progress: number;
+}
+
+export interface ActivityRecord {
+  id: number;
+  type: 'investment' | 'milestone' | 'project';
+  title: string;
+  description: string;
+  time: string;
+}
+
+// 프로젝트 생성 관련 타입
+export interface ProjectMilestone {
+  title: string;
+  description: string;
+  target_date: string;
+  order: number;
+  betting_type?: 'simple' | 'custom';
+  betting_options?: string[]; // 사용자 정의 옵션들
+}
+
+// 기존 타입도 호환성을 위해 유지
+export type ProjectPhase = ProjectMilestone;

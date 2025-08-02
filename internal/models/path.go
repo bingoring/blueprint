@@ -28,7 +28,7 @@ const (
 
 type Path struct {
 	ID              uint           `json:"id" gorm:"primaryKey"`
-	GoalID          uint           `json:"goal_id" gorm:"not null;index"`
+	ProjectID       uint           `json:"project_id" gorm:"not null;index"`
 	Title           string         `json:"title" gorm:"not null"`
 	Description     string         `json:"description" gorm:"type:text"`
 	Status          PathStatus     `json:"status" gorm:"type:varchar(20);default:'pending'"`
@@ -47,8 +47,8 @@ type Path struct {
 	DeletedAt       gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 외래키 참조
-	Goal      Goal `json:"goal,omitempty" gorm:"foreignKey:GoalID"`
-	Creator   User `json:"creator,omitempty" gorm:"foreignKey:CreatedBy"`
+	Project   Project `json:"project,omitempty" gorm:"foreignKey:ProjectID"`
+	Creator   User    `json:"creator,omitempty" gorm:"foreignKey:CreatedBy"`
 
 	// 관련 모델들
 	Predictions []PathPrediction `json:"predictions,omitempty" gorm:"foreignKey:PathID"`
@@ -73,13 +73,13 @@ type PathPrediction struct {
 	Expert User `json:"expert,omitempty" gorm:"foreignKey:ExpertID"`
 }
 
-// 마일스톤 (꿈의 중간 단계 또는 경로의 체크포인트)
+// 마일스톤 (프로젝트의 중간 단계 또는 경로의 체크포인트)
 type Milestone struct {
 	ID          uint           `json:"id" gorm:"primaryKey"`
 
-	// 연결 관계 (Goal 직접 연결 또는 Path를 통한 연결)
-	GoalID      *uint          `json:"goal_id" gorm:"index"`      // 꿈에 직접 연결된 마일스톤
-	PathID      *uint          `json:"path_id" gorm:"index"`      // 경로를 통한 마일스톤
+	// 연결 관계 (Project 직접 연결 또는 Path를 통한 연결)
+	ProjectID   *uint          `json:"project_id" gorm:"index"`      // 프로젝트에 직접 연결된 마일스톤
+	PathID      *uint          `json:"path_id" gorm:"index"`         // 경로를 통한 마일스톤
 
 	// 마일스톤 정보
 	Title       string         `json:"title" gorm:"not null;size:255"`
@@ -113,8 +113,13 @@ type Milestone struct {
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 외래키 참조
-	Goal Goal `json:"goal,omitempty" gorm:"foreignKey:GoalID"`
-	Path Path `json:"path,omitempty" gorm:"foreignKey:PathID"`
+	Project Project `json:"project,omitempty" gorm:"foreignKey:ProjectID"`
+	Path    Path    `json:"path,omitempty" gorm:"foreignKey:PathID"`
+}
+
+// TableName GORM 테이블명 설정
+func (Milestone) TableName() string {
+	return "milestones"
 }
 
 // 경로 생성 요청

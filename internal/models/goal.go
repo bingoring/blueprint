@@ -6,35 +6,35 @@ import (
 	"gorm.io/gorm"
 )
 
-// 목표 카테고리
-type GoalCategory string
+// 프로젝트 카테고리
+type ProjectCategory string
 
 const (
-	CareerGoal   GoalCategory = "career"
-	BusinessGoal GoalCategory = "business"
-	EducationGoal GoalCategory = "education"
-	PersonalGoal GoalCategory = "personal"
-	LifeGoal     GoalCategory = "life"
+	CareerProject   ProjectCategory = "career"
+	BusinessProject ProjectCategory = "business"
+	EducationProject ProjectCategory = "education"
+	PersonalProject ProjectCategory = "personal"
+	LifeProject     ProjectCategory = "life"
 )
 
-// 목표 상태
-type GoalStatus string
+// 프로젝트 상태
+type ProjectStatus string
 
 const (
-	GoalDraft      GoalStatus = "draft"      // 초안
-	GoalActive     GoalStatus = "active"     // 활성
-	GoalCompleted  GoalStatus = "completed"  // 완료
-	GoalCancelled  GoalStatus = "cancelled"  // 취소
-	GoalOnHold     GoalStatus = "on_hold"    // 보류
+	ProjectDraft      ProjectStatus = "draft"      // 초안
+	ProjectActive     ProjectStatus = "active"     // 활성
+	ProjectCompleted  ProjectStatus = "completed"  // 완료
+	ProjectCancelled  ProjectStatus = "cancelled"  // 취소
+	ProjectOnHold     ProjectStatus = "on_hold"    // 보류
 )
 
-type Goal struct {
+type Project struct {
 	ID          uint           `json:"id" gorm:"primaryKey"`
 	UserID      uint           `json:"user_id" gorm:"not null;index"`
 	Title       string         `json:"title" gorm:"not null"`
 	Description string         `json:"description" gorm:"type:text"`
-	Category    GoalCategory   `json:"category" gorm:"type:varchar(20);not null"`
-	Status      GoalStatus     `json:"status" gorm:"type:varchar(20);default:'draft'"`
+	Category    ProjectCategory `json:"category" gorm:"type:varchar(20);not null"`
+	Status      ProjectStatus  `json:"status" gorm:"type:varchar(20);default:'draft'"`
 	TargetDate  *time.Time     `json:"target_date"`
 	Budget      int64          `json:"budget"`                         // 예산 (원 단위)
 	Priority    int            `json:"priority" gorm:"default:1"`      // 1-5 (높을수록 우선순위 높음)
@@ -49,45 +49,50 @@ type Goal struct {
 	User User `json:"user,omitempty" gorm:"foreignKey:UserID"`
 
 	// 관련 모델들
-	Paths      []Path      `json:"paths,omitempty" gorm:"foreignKey:GoalID"`
-	Milestones []Milestone `json:"milestones,omitempty" gorm:"foreignKey:GoalID"`
+	Paths       []Path       `json:"paths,omitempty" gorm:"foreignKey:ProjectID"`
+	Milestones  []Milestone  `json:"milestones,omitempty" gorm:"foreignKey:ProjectID"`
 }
 
-// 목표 생성 요청
-type CreateGoalRequest struct {
-	Title       string       `json:"title" binding:"required,min=3,max=200"`
-	Description string       `json:"description"`
-	Category    GoalCategory `json:"category" binding:"required"`
-	TargetDate  *time.Time   `json:"target_date"`
-	Budget      int64        `json:"budget"`
-	Priority    int          `json:"priority" binding:"min=1,max=5"`
-	IsPublic    bool         `json:"is_public"`
-	Tags        []string     `json:"tags"`
-	Metrics     string       `json:"metrics"`
+// TableName GORM 테이블명 설정
+func (Project) TableName() string {
+	return "projects"
 }
 
-// 목표 업데이트 요청
-type UpdateGoalRequest struct {
-	Title       string       `json:"title" binding:"min=3,max=200"`
-	Description string       `json:"description"`
-	Category    GoalCategory `json:"category"`
-	Status      GoalStatus   `json:"status"`
-	TargetDate  *time.Time   `json:"target_date"`
-	Budget      int64        `json:"budget"`
-	Priority    int          `json:"priority" binding:"min=1,max=5"`
-	IsPublic    bool         `json:"is_public"`
-	Tags        []string     `json:"tags"`
-	Metrics     string       `json:"metrics"`
+// 프로젝트 생성 요청
+type CreateProjectRequest struct {
+	Title       string          `json:"title" binding:"required,min=3,max=200"`
+	Description string          `json:"description"`
+	Category    ProjectCategory `json:"category" binding:"required"`
+	TargetDate  *time.Time      `json:"target_date"`
+	Budget      int64           `json:"budget"`
+	Priority    int             `json:"priority" binding:"min=1,max=5"`
+	IsPublic    bool            `json:"is_public"`
+	Tags        []string        `json:"tags"`
+	Metrics     string          `json:"metrics"`
 }
 
-// 꿈과 함께 마일스톤을 생성하는 요청
-type CreateGoalWithMilestonesRequest struct {
-	CreateGoalRequest
-	Milestones []CreateGoalMilestoneRequest `json:"milestones" binding:"max=5"`
+// 프로젝트 업데이트 요청
+type UpdateProjectRequest struct {
+	Title       string          `json:"title" binding:"min=3,max=200"`
+	Description string          `json:"description"`
+	Category    ProjectCategory `json:"category"`
+	Status      ProjectStatus   `json:"status"`
+	TargetDate  *time.Time      `json:"target_date"`
+	Budget      int64           `json:"budget"`
+	Priority    int             `json:"priority" binding:"min=1,max=5"`
+	IsPublic    bool            `json:"is_public"`
+	Tags        []string        `json:"tags"`
+	Metrics     string          `json:"metrics"`
 }
 
-// 꿈 마일스톤 생성 요청
-type CreateGoalMilestoneRequest struct {
+// 프로젝트와 함께 마일스톤을 생성하는 요청
+type CreateProjectWithMilestonesRequest struct {
+	CreateProjectRequest
+	Milestones []CreateProjectMilestoneRequest `json:"milestones" binding:"max=5"`
+}
+
+// 프로젝트 마일스톤 생성 요청
+type CreateProjectMilestoneRequest struct {
 	Title       string     `json:"title" binding:"required,min=3,max=200"`
 	Description string     `json:"description"`
 	Order       int        `json:"order" binding:"required,min=1,max=5"`
@@ -103,3 +108,21 @@ type UpdateMilestoneRequest struct {
 	Evidence    string     `json:"evidence"`
 	Notes       string     `json:"notes"`
 }
+
+// 기존 타입들도 호환성을 위해 유지
+type Goal = Project
+type GoalCategory = ProjectCategory
+type GoalStatus = ProjectStatus
+type CreateGoalRequest = CreateProjectRequest
+type UpdateGoalRequest = UpdateProjectRequest
+type CreateGoalWithMilestonesRequest = CreateProjectWithMilestonesRequest
+type CreateGoalMilestoneRequest = CreateProjectMilestoneRequest
+
+// 상수들도 호환성 유지
+const (
+	GoalDraft     = ProjectDraft
+	GoalActive    = ProjectActive
+	GoalCompleted = ProjectCompleted
+	GoalCancelled = ProjectCancelled
+	GoalOnHold    = ProjectOnHold
+)

@@ -44,7 +44,7 @@ type AIMilestone struct {
 }
 
 // GenerateMilestones AI를 사용해서 마일스톤을 생성합니다 🤖
-func (s *AIService) GenerateMilestones(dream models.CreateGoalRequest) (*AIMilestoneResponse, error) {
+func (s *AIService) GenerateMilestones(dream models.CreateProjectRequest) (*AIMilestoneResponse, error) {
 	// OpenAI API 호출 시도
 	aiResponse, err := s.generateMilestonesWithOpenAI(dream)
 	if err != nil {
@@ -57,7 +57,7 @@ func (s *AIService) GenerateMilestones(dream models.CreateGoalRequest) (*AIMiles
 }
 
 // generateMilestonesWithOpenAI OpenAI API를 사용하여 마일스톤 생성
-func (s *AIService) generateMilestonesWithOpenAI(dream models.CreateGoalRequest) (*AIMilestoneResponse, error) {
+func (s *AIService) generateMilestonesWithOpenAI(dream models.CreateProjectRequest) (*AIMilestoneResponse, error) {
 	prompt := s.buildMilestonePrompt(dream)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -103,7 +103,7 @@ func (s *AIService) generateMilestonesWithOpenAI(dream models.CreateGoalRequest)
 }
 
 // generateMockMilestones 카테고리별 Mock 마일스톤 데이터 생성 🎭
-func (s *AIService) generateMockMilestones(dream models.CreateGoalRequest) *AIMilestoneResponse {
+func (s *AIService) generateMockMilestones(dream models.CreateProjectRequest) *AIMilestoneResponse {
 	categoryMilestones := map[string][]AIMilestone{
 		"career": {
 			{Title: "현재 스킬 분석 및 부족한 부분 파악", Description: "현재 보유한 기술과 목표 직무에 필요한 기술을 비교 분석하여 학습 로드맵을 세워보세요.", Order: 1, Duration: "2-3주", Difficulty: "쉬움"},
@@ -195,7 +195,7 @@ JSON 구조:
 }
 
 // 사용자 꿈 정보를 바탕으로 프롬프트 생성
-func (s *AIService) buildMilestonePrompt(dream models.CreateGoalRequest) string {
+func (s *AIService) buildMilestonePrompt(dream models.CreateProjectRequest) string {
 	categoryNames := map[string]string{
 		"career":    "커리어 성장",
 		"business":  "창업/사업",

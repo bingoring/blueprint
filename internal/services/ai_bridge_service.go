@@ -113,12 +113,12 @@ func (s *BridgeAIService) GetSupportedProviders() []AIProvider {
 }
 
 // GenerateMilestones AI를 사용해서 마일스톤을 생성합니다 🤖
-func (s *BridgeAIService) GenerateMilestones(dream models.CreateGoalRequest) (*AIMilestoneResponse, error) {
+func (s *BridgeAIService) GenerateMilestones(project models.CreateProjectRequest) (*AIMilestoneResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// CreateGoalRequest를 AIRequest로 변환
-	aiRequest := s.convertToAIRequest(dream)
+	// CreateProjectRequest를 AIRequest로 변환
+	aiRequest := s.convertToAIRequest(project)
 
 	// AI 모델을 통해 마일스톤 생성
 	aiResponse, err := s.aiModel.GenerateMilestones(ctx, aiRequest)
@@ -140,21 +140,21 @@ func (s *BridgeAIService) GenerateMilestones(dream models.CreateGoalRequest) (*A
 	return s.convertToLegacyResponse(aiResponse), nil
 }
 
-// convertToAIRequest CreateGoalRequest를 AIRequest로 변환
-func (s *BridgeAIService) convertToAIRequest(dream models.CreateGoalRequest) AIRequest {
+// convertToAIRequest CreateProjectRequest를 AIRequest로 변환
+func (s *BridgeAIService) convertToAIRequest(project models.CreateProjectRequest) AIRequest {
 	var targetDateStr string
-	if dream.TargetDate != nil {
-		targetDateStr = dream.TargetDate.Format(time.RFC3339)
+	if project.TargetDate != nil {
+		targetDateStr = project.TargetDate.Format(time.RFC3339)
 	}
 
 	return AIRequest{
-		Title:       dream.Title,
-		Description: dream.Description,
-		Category:    string(dream.Category),
+		Title:       project.Title,
+		Description: project.Description,
+		Category:    string(project.Category),
 		TargetDate:  targetDateStr,
-		Budget:      dream.Budget,
-		Priority:    dream.Priority,
-		Tags:        dream.Tags,
+		Budget:      project.Budget,
+		Priority:    project.Priority,
+		Tags:        project.Tags,
 		Context: map[string]string{
 			"provider": string(s.provider),
 			"model":    s.aiModel.GetProviderInfo().Model,
