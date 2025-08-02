@@ -50,8 +50,6 @@ func AutoMigrate() error {
 		&models.User{},
 		&models.UserProfile{},
 		&models.Project{},
-		&models.Path{},
-		&models.PathPrediction{},
 		&models.Milestone{},
 	)
 

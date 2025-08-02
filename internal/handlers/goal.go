@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type ProjectHandler struct{
+type ProjectHandler struct {
 	aiService services.AIServiceInterface
 }
 
@@ -128,12 +128,12 @@ func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 	var milestones []models.Milestone
 	for _, milestoneReq := range req.Milestones {
 		milestone := models.Milestone{
-			ProjectID:   &project.ID,
+			ProjectID:   project.ID,
 			Title:       milestoneReq.Title,
 			Description: milestoneReq.Description,
 			Order:       milestoneReq.Order,
 			TargetDate:  milestoneReq.TargetDate,
-			Status:      string(models.MilestoneStatusPending),
+			Status:      models.MilestoneStatusPending,
 		}
 
 		if err := tx.Create(&milestone).Error; err != nil {

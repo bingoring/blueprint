@@ -41,7 +41,6 @@ import type {
   AIUsageInfo,
   ProjectMilestone,
   AIMilestone,
-  CreateProjectRequest,
   CreateProjectWithMilestonesRequest
 } from '../types';
 import dayjs from 'dayjs';
@@ -416,12 +415,17 @@ const CreateProjectPage: React.FC = () => {
         return acc;
       }, {} as Record<string, string>);
 
-      const projectData: CreateProjectRequest = {
-        ...formValues,
+      const projectData: CreateProjectWithMilestonesRequest = {
+        title: formValues.title || '',
+        description: formValues.description || '',
+        category: formValues.category || 'personal',
         target_date: formatTargetDate(formValues.target_date),
-        milestones: formattedMilestones,
+        budget: formValues.budget || 0,
+        priority: formValues.priority || 1,
         is_public: isPublic,
-        tags: Object.keys(tagsObject).length > 0 ? [JSON.stringify(tagsObject)] : []
+        tags: Object.keys(tagsObject).length > 0 ? [JSON.stringify(tagsObject)] : [],
+        metrics: formValues.metrics || '',
+        milestones: formattedMilestones
       };
 
       const response = await apiClient.createProject(projectData);

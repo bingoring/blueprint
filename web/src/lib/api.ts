@@ -13,7 +13,7 @@ import type {
   PathPrediction,
   Expert,
   MentoringSession,
-  CreateProjectRequest,
+  CreateProjectWithMilestonesRequest,
   UpdateProjectRequest,
   ProjectStatus,
   ProjectCategoryOption,
@@ -110,15 +110,15 @@ class ApiClient {
   }
 
   // Project 관리 API
-  async createProject(projectData: CreateProjectRequest): Promise<ApiResponse<Project>> {
-    return this.request('/projects', {
+  async createProject(projectData: CreateProjectWithMilestonesRequest): Promise<ApiResponse<Project>> {
+    return this.request('/dreams', {
       method: 'POST',
       body: JSON.stringify(projectData),
     });
   }
 
   // 🤖 AI 마일스톤 제안 받기
-  async generateAIMilestones(projectData: CreateProjectRequest): Promise<ApiResponse<AIMilestoneResponse>> {
+  async generateAIMilestones(projectData: CreateProjectWithMilestonesRequest): Promise<ApiResponse<AIMilestoneResponse>> {
     return this.request('/ai/milestones', {
       method: 'POST',
       body: JSON.stringify(projectData),

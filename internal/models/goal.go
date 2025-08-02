@@ -49,7 +49,6 @@ type Project struct {
 	User User `json:"user,omitempty" gorm:"foreignKey:UserID"`
 
 	// 관련 모델들
-	Paths       []Path       `json:"paths,omitempty" gorm:"foreignKey:ProjectID"`
 	Milestones  []Milestone  `json:"milestones,omitempty" gorm:"foreignKey:ProjectID"`
 }
 
@@ -109,20 +108,6 @@ type UpdateMilestoneRequest struct {
 	Notes       string     `json:"notes"`
 }
 
-// 기존 타입들도 호환성을 위해 유지
-type Goal = Project
-type GoalCategory = ProjectCategory
-type GoalStatus = ProjectStatus
-type CreateGoalRequest = CreateProjectRequest
-type UpdateGoalRequest = UpdateProjectRequest
-type CreateGoalWithMilestonesRequest = CreateProjectWithMilestonesRequest
-type CreateGoalMilestoneRequest = CreateProjectMilestoneRequest
-
-// 상수들도 호환성 유지
-const (
-	GoalDraft     = ProjectDraft
-	GoalActive    = ProjectActive
-	GoalCompleted = ProjectCompleted
-	GoalCancelled = ProjectCancelled
-	GoalOnHold    = ProjectOnHold
-)
+// Goal 관련 호환성 코드 제거 완료
+// Path 모델도 제거 예정 (예전 워딩)
+// 이제 Project -> Milestone 구조로 단순화
