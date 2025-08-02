@@ -44,6 +44,20 @@ clean:
 # Build and start all services
 install: build up
 
+dev-db: ## 데이터베이스만 시작 (로컬 개발용)
+	@echo "Starting development databases..."
+	docker-compose -f docker-compose.dev.yml up -d
+	@echo "✅ Development databases started!"
+	@echo "🗄️  PostgreSQL: localhost:5432"
+	@echo "🔴 Redis: localhost:6379"
+	@echo ""
+	@echo "이제 백엔드와 프론트엔드를 로컬에서 실행하세요:"
+	@echo "  Backend:  make run-backend"
+	@echo "  Frontend: make run-frontend"
+
+dev-db-down: ## 개발 데이터베이스 중지
+	docker-compose -f docker-compose.dev.yml down
+
 # 🚀 Development Commands (Local)
 # Start only database and Redis for local development
 run-dev:

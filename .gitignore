@@ -21,6 +21,11 @@ go.work
 
 # IDE and editor files
 .vscode/
+!.vscode/launch.json       # 디버그 설정 공유
+!.vscode/tasks.json        # 빌드 작업 공유
+!.vscode/extensions.json   # 추천 확장 프로그램 공유
+# .vscode/settings.json은 개인 설정이므로 제외
+
 .idea/
 *.swp
 *.swo

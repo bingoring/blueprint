@@ -1,80 +1,66 @@
-import React, { useState, useEffect } from 'react';
 import {
-  Layout,
-  Card,
-  Row,
-  Col,
-  Progress,
-  Button,
-  Typography,
-  Space,
-  Avatar,
-  List,
-  Badge,
-  Statistic,
-  Tag,
-  Divider,
-  Modal,
-  Form,
-  InputNumber,
-  Radio,
-  message,
-  Timeline,
-  Empty,
-  Spin,
-  Breadcrumb
-} from 'antd';
-import {
-  LeftOutlined,
+  ArrowLeftOutlined,
+  CalendarOutlined,
   DollarOutlined,
   TeamOutlined,
-  CalendarOutlined,
-  TrophyOutlined,
-  ClockCircleOutlined,
-  CheckCircleOutlined,
-  ExclamationCircleOutlined
-} from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/useAuthStore';
+} from "@ant-design/icons";
+import {
+  Badge,
+  Button,
+  Card,
+  Col,
+  Empty,
+  Form,
+  InputNumber,
+  Layout,
+  Modal,
+  Progress,
+  Radio,
+  Row,
+  Space,
+  Spin,
+  Statistic,
+  Tag,
+  Timeline,
+  Typography,
+  message,
+} from "antd";
+import dayjs from "dayjs";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { apiClient } from "../lib/api";
+import { useAuthStore } from "../stores/useAuthStore";
 import type {
+  Milestone,
   Project,
-  ProjectCategory
-} from '../types';
-import dayjs from 'dayjs';
+  ProjectCategory,
+  ProjectStatus,
+} from "../types";
 
 const { Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
 
-// 투자 모달에서 사용할 인터페이스
-interface InvestmentOption {
-  milestone_id: number;
-  option: string;
-  amount: number;
-}
-
 interface Investor {
   id: number;
   username: string;
-  avatar?: string;
   amount: number;
-  invested_at: string;
-  milestone_bets: {
+  date: string;
+  milestone_bets: Array<{
     milestone_id: number;
     option: string;
     amount: number;
-  }[];
+  }>;
 }
 
 interface ProjectStats {
-  total_investment: number;
-  total_investors: number;
   completion_rate: number;
-  expected_return: number;
+  total_investment: number;
+  investor_count: number;
+  success_probability: number;
+  recent_investors: Investor[];
 }
 
 const ProjectDetailPage: React.FC = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { isAuthenticated, user } = useAuthStore();
@@ -83,21 +69,15 @@ const ProjectDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
   const [projectStats, setProjectStats] = useState<ProjectStats | null>(null);
-  const [investors, setInvestors] = useState<Investor[]>([]);
   const [isOwner, setIsOwner] = useState(false);
-
-  // 투자 모달 상태
   const [investModalVisible, setInvestModalVisible] = useState(false);
   const [investmentForm] = Form.useForm();
   const [totalInvestmentAmount, setTotalInvestmentAmount] = useState(0);
-  const [milestoneInvestments, setMilestoneInvestments] = useState<InvestmentOption[]>([]);
-  const [investmentLoading, setInvestmentLoading] = useState(false);
 
-  // 프로젝트 데이터 로드
   useEffect(() => {
     if (!id) {
-      message.error('프로젝트 ID가 필요합니다');
-      navigate('/');
+      message.error("프로젝트 ID가 없습니다");
+      navigate("/");
       return;
     }
 
@@ -107,569 +87,546 @@ const ProjectDetailPage: React.FC = () => {
   const loadProjectData = async () => {
     try {
       setLoading(true);
+      console.log("🔄 프로젝트 상세 데이터 로딩 중...", id);
 
-      // 임시 목 데이터 - 실제로는 API 호출
-      const mockProject: Project = {
-        id: parseInt(id!),
-        user_id: 1,
-        title: "3년 내 카페 창업 프로젝트",
-        description: "서울 강남구에서 독립 카페를 창업하는 것이 목표입니다. 특별한 원두와 독특한 인테리어로 차별화된 카페를 만들고 싶습니다. 지역 주민들에게 사랑받는 공간이 되는 것이 꿈입니다.",
-        category: "business" as ProjectCategory,
-        status: "active",
-        target_date: "2027-12-31",
-        budget: 50000000,
-        priority: 3,
-        is_public: true,
-        tags: '{"location": "강남구", "type": "카페", "concept": "독립카페"}',
-        metrics: "월 매출 500만원 이상 달성",
-        created_at: "2024-01-15T10:00:00Z",
-        updated_at: "2024-01-15T10:00:00Z",
-        milestones: [
-          {
-            title: "사업 계획서 작성 및 승인",
-            description: "상세한 사업 계획서를 작성하고 전문가 검토를 받아 승인받기",
-            target_date: "2025-03-31",
-            order: 1,
-            betting_type: "simple",
-            betting_options: []
-          },
-          {
-            title: "창업 자금 조달",
-            description: "카페 창업에 필요한 자금 5000만원을 조달하기",
-            target_date: "2025-12-31",
-            order: 2,
-            betting_type: "custom",
-            betting_options: ["3000만원 달성", "5000만원 달성", "7000만원 이상 달성"]
-          },
-          {
-            title: "매장 임대 및 인테리어",
-            description: "강남구 내 적절한 위치의 매장을 임대하고 인테리어 완료",
-            target_date: "2026-06-30",
-            order: 3,
-            betting_type: "custom",
-            betting_options: ["6개월 내 완료", "1년 내 완료", "1년 초과"]
-          },
-          {
-            title: "카페 오픈 및 운영",
-            description: "카페를 정식 오픈하고 안정적인 운영 궤도에 진입",
-            target_date: "2027-12-31",
-            order: 4,
-            betting_type: "simple",
-            betting_options: []
-          }
-        ]
-      };
+      // 실제 API 호출: 프로젝트 상세 정보
+      const response = await apiClient.getProject(parseInt(id!));
 
-      const mockStats: ProjectStats = {
-        total_investment: 1250000,
-        total_investors: 23,
-        completion_rate: 65,
-        expected_return: 15.2
-      };
+      if (response.success && response.data) {
+        const projectData = response.data;
+        setProject(projectData);
 
-      const mockInvestors: Investor[] = [
-        {
-          id: 1,
-          username: "김투자",
-          avatar: undefined,
-          amount: 100000,
-          invested_at: "2024-01-20T10:00:00Z",
-          milestone_bets: [
-            { milestone_id: 2, option: "5000만원 달성", amount: 50000 },
-            { milestone_id: 3, option: "6개월 내 완료", amount: 50000 }
-          ]
-        },
-        {
-          id: 2,
-          username: "박서포터",
-          avatar: undefined,
-          amount: 75000,
-          invested_at: "2024-01-22T14:30:00Z",
-          milestone_bets: [
-            { milestone_id: 2, option: "7000만원 이상 달성", amount: 75000 }
-          ]
-        },
-        {
-          id: 3,
-          username: "이응원",
-          avatar: undefined,
-          amount: 50000,
-          invested_at: "2024-01-25T09:15:00Z",
-          milestone_bets: [
-            { milestone_id: 3, option: "1년 내 완료", amount: 50000 }
-          ]
+        // 프로젝트 소유자 확인
+        if (user && projectData.user_id) {
+          setIsOwner(Number(user.id) === projectData.user_id);
         }
-      ];
 
-      setProject(mockProject);
-      setProjectStats(mockStats);
-      setInvestors(mockInvestors);
-      setIsOwner(Number(user?.id) === mockProject.user_id);
+        // 프로젝트 통계 계산 (실제로는 별도 API가 있어야 함)
+        const stats = calculateProjectStats(projectData);
+        setProjectStats(stats);
 
+        console.log("✅ 프로젝트 상세 데이터 로딩 완료:", projectData.title);
+      } else {
+        throw new Error(response.error || "프로젝트 조회 실패");
+      }
     } catch (error) {
-      console.error('프로젝트 데이터 로드 실패:', error);
-      message.error('프로젝트를 불러오는데 실패했습니다');
-      navigate('/');
+      console.error("❌ 프로젝트 데이터 로딩 실패:", error);
+      message.error("프로젝트 정보를 불러오는데 실패했습니다");
+      navigate("/");
     } finally {
       setLoading(false);
     }
   };
 
+  // 프로젝트 통계 계산
+  const calculateProjectStats = (project: Project): ProjectStats => {
+    if (!project.milestones || project.milestones.length === 0) {
+      return {
+        completion_rate: 0,
+        total_investment: 0,
+        investor_count: 0,
+        success_probability: 0,
+        recent_investors: [],
+      };
+    }
+
+    // 완료율 계산
+    const completedCount = project.milestones.filter(
+      (milestone) => milestone.status === "completed"
+    ).length;
+    const completion_rate = Math.round(
+      (completedCount / project.milestones.length) * 100
+    );
+
+    // 총 투자금 계산
+    const total_investment = project.milestones.reduce((sum, milestone) => {
+      return sum + (milestone.total_support || 0);
+    }, 0);
+
+    // 총 투자자 수 계산
+    const investor_count = project.milestones.reduce((sum, milestone) => {
+      return sum + (milestone.supporter_count || 0);
+    }, 0);
+
+    // 성공 확률 계산 (단순히 진행률 기반)
+    const success_probability = Math.min(completion_rate + 20, 95);
+
+    // 임시 최근 투자자 (실제로는 별도 API 필요)
+    const recent_investors: Investor[] = [];
+
+    return {
+      completion_rate,
+      total_investment,
+      investor_count,
+      success_probability,
+      recent_investors,
+    };
+  };
+
+  // 카테고리 번역
+  const getCategoryLabel = (category: ProjectCategory) => {
+    const categoryMap: Record<ProjectCategory, string> = {
+      business: "🚀 Business",
+      career: "💼 Career",
+      education: "📚 Education",
+      personal: "🌱 Personal",
+      life: "🏡 Life",
+    };
+    return categoryMap[category] || category;
+  };
+
+  // 상태 번역
+  const getStatusBadge = (status: ProjectStatus) => {
+    const statusConfig: Record<
+      ProjectStatus,
+      {
+        status: "success" | "processing" | "error" | "default" | "warning";
+        text: string;
+      }
+    > = {
+      draft: { status: "default", text: "초안" },
+      active: { status: "processing", text: "진행중" },
+      completed: { status: "success", text: "완료" },
+      cancelled: { status: "error", text: "취소" },
+      on_hold: { status: "warning", text: "보류" },
+    };
+
+    const config = statusConfig[status] || statusConfig.draft;
+    return <Badge status={config.status} text={config.text} />;
+  };
+
   // 투자 모달 열기
   const openInvestModal = () => {
     if (!isAuthenticated) {
-      message.warning('로그인이 필요합니다');
+      message.warning("투자하려면 로그인이 필요합니다");
       return;
     }
-
-    if (isOwner) {
-      message.warning('자신의 프로젝트에는 투자할 수 없습니다');
-      return;
-    }
-
     setInvestModalVisible(true);
-
-    // 마일스톤별 투자 옵션 초기화
-    const initialInvestments = project?.milestones?.map(milestone => ({
-      milestone_id: milestone.order,
-      option: milestone.betting_type === 'simple' ? '성공' : (milestone.betting_options?.[0] || ''),
-      amount: 0
-    })) || [];
-
-    setMilestoneInvestments(initialInvestments);
   };
 
-  // 투자 옵션 업데이트
-  const updateMilestoneInvestment = (milestoneId: number, field: 'option' | 'amount', value: string | number) => {
-    setMilestoneInvestments(prev =>
-      prev.map(investment =>
-        investment.milestone_id === milestoneId
-          ? { ...investment, [field]: value }
-          : investment
+  // 투자 금액 계산
+  const calculateTotalAmount = () => {
+    const values = investmentForm.getFieldsValue();
+    let total = 0;
+
+    project?.milestones?.forEach((milestone) => {
+      const amount = values[`milestone_${milestone.id}_amount`] || 0;
+      total += amount;
+    });
+
+    setTotalInvestmentAmount(total);
+  };
+
+  // 태그 표시 헬퍼
+  const renderProjectTags = (tags: string) => {
+    try {
+      const parsed = JSON.parse(tags);
+      if (typeof parsed === "object" && parsed !== null) {
+        return Object.entries(parsed).map(([key, value]) => (
+          <Tag key={key} color="geekblue">
+            {key}: {String(value)}
+          </Tag>
+        ));
+      }
+    } catch {
+      // If parsing fails, treat as simple string
+    }
+    return <Tag color="geekblue">{tags}</Tag>;
+  };
+
+  // 베팅 옵션 표시 헬퍼
+  const renderBettingOptions = (milestone: Milestone) => {
+    if (!milestone.betting_options || milestone.betting_options.length === 0) {
+      return null;
+    }
+
+    return (
+      <span>
+        {milestone.betting_options.map((option: string, index: number) => (
+          <Tag key={index} color="blue">
+            {option}
+          </Tag>
+        ))}
+      </span>
+    );
+  };
+
+  // 모달용 베팅 옵션 렌더링
+  const renderModalBettingOptions = (milestone: Milestone) => {
+    if (milestone.betting_type === "simple") {
+      return (
+        <>
+          <Radio value="성공">✅ 성공</Radio>
+          <Radio value="실패">❌ 실패</Radio>
+        </>
+      );
+    }
+
+    if (!milestone.betting_options || milestone.betting_options.length === 0) {
+      return null;
+    }
+
+    return milestone.betting_options.map(
+      (option: string, optionIndex: number) => (
+        <Radio key={optionIndex} value={option}>
+          {option}
+        </Radio>
       )
     );
   };
 
-  // 총 투자 금액 계산
-  useEffect(() => {
-    const total = milestoneInvestments.reduce((sum, investment) => sum + investment.amount, 0);
-    setTotalInvestmentAmount(total);
-  }, [milestoneInvestments]);
-
-  // 투자 실행
-  const handleInvest = async () => {
-    try {
-      setInvestmentLoading(true);
-
-      const validInvestments = milestoneInvestments.filter(inv => inv.amount > 0);
-
-      if (validInvestments.length === 0) {
-        message.warning('투자할 마일스톤을 선택하고 금액을 입력해주세요');
-        return;
-      }
-
-      if (totalInvestmentAmount < 1000) {
-        message.warning('최소 투자 금액은 1,000원입니다');
-        return;
-      }
-
-      // 실제로는 API 호출
-      console.log('투자 데이터:', {
-        project_id: project?.id,
-        total_amount: totalInvestmentAmount,
-        milestone_bets: validInvestments
-      });
-
-      message.success(`총 ${totalInvestmentAmount.toLocaleString()}원이 투자되었습니다! 🎉`);
-      setInvestModalVisible(false);
-
-      // 프로젝트 데이터 새로고침
-      await loadProjectData();
-
-    } catch (error) {
-      console.error('투자 실패:', error);
-      message.error('투자에 실패했습니다');
-    } finally {
-      setInvestmentLoading(false);
-    }
-  };
-
-  // 뒤로가기
-  const handleBack = () => {
-    navigate('/dashboard');
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Spin size="large" />
-      </div>
+      <Layout style={{ minHeight: "100vh" }}>
+        <Content style={{ padding: "50px", textAlign: "center" }}>
+          <Spin size="large" />
+          <div style={{ marginTop: 16 }}>프로젝트 정보를 불러오는 중...</div>
+        </Content>
+      </Layout>
     );
   }
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Empty description="프로젝트를 찾을 수 없습니다" />
-      </div>
+      <Layout style={{ minHeight: "100vh" }}>
+        <Content style={{ padding: "50px", textAlign: "center" }}>
+          <Empty
+            description="프로젝트를 찾을 수 없습니다"
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          >
+            <Button type="primary" onClick={() => navigate("/")}>
+              홈으로 돌아가기
+            </Button>
+          </Empty>
+        </Content>
+      </Layout>
     );
   }
 
-  const projectTags = project.tags ? JSON.parse(project.tags) : {};
-
   return (
-    <Layout className="min-h-screen bg-gray-50">
-      <Content className="p-6">
-        <div className="max-w-6xl mx-auto">
-          {/* 브레드크럼 & 뒤로가기 */}
-          <div className="mb-6">
-            <Button
-              icon={<LeftOutlined />}
-              onClick={handleBack}
-              className="mb-4"
-            >
-              대시보드로 돌아가기
-            </Button>
+    <Layout style={{ minHeight: "100vh", background: "#f5f5f5" }}>
+      <Content style={{ padding: "24px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          {/* 뒤로가기 버튼 */}
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate("/")}
+            style={{ marginBottom: 24 }}
+          >
+            홈으로 돌아가기
+          </Button>
 
-            <Breadcrumb>
-              <Breadcrumb.Item>홈</Breadcrumb.Item>
-              <Breadcrumb.Item>프로젝트</Breadcrumb.Item>
-              <Breadcrumb.Item>{project.title}</Breadcrumb.Item>
-            </Breadcrumb>
-          </div>
+          {/* 프로젝트 헤더 */}
+          <Card style={{ marginBottom: 24 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "start",
+                marginBottom: 16,
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <Title level={2} style={{ marginBottom: 8 }}>
+                  {project.title}
+                </Title>
+                <Space size="middle" style={{ marginBottom: 12 }}>
+                  <Tag color="blue">{getCategoryLabel(project.category)}</Tag>
+                  {getStatusBadge(project.status || "draft")}
+                  <Text type="secondary">
+                    <CalendarOutlined style={{ marginRight: 4 }} />
+                    목표일:{" "}
+                    {project.target_date
+                      ? dayjs(project.target_date).format("YYYY-MM-DD")
+                      : "미정"}
+                  </Text>
+                </Space>
+              </div>
+              {!isOwner && isAuthenticated && (
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<DollarOutlined />}
+                  onClick={openInvestModal}
+                >
+                  투자하기
+                </Button>
+              )}
+            </div>
+
+            {projectStats && (
+              <Progress
+                percent={projectStats.completion_rate}
+                strokeColor="#52c41a"
+              />
+            )}
+
+            <Paragraph style={{ marginTop: 16, fontSize: 16 }}>
+              {project.description}
+            </Paragraph>
+
+            {/* 프로젝트 태그 & 메트릭 */}
+            {project.tags && (
+              <div style={{ marginTop: 16 }}>
+                <Text strong>태그: </Text>
+                {renderProjectTags(project.tags)}
+              </div>
+            )}
+
+            {project.metrics && (
+              <div style={{ marginTop: 8 }}>
+                <Text strong>성공 지표: </Text>
+                <Text>{project.metrics}</Text>
+              </div>
+            )}
+          </Card>
 
           <Row gutter={[24, 24]}>
-            {/* 왼쪽: 프로젝트 메인 정보 */}
-            <Col md={16} span={24}>
-              {/* 프로젝트 헤더 */}
-              <Card className="mb-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <Title level={2} className="mb-2">
-                      {project.title}
-                    </Title>
-                    <Space size="middle" className="mb-3">
-                      <Tag color="blue">
-                        {t(`category.${project.category}`)}
-                      </Tag>
-                      <Badge
-                        status={project.status === 'active' ? 'processing' : 'success'}
-                        text={t(`status.${project.status}`)}
-                      />
-                      <Text type="secondary">
-                        <CalendarOutlined className="mr-1" />
-                        목표일: {dayjs(project.target_date).format('YYYY-MM-DD')}
-                      </Text>
-                    </Space>
-                  </div>
-
-                  {!isOwner && (
-                    <Button
-                      type="primary"
-                      size="large"
-                      icon={<DollarOutlined />}
-                      onClick={openInvestModal}
-                    >
-                      투자하기
-                    </Button>
-                  )}
-                </div>
-
-                {/* 진행률 */}
-                <div className="mb-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <Text strong>프로젝트 진행률</Text>
-                    <Text className="text-lg font-bold">
-                      {projectStats?.completion_rate}%
-                    </Text>
-                  </div>
-                  <Progress
-                    percent={projectStats?.completion_rate}
-                    strokeColor={{
-                      '0%': '#108ee9',
-                      '100%': '#87d068',
-                    }}
-                    size="default"
-                  />
-                </div>
-
-                {/* 프로젝트 설명 */}
-                <Paragraph className="text-gray-700 leading-relaxed">
-                  {project.description}
-                </Paragraph>
-
-                {/* 태그들 */}
-                {Object.keys(projectTags).length > 0 && (
-                  <div className="mt-4">
-                    <Text strong className="mr-3">태그:</Text>
-                    <Space wrap>
-                      {Object.entries(projectTags).map(([key, value]) => (
-                        <Tag key={key} color="geekblue">
-                          {key}: {value as string}
-                        </Tag>
-                      ))}
-                    </Space>
-                  </div>
-                )}
-
-                {project.metrics && (
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                    <Text strong className="text-blue-800">
-                      <TrophyOutlined className="mr-2" />
-                      성공 지표: {project.metrics}
-                    </Text>
-                  </div>
-                )}
-              </Card>
-
-              {/* 마일스톤 타임라인 */}
+            {/* 왼쪽: 마일스톤 타임라인 */}
+            <Col xs={24} lg={16}>
               <Card title="📋 프로젝트 마일스톤">
-                <Timeline>
-                  {project.milestones?.map((milestone, index) => (
-                    <Timeline.Item
-                      key={milestone.order}
-                      dot={
-                        index < 2 ? <CheckCircleOutlined className="text-green-500" /> :
-                        index === 2 ? <ClockCircleOutlined className="text-blue-500" /> :
-                        <ExclamationCircleOutlined className="text-gray-400" />
-                      }
-                    >
-                      <div className="pb-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <Title level={5} className="mb-1">
-                            {milestone.title}
-                          </Title>
-                          <Tag color={index < 2 ? 'green' : index === 2 ? 'blue' : 'default'}>
-                            {index < 2 ? '완료' : index === 2 ? '진행중' : '대기'}
-                          </Tag>
-                        </div>
+                {project.milestones && project.milestones.length > 0 ? (
+                  <Timeline>
+                    {project.milestones
+                      .sort((a, b) => (a.order || 0) - (b.order || 0))
+                      .map((milestone) => (
+                        <Timeline.Item
+                          key={milestone.id}
+                          color={
+                            milestone.status === "completed" ? "green" : "blue"
+                          }
+                        >
+                          <div>
+                            <Title level={5}>
+                              🎯 마일스톤 {milestone.order}: {milestone.title}
+                            </Title>
+                            <Paragraph style={{ color: "#666" }}>
+                              {milestone.description}
+                            </Paragraph>
 
-                        <Paragraph className="text-gray-600 mb-2">
-                          {milestone.description}
-                        </Paragraph>
+                            {milestone.target_date && (
+                              <Text type="secondary">
+                                <CalendarOutlined style={{ marginRight: 4 }} />
+                                목표일:{" "}
+                                {dayjs(milestone.target_date).format(
+                                  "YYYY-MM-DD"
+                                )}
+                              </Text>
+                            )}
 
-                        <div className="flex justify-between items-center">
-                          <Text type="secondary">
-                            목표일: {dayjs(milestone.target_date).format('YYYY-MM-DD')}
-                          </Text>
-
-                          <div className="text-right">
-                            <Text strong>
-                              투자 옵션: {milestone.betting_type === 'simple' ? '📍 단순' : '🎯 사용자 정의'}
-                            </Text>
-                            {milestone.betting_type === 'custom' && (
-                              <div className="mt-1">
-                                <Space size="small" wrap>
-                                  {milestone.betting_options?.map((option, optionIndex) => (
-                                    <Tag key={optionIndex} color="purple">
-                                      {option}
-                                    </Tag>
-                                  ))}
-                                </Space>
+                            {/* 베팅 옵션 표시 */}
+                            {milestone.betting_options && (
+                              <div style={{ marginTop: 8 }}>
+                                <Text strong>투자 옵션: </Text>
+                                {milestone.betting_type === "simple" ? (
+                                  <span>
+                                    <Tag color="green">✅ 성공</Tag>
+                                    <Tag color="red">❌ 실패</Tag>
+                                  </span>
+                                ) : (
+                                  renderBettingOptions(milestone)
+                                )}
                               </div>
                             )}
-                          </div>
-                        </div>
-                      </div>
-                    </Timeline.Item>
-                  ))}
-                </Timeline>
-              </Card>
-            </Col>
 
-            {/* 오른쪽: 투자 정보 */}
-            <Col md={8} span={24}>
-              {/* 투자 통계 */}
-              <Card className="mb-6">
-                <Row gutter={[16, 16]}>
-                  <Col span={12}>
-                    <Statistic
-                      title="총 투자금액"
-                      value={projectStats?.total_investment}
-                      formatter={(value) => `₩${value?.toLocaleString()}`}
-                      prefix={<DollarOutlined />}
-                    />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic
-                      title="투자자 수"
-                      value={projectStats?.total_investors}
-                      suffix="명"
-                      prefix={<TeamOutlined />}
-                    />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic
-                      title="예상 수익률"
-                      value={projectStats?.expected_return}
-                      suffix="%"
-                      prefix={<TrophyOutlined />}
-                      valueStyle={{ color: '#3f8600' }}
-                    />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic
-                      title="진행률"
-                      value={projectStats?.completion_rate}
-                      suffix="%"
-                      prefix={<ClockCircleOutlined />}
-                    />
-                  </Col>
-                </Row>
-              </Card>
-
-              {/* 최근 투자자들 */}
-              <Card
-                title="💰 최근 투자자"
-                extra={
-                  <Text type="secondary">
-                    총 {projectStats?.total_investors}명
-                  </Text>
-                }
-              >
-                <List
-                  itemLayout="horizontal"
-                  dataSource={investors.slice(0, 5)}
-                  renderItem={(investor: Investor) => (
-                    <List.Item>
-                      <List.Item.Meta
-                        avatar={
-                          <Avatar
-                            src={investor.avatar}
-                            icon={!investor.avatar ? <TeamOutlined /> : undefined}
-                          />
-                        }
-                        title={investor.username}
-                        description={
-                          <div>
-                            <div>₩{investor.amount.toLocaleString()}</div>
-                            <div className="text-xs text-gray-400">
-                              {dayjs(investor.invested_at).format('MM-DD HH:mm')}
+                            {/* 투자 정보 */}
+                            <div style={{ marginTop: 8 }}>
+                              <Space>
+                                <Text>
+                                  💰 투자금: ₩
+                                  {(
+                                    milestone.total_support || 0
+                                  ).toLocaleString()}
+                                </Text>
+                                <Text>
+                                  👥 투자자: {milestone.supporter_count || 0}명
+                                </Text>
+                              </Space>
                             </div>
                           </div>
-                        }
-                      />
-                    </List.Item>
-                  )}
-                  locale={{
-                    emptyText: "아직 투자자가 없습니다"
-                  }}
-                />
-
-                {investors.length > 5 && (
-                  <div className="text-center mt-3">
-                    <Button type="link" size="small">
-                      전체 투자자 보기 ({investors.length}명)
-                    </Button>
-                  </div>
+                        </Timeline.Item>
+                      ))}
+                  </Timeline>
+                ) : (
+                  <Empty description="마일스톤이 없습니다" />
                 )}
               </Card>
             </Col>
-          </Row>
 
-          {/* 투자 모달 */}
-          <Modal
-            title="💰 프로젝트 투자하기"
-            open={investModalVisible}
-            onCancel={() => setInvestModalVisible(false)}
-            footer={[
-              <Button key="cancel" onClick={() => setInvestModalVisible(false)}>
-                취소
-              </Button>,
-              <Button
-                key="invest"
-                type="primary"
-                loading={investmentLoading}
-                onClick={handleInvest}
-                disabled={totalInvestmentAmount === 0}
+            {/* 오른쪽: 투자 통계 & 최근 투자자 */}
+            <Col xs={24} lg={8}>
+              <Space
+                direction="vertical"
+                style={{ width: "100%" }}
+                size="large"
               >
-                ₩{totalInvestmentAmount.toLocaleString()} 투자하기
-              </Button>
-            ]}
-            width={800}
-          >
-            <Form form={investmentForm} layout="vertical">
-              <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-                <Text strong className="text-blue-800">
-                  💡 투자 안내: 각 마일스톤별로 결과를 예측하고 투자하세요.
-                  정확한 예측에 대한 보상을 받을 수 있습니다.
-                </Text>
-              </div>
+                {/* 투자 통계 */}
+                <Card title="📊 투자 현황">
+                  <Row gutter={[16, 16]}>
+                    <Col span={12}>
+                      <Statistic
+                        title="완료율"
+                        value={projectStats?.completion_rate || 0}
+                        suffix="%"
+                        valueStyle={{ color: "#52c41a" }}
+                      />
+                    </Col>
+                    <Col span={12}>
+                      <Statistic
+                        title="성공 확률"
+                        value={projectStats?.success_probability || 0}
+                        suffix="%"
+                        valueStyle={{ color: "#1890ff" }}
+                      />
+                    </Col>
+                    <Col span={12}>
+                      <Statistic
+                        title="총 투자금"
+                        value={projectStats?.total_investment || 0}
+                        prefix="₩"
+                        valueStyle={{ color: "#faad14" }}
+                      />
+                    </Col>
+                    <Col span={12}>
+                      <Statistic
+                        title="투자자 수"
+                        value={projectStats?.investor_count || 0}
+                        suffix="명"
+                        prefix={<TeamOutlined />}
+                        valueStyle={{ color: "#722ed1" }}
+                      />
+                    </Col>
+                  </Row>
+                </Card>
 
-              <div className="space-y-6">
-                {project.milestones?.map((milestone) => (
-                  <Card key={milestone.order} size="small" className="border-gray-200">
-                    <div className="mb-3">
-                      <Title level={5} className="mb-1">
-                        🎯 마일스톤 {milestone.order}: {milestone.title}
-                      </Title>
-                      <Text type="secondary" className="text-sm">
-                        목표일: {dayjs(milestone.target_date).format('YYYY-MM-DD')}
-                      </Text>
+                {/* 최근 투자자 */}
+                <Card title="👥 최근 투자자">
+                  {projectStats?.recent_investors &&
+                  projectStats.recent_investors.length > 0 ? (
+                    <div style={{ maxHeight: 300, overflowY: "auto" }}>
+                      {projectStats.recent_investors.map((investor) => (
+                        <div
+                          key={investor.id}
+                          style={{
+                            padding: "8px 0",
+                            borderBottom: "1px solid #f0f0f0",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: "bold" }}>
+                              {investor.username}
+                            </div>
+                            <div style={{ fontSize: "12px", color: "#999" }}>
+                              {investor.date}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: "right" }}>
+                            <div
+                              style={{ fontWeight: "bold", color: "#52c41a" }}
+                            >
+                              ₩{investor.amount.toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-
-                    <Row gutter={[16, 16]}>
-                      <Col span={12}>
-                        <Form.Item label="예측 선택">
-                          <Radio.Group
-                            value={milestoneInvestments.find(inv => inv.milestone_id === milestone.order)?.option}
-                            onChange={(e) => updateMilestoneInvestment(milestone.order, 'option', e.target.value)}
-                          >
-                            <Space direction="vertical">
-                              {milestone.betting_type === 'simple' ? (
-                                <>
-                                  <Radio value="성공">✅ 성공</Radio>
-                                  <Radio value="실패">❌ 실패</Radio>
-                                </>
-                              ) : (
-                                milestone.betting_options?.map((option, optionIndex) => (
-                                  <Radio key={optionIndex} value={option}>
-                                    {option}
-                                  </Radio>
-                                ))
-                              )}
-                            </Space>
-                          </Radio.Group>
-                        </Form.Item>
-                      </Col>
-
-                      <Col span={12}>
-                        <Form.Item label="투자 금액 (원)">
-                          <InputNumber
-                            style={{ width: '100%' }}
-                            min={0}
-                            max={1000000}
-                            step={1000}
-                            placeholder="투자할 금액"
-                            formatter={value => `₩ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                            parser={value => Number(value!.replace(/₩\s?|(,*)/g, '')) || 0}
-                            value={milestoneInvestments.find(inv => inv.milestone_id === milestone.order)?.amount}
-                            onChange={(value) => updateMilestoneInvestment(milestone.order, 'amount', value || 0)}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                  </Card>
-                ))}
-              </div>
-
-              <Divider />
-
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <Statistic
-                  title="총 투자 금액"
-                  value={totalInvestmentAmount}
-                  formatter={(value) => `₩${value?.toLocaleString()}`}
-                  valueStyle={{ color: '#3f8600', fontSize: '24px' }}
-                />
-                <Text type="secondary" className="text-sm">
-                  최소 투자 금액: ₩1,000 | 최대 투자 금액: ₩1,000,000
-                </Text>
-              </div>
-            </Form>
-          </Modal>
+                  ) : (
+                    <Empty
+                      description="아직 투자자가 없습니다"
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    />
+                  )}
+                </Card>
+              </Space>
+            </Col>
+          </Row>
         </div>
       </Content>
+
+      {/* 투자 모달 */}
+      <Modal
+        title="💰 프로젝트 투자하기"
+        open={investModalVisible}
+        onCancel={() => setInvestModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setInvestModalVisible(false)}>
+            취소
+          </Button>,
+          <Button
+            key="invest"
+            type="primary"
+            onClick={() => message.info("투자 기능은 곧 구현 예정입니다!")}
+          >
+            ₩{totalInvestmentAmount.toLocaleString()} 투자하기
+          </Button>,
+        ]}
+        width={800}
+      >
+        <Form
+          form={investmentForm}
+          layout="vertical"
+          onChange={calculateTotalAmount}
+        >
+          {project.milestones?.map((milestone) => (
+            <Card key={milestone.id} size="small" style={{ marginBottom: 16 }}>
+              <Title level={5}>
+                🎯 마일스톤 {milestone.order}: {milestone.title}
+              </Title>
+              <Paragraph style={{ fontSize: "14px", color: "#666" }}>
+                {milestone.description}
+              </Paragraph>
+
+              <Form.Item
+                label="베팅 옵션 선택"
+                name={`milestone_${milestone.id}_option`}
+                rules={[{ required: true, message: "옵션을 선택해주세요" }]}
+              >
+                <Radio.Group>
+                  {renderModalBettingOptions(milestone)}
+                </Radio.Group>
+              </Form.Item>
+
+              <Form.Item
+                label="투자 금액 (원)"
+                name={`milestone_${milestone.id}_amount`}
+                rules={[
+                  { required: true, message: "투자 금액을 입력해주세요" },
+                ]}
+              >
+                <InputNumber
+                  style={{ width: "100%" }}
+                  min={1000}
+                  step={1000}
+                  formatter={(value) =>
+                    `₩ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                  }
+                  parser={(value: string | undefined) => {
+                    if (!value) return 1000;
+                    const parsed = Number(value.replace(/₩\s?|(,*)/g, ""));
+                    return isNaN(parsed) ? 1000 : parsed;
+                  }}
+                  placeholder="최소 1,000원"
+                />
+              </Form.Item>
+            </Card>
+          ))}
+
+          <Card
+            size="small"
+            style={{ backgroundColor: "#f6ffed", border: "1px solid #b7eb8f" }}
+          >
+            <Statistic
+              title="총 투자 금액"
+              value={totalInvestmentAmount}
+              prefix="₩"
+              valueStyle={{ color: "#52c41a", fontSize: "24px" }}
+            />
+          </Card>
+        </Form>
+      </Modal>
     </Layout>
   );
 };

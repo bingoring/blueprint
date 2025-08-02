@@ -3,7 +3,7 @@ export interface User {
   id: string;
   email: string;
   username: string;
-  provider: 'local' | 'google';
+  provider: "local" | "google";
   googleId?: string;
   isActive: boolean;
   createdAt: string;
@@ -30,18 +30,18 @@ export interface Project {
 }
 
 export type ProjectCategory =
-  | 'career'      // 💼 Career: 이직, 승진, 전직
-  | 'business'    // 🚀 Business: 창업, 사업 확장
-  | 'education'   // 📚 Education: 자격증, 학위, 스킬
-  | 'personal'    // 🌱 Personal: 결혼, 건강, 취미
-  | 'life';       // 🏡 Life: 이민, 이사, 라이프스타일
+  | "career" // 💼 Career: 이직, 승진, 전직
+  | "business" // 🚀 Business: 창업, 사업 확장
+  | "education" // 📚 Education: 자격증, 학위, 스킬
+  | "personal" // 🌱 Personal: 결혼, 건강, 취미
+  | "life"; // 🏡 Life: 이민, 이사, 라이프스타일
 
 export type ProjectStatus =
-  | 'draft'       // 초안
-  | 'active'      // 활성
-  | 'completed'   // 완료
-  | 'cancelled'   // 취소
-  | 'on_hold';    // 보류
+  | "draft" // 초안
+  | "active" // 활성
+  | "completed" // 완료
+  | "cancelled" // 취소
+  | "on_hold"; // 보류
 
 // Project API 요청/응답 타입들
 export interface CreateProjectRequest {
@@ -72,7 +72,7 @@ export interface UpdateProjectRequest {
 // 프로젝트와 마일스톤을 함께 생성하는 요청 ✨
 export interface CreateProjectWithMilestonesRequest {
   title: string;
-  description?: string;
+  description: string;
   category: ProjectCategory;
   target_date?: string;
   budget?: number;
@@ -106,16 +106,17 @@ export interface AIMilestone {
   title: string;
   description: string;
   order: number;
-  duration: string;    // 예상 소요 기간
-  difficulty: string;  // 난이도 (쉬움/보통/어려움)
-  category: string;    // 카테고리 (준비/실행/완성)
+  duration: string; // 예상 소요 기간
+  difficulty: string; // 난이도 (쉬움/보통/어려움)
+  category: string; // 카테고리 (준비/실행/완성)
 }
 
 export interface AIMilestoneResponse {
-  milestones: AIMilestone[];  // 백엔드 호환성을 위해 milestones 유지
-  tips: string[];       // 추가 팁
-  warnings: string[];   // 주의사항
-  usage: {              // 사용 정보 추가
+  milestones: AIMilestone[]; // 백엔드 호환성을 위해 milestones 유지
+  tips: string[]; // 추가 팁
+  warnings: string[]; // 주의사항
+  usage: {
+    // 사용 정보 추가
     remaining: number;
     total: number;
   };
@@ -127,10 +128,10 @@ export interface AIMilestoneResponse {
 }
 
 export interface AIUsageInfo {
-  used: number;      // 사용한 횟수
-  limit: number;     // 최대 사용 가능 횟수
+  used: number; // 사용한 횟수
+  limit: number; // 최대 사용 가능 횟수
   remaining: number; // 남은 횟수
-  can_use: boolean;  // 사용 가능 여부
+  can_use: boolean; // 사용 가능 여부
 }
 
 export interface ProjectCategoryOption {
@@ -154,10 +155,10 @@ export interface Pagination {
 }
 
 // Legacy types (for backward compatibility)
-export type Priority = 'low' | 'medium' | 'high' | 'urgent';
+export type Priority = "low" | "medium" | "high" | "urgent";
 
 export interface Constraint {
-  type: 'budget' | 'time' | 'location' | 'family' | 'other';
+  type: "budget" | "time" | "location" | "family" | "other";
   description: string;
   value?: string;
 }
@@ -170,7 +171,7 @@ export interface Path {
   description: string;
   estimatedDuration: number; // 개월 단위
   estimatedCost?: number;
-  difficulty: 'easy' | 'medium' | 'hard' | 'expert';
+  difficulty: "easy" | "medium" | "hard" | "expert";
   successProbability: number; // 0.0 - 1.0
   milestones: Milestone[];
   expertId: string;
@@ -181,39 +182,39 @@ export interface Path {
 }
 
 export interface Milestone {
-  id?: number;                // 선택적으로 변경 (생성시에는 없음)
-  project_id?: number;        // 프로젝트에 직접 연결된 마일스톤
-  path_id?: number;           // 경로를 통한 마일스톤 (기존)
+  id?: number; // 선택적으로 변경 (생성시에는 없음)
+  project_id?: number; // 프로젝트에 직접 연결된 마일스톤
+  path_id?: number; // 경로를 통한 마일스톤 (기존)
   title: string;
   description: string;
   order: number;
-  target_date?: string;       // 목표 날짜
+  target_date?: string; // 목표 날짜
   completed_at?: string;
-  status?: MilestoneStatus;   // 선택적으로 변경 (기본값 pending)
-  is_completed?: boolean;     // 선택적으로 변경 (기본값 false)
-  total_support?: number;     // 선택적으로 변경 (기본값 0)
-  supporter_count?: number;   // 선택적으로 변경 (기본값 0)
+  status?: MilestoneStatus; // 선택적으로 변경 (기본값 pending)
+  is_completed?: boolean; // 선택적으로 변경 (기본값 false)
+  total_support?: number; // 선택적으로 변경 (기본값 0)
+  supporter_count?: number; // 선택적으로 변경 (기본값 0)
   success_probability?: number; // 선택적으로 변경 (기본값 0)
-  evidence?: string;          // 선택적으로 변경 (기본값 빈 JSON)
+  evidence?: string; // 선택적으로 변경 (기본값 빈 JSON)
   notes?: string;
-  email_sent?: boolean;       // 선택적으로 변경 (기본값 false)
-  reminder_sent?: boolean;    // 선택적으로 변경 (기본값 false)
-  created_at?: string;        // 선택적으로 변경 (DB에서만 필요)
-  updated_at?: string;        // 선택적으로 변경 (DB에서만 필요)
+  email_sent?: boolean; // 선택적으로 변경 (기본값 false)
+  reminder_sent?: boolean; // 선택적으로 변경 (기본값 false)
+  created_at?: string; // 선택적으로 변경 (DB에서만 필요)
+  updated_at?: string; // 선택적으로 변경 (DB에서만 필요)
 
   // 투자 관련 새 필드들
-  betting_type?: 'simple' | 'custom';
-  betting_options?: string[];
+  betting_type?: "simple" | "custom";
+  betting_options?: string[]; // 베팅 옵션 배열
 }
 
-export type MilestoneStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
+export type MilestoneStatus = "pending" | "completed" | "failed" | "cancelled";
 
 // 기존 Phase 타입도 호환성을 위해 유지
 export type Phase = Milestone;
 export type PhaseStatus = MilestoneStatus;
 
 export interface Evidence {
-  type: 'image' | 'document' | 'link' | 'text';
+  type: "image" | "document" | "link" | "text";
   content: string;
   description?: string;
   uploadedAt: string;
@@ -263,7 +264,7 @@ export interface Expert {
 }
 
 export interface Badge {
-  type: 'expertise' | 'achievement' | 'contribution';
+  type: "expertise" | "achievement" | "contribution";
   name: string;
   description: string;
   iconUrl: string;
@@ -279,7 +280,7 @@ export interface MentoringSession {
   milestoneId?: string;
   scheduledAt: string;
   duration: number; // 분 단위
-  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+  status: "scheduled" | "in_progress" | "completed" | "cancelled";
   notes?: string;
   rating?: number;
   feedback?: string;
@@ -354,7 +355,7 @@ export interface StatCard {
   title: string;
   value: string | number;
   change?: number;
-  changeType?: 'increase' | 'decrease' | 'neutral';
+  changeType?: "increase" | "decrease" | "neutral";
   icon?: string;
 }
 
@@ -385,8 +386,8 @@ export interface PathFormData {
   description: string;
   estimatedDuration: number;
   estimatedCost?: number;
-  difficulty: Path['difficulty'];
-  milestones: Omit<Milestone, 'id' | 'pathId' | 'createdAt' | 'updatedAt'>[];
+  difficulty: Path["difficulty"];
+  milestones: Omit<Milestone, "id" | "pathId" | "createdAt" | "updatedAt">[];
 }
 
 // 상태 관리 타입
@@ -422,13 +423,13 @@ export interface InvestmentTableRecord {
   developer: string;
   amount: number;
   investedAt: string;
-  status: 'active' | 'completed' | 'cancelled';
+  status: "active" | "completed" | "cancelled";
   progress: number;
 }
 
 export interface ActivityRecord {
   id: number;
-  type: 'investment' | 'milestone' | 'project';
+  type: "investment" | "milestone" | "project";
   title: string;
   description: string;
   time: string;

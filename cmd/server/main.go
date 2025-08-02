@@ -68,16 +68,13 @@ func main() {
 		// 목표 관리
 		projects := protected.Group("/projects")
 		{
-			projects.POST("", projectHandler.CreateProject)                    // 목표 생성
+			projects.POST("", projectHandler.CreateProjectWithMilestones)                    // 목표 생성
 			projects.GET("", projectHandler.GetProjects)                      // 목표 목록 조회 (필터링, 페이지네이션)
 			projects.GET("/:id", projectHandler.GetProject)                   // 특정 목표 조회
 			projects.PUT("/:id", projectHandler.UpdateProject)                // 목표 수정
 			projects.DELETE("/:id", projectHandler.DeleteProject)             // 목표 삭제
 			projects.PATCH("/:id/status", projectHandler.UpdateProjectStatus) // 목표 상태 변경
 		}
-
-		// 프로젝트 등록 (마일스톤 포함) ✨
-		protected.POST("/dreams", projectHandler.CreateProjectWithMilestones)
 
 		// AI 마일스톤 제안 🤖
 		protected.POST("/ai/milestones", projectHandler.GenerateAIMilestones)

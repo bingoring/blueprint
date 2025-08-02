@@ -109,9 +109,9 @@ class ApiClient {
     return this.request<User>('/me');
   }
 
-  // Project 관리 API
+  // Project 관리 API (마일스톤 포함)
   async createProject(projectData: CreateProjectWithMilestonesRequest): Promise<ApiResponse<Project>> {
-    return this.request('/dreams', {
+    return this.request('/projects', {
       method: 'POST',
       body: JSON.stringify(projectData),
     });

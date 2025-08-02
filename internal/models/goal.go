@@ -84,9 +84,10 @@ type UpdateProjectRequest struct {
 	Metrics     string          `json:"metrics"`
 }
 
-// 프로젝트와 함께 마일스톤을 생성하는 요청
+// 프로젝트와 함께 마일스톤을 생성하는 요청 (평면화)
 type CreateProjectWithMilestonesRequest struct {
 	CreateProjectRequest
+	// 마일스톤 정보
 	Milestones []CreateProjectMilestoneRequest `json:"milestones" binding:"max=5"`
 }
 
@@ -96,6 +97,10 @@ type CreateProjectMilestoneRequest struct {
 	Description string     `json:"description"`
 	Order       int        `json:"order" binding:"required,min=1,max=5"`
 	TargetDate  *time.Time `json:"target_date"`
+
+	// 베팅 관련 필드 추가
+	BettingType    string   `json:"betting_type"`    // simple, custom
+	BettingOptions []string `json:"betting_options"` // 커스텀 베팅 옵션들
 }
 
 // 마일스톤 업데이트 요청
@@ -106,6 +111,10 @@ type UpdateMilestoneRequest struct {
 	TargetDate  *time.Time `json:"target_date"`
 	Evidence    string     `json:"evidence"`
 	Notes       string     `json:"notes"`
+
+	// 베팅 관련 필드 추가
+	BettingType    string   `json:"betting_type"`    // simple, custom
+	BettingOptions []string `json:"betting_options"` // 커스텀 베팅 옵션들
 }
 
 // Goal 관련 호환성 코드 제거 완료

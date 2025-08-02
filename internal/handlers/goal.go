@@ -22,51 +22,6 @@ func NewProjectHandler(aiService services.AIServiceInterface) *ProjectHandler {
 	}
 }
 
-// CreateProject 프로젝트 생성
-func (h *ProjectHandler) CreateProject(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		middleware.Unauthorized(c, "User not authenticated")
-		return
-	}
-
-	var req models.CreateProjectRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		middleware.BadRequest(c, err.Error())
-		return
-	}
-
-	// Tags JSON 변환
-	tagsJSON := ""
-	if len(req.Tags) > 0 {
-		if tagsBytes, err := json.Marshal(req.Tags); err == nil {
-			tagsJSON = string(tagsBytes)
-		}
-	}
-
-	// Project 생성
-	project := models.Project{
-		UserID:      userID.(uint),
-		Title:       req.Title,
-		Description: req.Description,
-		Category:    req.Category,
-		Status:      models.ProjectDraft, // 기본값: 초안
-		TargetDate:  req.TargetDate,
-		Budget:      req.Budget,
-		Priority:    req.Priority,
-		IsPublic:    req.IsPublic,
-		Tags:        tagsJSON,
-		Metrics:     req.Metrics,
-	}
-
-	if err := database.GetDB().Create(&project).Error; err != nil {
-		middleware.InternalServerError(c, "Failed to create project")
-		return
-	}
-
-	middleware.SuccessWithStatus(c, 201, project, "Project created successfully")
-}
-
 // CreateProjectWithMilestones 프로젝트와 마일스톤을 함께 생성 ✨
 func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 	userID, exists := c.Get("user_id")
@@ -128,12 +83,14 @@ func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 	var milestones []models.Milestone
 	for _, milestoneReq := range req.Milestones {
 		milestone := models.Milestone{
-			ProjectID:   project.ID,
-			Title:       milestoneReq.Title,
-			Description: milestoneReq.Description,
-			Order:       milestoneReq.Order,
-			TargetDate:  milestoneReq.TargetDate,
-			Status:      models.MilestoneStatusPending,
+			ProjectID:      project.ID,
+			Title:          milestoneReq.Title,
+			Description:    milestoneReq.Description,
+			Order:          milestoneReq.Order,
+			TargetDate:     milestoneReq.TargetDate,
+			Status:         models.MilestoneStatusPending,
+			BettingType:    milestoneReq.BettingType,
+			BettingOptions: milestoneReq.BettingOptions, // 직접 할당 (GORM이 자동 JSON 처리)
 		}
 
 		if err := tx.Create(&milestone).Error; err != nil {
@@ -252,7 +209,6 @@ func (h *ProjectHandler) GetProject(c *gin.Context) {
 	var project models.Project
 	err := database.GetDB().
 		Where("id = ? AND user_id = ?", projectID, userID).
-		Preload("Paths").      // 관련 경로도 함께 로드
 		Preload("Milestones"). // 마일스톤들도 함께 로드
 		First(&project).Error
 
@@ -466,7 +422,7 @@ func (h *ProjectHandler) GenerateAIMilestones(c *gin.Context) {
 		return
 	}
 
-	var req models.CreateProjectRequest
+	var req models.CreateProjectWithMilestonesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		middleware.BadRequest(c, err.Error())
 		return
@@ -490,8 +446,21 @@ func (h *ProjectHandler) GenerateAIMilestones(c *gin.Context) {
 		return
 	}
 
+	// CreateProjectWithMilestonesRequest를 CreateProjectRequest로 변환
+	projectReq := models.CreateProjectRequest{
+		Title:       req.Title,
+		Description: req.Description,
+		Category:    req.Category,
+		TargetDate:  req.TargetDate,
+		Budget:      req.Budget,
+		Priority:    req.Priority,
+		IsPublic:    req.IsPublic,
+		Tags:        req.Tags,
+		Metrics:     req.Metrics,
+	}
+
 	// AI 마일스톤 생성
-	aiResponse, err := h.aiService.GenerateMilestones(req)
+	aiResponse, err := h.aiService.GenerateMilestones(projectReq)
 	if err != nil {
 		middleware.InternalServerError(c, "AI 마일스톤 생성에 실패했습니다: "+err.Error())
 		return

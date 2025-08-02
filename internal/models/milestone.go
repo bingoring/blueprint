@@ -35,8 +35,8 @@ type Milestone struct {
 	IsCompleted bool           `json:"is_completed" gorm:"default:false"`
 
 	// 베팅 관련 (새로 추가)
-	BettingType    string         `json:"betting_type" gorm:"type:varchar(20);default:'simple'"` // simple, custom
-	BettingOptions string         `json:"betting_options" gorm:"type:text"`                      // JSON 배열
+	BettingType    string   `json:"betting_type" gorm:"type:varchar(20);default:'simple'"` // simple, custom
+	BettingOptions []string `json:"betting_options" gorm:"type:text;serializer:json"`      // JSON 배열
 
 	// 응원 (베팅) 관련
 	TotalSupport       int64   `json:"total_support" gorm:"default:0"`
