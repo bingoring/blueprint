@@ -19,7 +19,6 @@ import {
   InputNumber,
   Radio,
   message,
-  Tooltip,
   Timeline,
   Empty,
   Spin,
@@ -27,13 +26,10 @@ import {
 } from 'antd';
 import {
   LeftOutlined,
-  ProjectOutlined,
   DollarOutlined,
   TeamOutlined,
   CalendarOutlined,
   TrophyOutlined,
-  HeartOutlined,
-  StarOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined
@@ -43,8 +39,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/useAuthStore';
 import type {
   Project,
-  Milestone,
-  ProjectCategory
+  ProjectCategory,
+  ProjectMilestone
 } from '../types';
 import dayjs from 'dayjs';
 
@@ -87,6 +83,7 @@ const ProjectDetailPage: React.FC = () => {
   // 상태 관리
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
+  const [projectMilestones, setProjectMilestones] = useState<ProjectMilestone[]>([]);
   const [projectStats, setProjectStats] = useState<ProjectStats | null>(null);
   const [investors, setInvestors] = useState<Investor[]>([]);
   const [isOwner, setIsOwner] = useState(false);

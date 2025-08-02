@@ -11,7 +11,6 @@ import {
   Typography,
   Row,
   Col,
-  Collapse,
   InputNumber,
   Tag,
   Divider,
@@ -37,7 +36,6 @@ import {
   EditOutlined,
   LockOutlined
 } from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/useAuthStore';
 import { apiClient } from '../lib/api';
@@ -54,7 +52,6 @@ import dayjs from 'dayjs';
 
 const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
-const { Panel } = Collapse;
 const { Step } = Steps;
 
 interface TagPair {
@@ -161,7 +158,6 @@ const CustomBettingOptions: React.FC<CustomBettingOptionsProps> = ({
 };
 
 const EditProjectPage: React.FC = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { isAuthenticated } = useAuthStore();
@@ -169,7 +165,6 @@ const EditProjectPage: React.FC = () => {
   // 기본 상태
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [projectData, setProjectData] = useState<Project | null>(null);
   const [hasInvestors, setHasInvestors] = useState(false);
 
   // 폼과 단계 관리
@@ -234,30 +229,12 @@ const EditProjectPage: React.FC = () => {
         metrics: "월 매출 500만원 이상",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
-        milestones: [
-          {
-            title: "사업 계획서 작성",
-            description: "상세한 사업 계획서를 작성하고 검토받기",
-            target_date: "2025-03-31",
-            order: 1,
-            betting_type: "simple",
-            betting_options: []
-          },
-          {
-            title: "자금 조달",
-            description: "창업 자금 5000만원 조달하기",
-            target_date: "2025-12-31",
-            order: 2,
-            betting_type: "custom",
-            betting_options: ["3000만원 조달", "5000만원 조달", "7000만원 이상 조달"]
-          }
-        ]
+        milestones: []
       };
 
       // 투자자 존재 여부 체크 (임시 데이터)
       const hasInvestorsData = mockProject.id === 1; // ID 1인 프로젝트는 투자자 있음
 
-      setProjectData(mockProject);
       setHasInvestors(hasInvestorsData);
 
       // 폼 데이터 설정
@@ -271,8 +248,42 @@ const EditProjectPage: React.FC = () => {
         metrics: mockProject.metrics
       });
 
-      // 마일스톤 설정
-      setMilestones(mockProject.milestones || []);
+      // 마일스톤 설정 - 별도로 정의한 ProjectMilestone 데이터 사용
+      const projectMilestones: ProjectMilestone[] = [
+        {
+          title: "사업 계획서 작성 및 승인",
+          description: "상세한 사업 계획서를 작성하고 전문가 검토를 받아 승인받기",
+          target_date: "2025-03-31",
+          order: 1,
+          betting_type: "simple",
+          betting_options: []
+        },
+        {
+          title: "창업 자금 조달",
+          description: "카페 창업에 필요한 자금 5000만원을 조달하기",
+          target_date: "2025-12-31",
+          order: 2,
+          betting_type: "custom",
+          betting_options: ["3000만원 달성", "5000만원 달성", "7000만원 이상 달성"]
+        },
+        {
+          title: "매장 임대 및 인테리어",
+          description: "강남구 내 적절한 위치의 매장을 임대하고 인테리어 완료",
+          target_date: "2026-06-30",
+          order: 3,
+          betting_type: "custom",
+          betting_options: ["6개월 내 완료", "1년 내 완료", "1년 초과"]
+        },
+        {
+          title: "카페 오픈 및 운영",
+          description: "카페를 정식 오픈하고 안정적인 운영 궤도에 진입",
+          target_date: "2027-12-31",
+          order: 4,
+          betting_type: "simple",
+          betting_options: []
+        }
+      ];
+      setMilestones(projectMilestones);
       setIsPublic(mockProject.is_public);
 
       // 태그 파싱
@@ -502,10 +513,10 @@ const EditProjectPage: React.FC = () => {
       setAiSuggestions(response.data || null);
       message.success('AI 제안을 받았습니다! 🤖');
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('AI 제안 요청 실패:', error);
 
-      if (error.message?.includes('validation')) {
+      if (error instanceof Error && error.message?.includes('validation')) {
         message.error('프로젝트 정보를 모두 입력한 후 AI 제안을 받아주세요');
       } else {
         message.error('AI 제안 요청에 실패했습니다');
@@ -562,7 +573,7 @@ const EditProjectPage: React.FC = () => {
         return acc;
       }, {} as Record<string, string>);
 
-      const projectData: CreateDreamRequest = {
+      const projectData: CreateProjectWithMilestonesRequest = {
         ...formValues,
         target_date: formatTargetDate(formValues.target_date),
         milestones: formattedMilestones,
@@ -576,7 +587,7 @@ const EditProjectPage: React.FC = () => {
       message.success('프로젝트가 성공적으로 수정되었습니다! ✅');
       navigate('/dashboard');
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('프로젝트 수정 실패:', error);
       message.error('프로젝트 수정에 실패했습니다');
     } finally {
