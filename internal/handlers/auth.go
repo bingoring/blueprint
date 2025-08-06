@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -18,6 +19,8 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"gorm.io/gorm"
+
+	"blueprint/internal/queue"
 )
 
 // Google 사용자 정보 구조체
@@ -141,11 +144,24 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	// 기본 프로필 생성
+	// 기본 프로필 생성 (즉시 처리 - 중요한 메인 동작)
 	profile := models.UserProfile{
 		UserID: user.ID,
 	}
 	database.GetDB().Create(&profile)
+
+	// 🆕 후속 작업들을 큐로 비동기 처리
+	publisher := queue.NewPublisher()
+	err = publisher.EnqueueUserCreated(queue.UserCreatedEventData{
+		UserID:   user.ID,
+		Email:    user.Email,
+		Username: user.Username,
+		Provider: "local",
+	})
+	if err != nil {
+		log.Printf("❌ Failed to enqueue user created tasks: %v", err)
+		// 에러가 나도 회원가입은 성공으로 처리 (백그라운드 작업은 나중에 재시도 가능)
+	}
 
 	// JWT 토큰 생성
 	token, err := utils.GenerateToken(&user, h.cfg.JWT.Secret)
@@ -268,6 +284,18 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 			Avatar:    userinfo.Picture,
 		}
 		database.GetDB().Create(&profile)
+
+		// 🆕 Google 회원가입 후속 작업들을 큐로 비동기 처리
+		publisher := queue.NewPublisher()
+		err = publisher.EnqueueUserCreated(queue.UserCreatedEventData{
+			UserID:   user.ID,
+			Email:    user.Email,
+			Username: user.Username,
+			Provider: "google",
+		})
+		if err != nil {
+			log.Printf("❌ Failed to enqueue Google user created tasks: %v", err)
+		}
 	} else if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
 		return

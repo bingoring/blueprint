@@ -6,19 +6,21 @@ import (
 	"blueprint/internal/models"
 	"blueprint/internal/services"
 	"encoding/json"
+	"log"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
+// ProjectHandler 프로젝트 핸들러
 type ProjectHandler struct {
-	aiService services.AIServiceInterface
+	aiService  services.AIServiceInterface
 }
 
 func NewProjectHandler(aiService services.AIServiceInterface) *ProjectHandler {
 	return &ProjectHandler{
-		aiService: aiService,
+		aiService:  aiService,
 	}
 }
 
@@ -82,6 +84,15 @@ func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 	// 마일스톤들 생성
 	var milestones []models.Milestone
 	for _, milestoneReq := range req.Milestones {
+		// betting_options 올바르게 설정
+		bettingOptions := milestoneReq.BettingOptions
+		if milestoneReq.BettingType == "simple" {
+			bettingOptions = []string{"success", "fail"}
+		} else if milestoneReq.BettingType == "custom" && len(milestoneReq.BettingOptions) == 0 {
+			// custom이지만 옵션이 없으면 기본값 사용
+			bettingOptions = []string{"success", "fail"}
+		}
+
 		milestone := models.Milestone{
 			ProjectID:      project.ID,
 			Title:          milestoneReq.Title,
@@ -90,7 +101,7 @@ func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 			TargetDate:     milestoneReq.TargetDate,
 			Status:         models.MilestoneStatusPending,
 			BettingType:    milestoneReq.BettingType,
-			BettingOptions: milestoneReq.BettingOptions, // 직접 할당 (GORM이 자동 JSON 처리)
+			BettingOptions: bettingOptions, // 올바른 옵션 할당
 		}
 
 		if err := tx.Create(&milestone).Error; err != nil {
@@ -108,15 +119,33 @@ func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 		return
 	}
 
+	// 각 마일스톤에 대한 betting options 설정 🎯
+	for _, milestone := range milestones {
+		// betting options가 비어있으면 기본값 설정
+		if len(milestone.BettingOptions) == 0 {
+			if milestone.BettingType == "simple" {
+				milestone.BettingOptions = []string{"success", "fail"}
+			} else {
+				milestone.BettingOptions = []string{"success", "fail"}
+			}
+
+			// 데이터베이스에 업데이트
+			if err := database.GetDB().Model(&milestone).Update("betting_options", milestone.BettingOptions).Error; err != nil {
+				log.Printf("Failed to update betting options for milestone %d: %v", milestone.ID, err)
+			}
+		}
+		// 마켓 초기화는 Trading 시스템에서 동적으로 처리됩니다
+	}
+
 	// 생성된 프로젝트와 마일스톤들을 함께 반환
 	project.Milestones = milestones
 
-	middleware.SuccessWithStatus(c, 201, project, "프로젝트와 마일스톤이 성공적으로 등록되었습니다! ✨")
+	middleware.SuccessWithStatus(c, 201, project, "프로젝트와 마일스톤이 성공적으로 등록되었습니다! 투자 시장도 열렸어요! 🎯✨")
 }
 
 // GetProjects 목표 목록 조회 (카테고리별 필터링, 페이지네이션 지원)
 func (h *ProjectHandler) GetProjects(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	_, exists := c.Get("user_id")
 	if !exists {
 		middleware.Unauthorized(c, "User not authenticated")
 		return
@@ -139,8 +168,8 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 
 	offset := (page - 1) * limit
 
-	// 쿼리 빌드
-	query := database.GetDB().Where("user_id = ?", userID)
+	// 쿼리 빌드 (모든 공개 프로젝트 조회 - 투자 기능을 위해)
+	query := database.GetDB().Model(&models.Project{})
 
 	if category != "" {
 		query = query.Where("category = ?", category)
@@ -194,7 +223,7 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 
 // GetProject 단일 목표 조회
 func (h *ProjectHandler) GetProject(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	_, exists := c.Get("user_id")
 	if !exists {
 		middleware.Unauthorized(c, "User not authenticated")
 		return
@@ -208,7 +237,7 @@ func (h *ProjectHandler) GetProject(c *gin.Context) {
 
 	var project models.Project
 	err := database.GetDB().
-		Where("id = ? AND user_id = ?", projectID, userID).
+		Where("id = ?", projectID).
 		Preload("Milestones"). // 마일스톤들도 함께 로드
 		First(&project).Error
 

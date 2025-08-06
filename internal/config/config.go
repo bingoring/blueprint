@@ -14,6 +14,7 @@ type Config struct {
 	Google   GoogleConfig
 	Server   ServerConfig
 	AI       AIConfig
+	Redis    RedisConfig
 }
 
 type DatabaseConfig struct {
@@ -53,6 +54,14 @@ type AIConfig struct {
 	OpenAI   OpenAIConfig
 }
 
+// RedisConfig Redis 설정
+type RedisConfig struct {
+	Host     string
+	Port     string
+	Password string
+	DB       int
+}
+
 // LoadConfig .env 파일을 로드하고 설정을 반환합니다 🔧
 func LoadConfig() *Config {
 	// .env 파일 로드 (파일이 없어도 오류 없이 진행)
@@ -90,6 +99,12 @@ func LoadConfig() *Config {
 				APIKey: getEnv("OPENAI_API_KEY", ""),
 				Model:  getEnv("OPENAI_MODEL", "gpt-4o-mini"),
 			},
+		},
+		Redis: RedisConfig{
+			Host:     getEnv("REDIS_HOST", "localhost"),
+			Port:     getEnv("REDIS_PORT", "6379"),
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
 	}
 }
