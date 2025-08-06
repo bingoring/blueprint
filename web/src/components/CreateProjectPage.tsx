@@ -990,7 +990,10 @@ const CreateProjectPage: React.FC = () => {
                   </div>
 
                   {aiUsageInfo && (
-                    <div className="mt-3 text-xs text-gray-500">
+                    <div
+                      className="mt-3 text-xs"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
                       AI 사용량: {aiUsageInfo.used}/{aiUsageInfo.limit}회 사용
                     </div>
                   )}
@@ -1001,6 +1004,18 @@ const CreateProjectPage: React.FC = () => {
                   <Card
                     size="small"
                     title="🤖 AI 제안 마일스톤"
+                    style={{
+                      backgroundColor: "var(--bg-secondary)",
+                      borderColor: "var(--border-color)",
+                    }}
+                    headStyle={{
+                      backgroundColor: "var(--bg-secondary)",
+                      borderBottomColor: "var(--border-color)",
+                      color: "var(--text-primary)",
+                    }}
+                    bodyStyle={{
+                      backgroundColor: "var(--bg-secondary)",
+                    }}
                     extra={
                       <Button
                         size="small"
@@ -1014,9 +1029,24 @@ const CreateProjectPage: React.FC = () => {
                     <div className="space-y-2">
                       {aiSuggestions.milestones?.map(
                         (milestone: AIMilestone, index: number) => (
-                          <div key={index} className="p-2 bg-gray-50 rounded">
-                            <div className="font-medium">{milestone.title}</div>
-                            <div className="text-sm text-gray-600">
+                          <div
+                            key={index}
+                            className="p-2 rounded"
+                            style={{
+                              backgroundColor: "var(--bg-tertiary)",
+                              border: "1px solid var(--border-color)",
+                            }}
+                          >
+                            <div
+                              className="font-medium"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {milestone.title}
+                            </div>
+                            <div
+                              className="text-sm"
+                              style={{ color: "var(--text-secondary)" }}
+                            >
                               {milestone.description}
                             </div>
                           </div>
