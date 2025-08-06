@@ -121,10 +121,13 @@ func (mm *MarketMakerBot) Start() error {
 	mm.isRunning = true
 	log.Println("🤖 Market Maker Bot started!")
 
-	// 초기 마켓 스캔
-	if err := mm.scanActiveMarkets(); err != nil {
-		log.Printf("❌ Error scanning markets: %v", err)
-	}
+	// 초기 마켓 스캔 (약간 지연 후 실행)
+	go func() {
+		time.Sleep(5 * time.Second) // 5초 대기하여 다른 서비스들이 준비될 시간 제공
+		if err := mm.scanActiveMarkets(); err != nil {
+			log.Printf("❌ Error scanning markets: %v", err)
+		}
+	}()
 
 	// 메인 루프 시작
 	go mm.mainLoop()
@@ -244,7 +247,7 @@ func (mm *MarketMakerBot) scanActiveMarkets() error {
 		}
 	}
 
-	log.Printf("📊 Scanning completed. Active markets: %d", len(mm.activeMarkets))
+	log.Printf("📊 Market scan completed. Found %d active markets", len(mm.activeMarkets))
 	return nil
 }
 
@@ -456,9 +459,17 @@ func (mm *MarketMakerBot) getCurrentPrice(milestoneID uint, optionID string) flo
 	var marketData models.MarketData
 	err := mm.db.Where("milestone_id = ? AND option_id = ?", milestoneID, optionID).
 		First(&marketData).Error
+
 	if err != nil {
-		return 0.5 // 기본 가격
+		if err == gorm.ErrRecordNotFound {
+			// 새로운 마켓이므로 기본 가격 사용 (로그 없음)
+			return 0.5
+		}
+		// 다른 에러인 경우에만 로그 출력
+		log.Printf("⚠️ Error getting market price for %d:%s: %v", milestoneID, optionID, err)
+		return 0.5
 	}
+
 	return marketData.CurrentPrice
 }
 
@@ -668,6 +679,13 @@ func (mm *MarketMakerBot) IsRunning() bool {
 
 // provideInitialLiquidity 새 마켓에 초기 유동성 제공
 func (mm *MarketMakerBot) provideInitialLiquidity(milestoneID uint, optionID string, currentPrice float64) {
+	// 🔍 마일스톤에서 프로젝트 ID 조회
+	var milestone models.Milestone
+	if err := mm.db.Where("id = ?", milestoneID).First(&milestone).Error; err != nil {
+		log.Printf("❌ Failed to get milestone %d: %v", milestoneID, err)
+		return
+	}
+
 	// 현재 가격 주변에 매수/매도 주문 생성
 	spread := mm.config.MinSpread
 	bidPrice := currentPrice - spread/2
@@ -683,7 +701,7 @@ func (mm *MarketMakerBot) provideInitialLiquidity(milestoneID uint, optionID str
 
 	// 매수 주문 생성
 	buyOrder := models.CreateOrderRequest{
-		ProjectID:   0, // TODO: milestone에서 project_id 가져오기
+		ProjectID:   milestone.ProjectID, // 마일스톤에서 프로젝트 ID 가져오기
 		MilestoneID: milestoneID,
 		OptionID:    optionID,
 		Type:        models.OrderTypeLimit,
@@ -695,7 +713,7 @@ func (mm *MarketMakerBot) provideInitialLiquidity(milestoneID uint, optionID str
 
 	// 매도 주문 생성
 	sellOrder := models.CreateOrderRequest{
-		ProjectID:   0, // TODO: milestone에서 project_id 가져오기
+		ProjectID:   milestone.ProjectID, // 마일스톤에서 프로젝트 ID 가져오기
 		MilestoneID: milestoneID,
 		OptionID:    optionID,
 		Type:        models.OrderTypeLimit,
@@ -705,8 +723,11 @@ func (mm *MarketMakerBot) provideInitialLiquidity(milestoneID uint, optionID str
 		Currency:    models.CurrencyUSDC,
 	}
 
-	log.Printf("🤖 Providing initial liquidity for %s: bid=%.2f¢, ask=%.2f¢",
+		log.Printf("🤖 Providing initial liquidity for %s: bid=%.2f¢, ask=%.2f¢",
 		optionID, bidPrice*100, askPrice*100)
+
+	// 🔍 마켓메이커 봇 지갑 확인/생성
+	mm.ensureMarketMakerWallet()
 
 	// 주문 생성 (에러 발생 시 로그만 출력)
 	if _, err := mm.tradingService.CreateOrder(mm.config.UserID, buyOrder, "market-maker", "market-maker-bot"); err != nil {
@@ -715,5 +736,40 @@ func (mm *MarketMakerBot) provideInitialLiquidity(milestoneID uint, optionID str
 
 	if _, err := mm.tradingService.CreateOrder(mm.config.UserID, sellOrder, "market-maker", "market-maker-bot"); err != nil {
 		log.Printf("❌ Failed to create initial sell order: %v", err)
+	}
+}
+
+// ensureMarketMakerWallet 마켓메이커 봇 지갑 확인/생성
+func (mm *MarketMakerBot) ensureMarketMakerWallet() {
+	var wallet models.UserWallet
+	err := mm.db.Where("user_id = ?", mm.config.UserID).First(&wallet).Error
+
+	if err == gorm.ErrRecordNotFound {
+		// 마켓메이커 봇 지갑 생성
+		wallet = models.UserWallet{
+			UserID:                 mm.config.UserID,
+			USDCBalance:           10000000, // 100,000 USDC (센트 단위)
+			USDCLockedBalance:     0,
+			BlueprintBalance:      0,        // 봇은 BLUEPRINT 필요 없음
+			BlueprintLockedBalance: 0,
+			TotalUSDCDeposit:      10000000,
+			TotalUSDCWithdraw:     0,
+			TotalUSDCProfit:       0,
+			TotalUSDCLoss:         0,
+			TotalUSDCFees:         0,
+			TotalBlueprintEarned:  0,
+			TotalBlueprintSpent:   0,
+			WinRate:               0,
+			TotalTrades:           0,
+		}
+
+		if err := mm.db.Create(&wallet).Error; err != nil {
+			log.Printf("❌ Failed to create market maker wallet: %v", err)
+		} else {
+			log.Printf("🤖 Created market maker wallet with $%.2f USDC",
+				float64(wallet.USDCBalance)/100)
+		}
+	} else if err != nil {
+		log.Printf("❌ Failed to check market maker wallet: %v", err)
 	}
 }
