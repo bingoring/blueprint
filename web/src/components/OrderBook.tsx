@@ -55,13 +55,21 @@ const OrderBook: React.FC<OrderBookProps> = ({
   const spread =
     asks.length > 0 && bids.length > 0 ? asks[0].price - bids[0].price : 0;
 
+  const formatPrice = (probability: number) => {
+    // 확률 (0.0-1.0)을 센트 (0-100)로 변환하고 반올림
+    const cents = Math.round(probability * 100);
+    return `${cents}¢`;
+  };
+
   const formatNumber = (num: number, decimals = 2) => {
     return num.toFixed(decimals);
   };
 
-  const handlePriceClick = (price: number) => {
+  const handlePriceClick = (probability: number) => {
     if (onPriceClick) {
-      onPriceClick(price);
+      // 확률을 센트로 변환해서 전달
+      const cents = Math.round(probability * 100);
+      onPriceClick(cents);
     }
   };
 
@@ -97,7 +105,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
                   onClick={() => handlePriceClick(level.price)}
                   style={{ cursor: onPriceClick ? "pointer" : "default" }}
                 >
-                  <span>{formatNumber(level.price)}</span>
+                  <span>{formatPrice(level.price)}</span>
                   <span style={{ textAlign: "center" }}>
                     {level.quantity.toLocaleString()}
                   </span>
@@ -112,7 +120,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
         {/* Spread */}
         {spread > 0 && (
           <div className="spread-row">
-            Spread: {formatNumber(spread)} (
+            Spread: {Math.round(spread * 100)}¢ (
             {((spread / ((asks[0]?.price + bids[0]?.price) / 2)) * 100).toFixed(
               2
             )}
@@ -131,7 +139,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
                 onClick={() => handlePriceClick(level.price)}
                 style={{ cursor: onPriceClick ? "pointer" : "default" }}
               >
-                <span>{formatNumber(level.price)}</span>
+                <span>{formatPrice(level.price)}</span>
                 <span style={{ textAlign: "center" }}>
                   {level.quantity.toLocaleString()}
                 </span>

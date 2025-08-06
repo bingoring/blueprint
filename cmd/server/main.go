@@ -111,6 +111,7 @@ func main() {
 		protected.GET("/projects/:id", projectHandler.GetProject)               // 특정 프로젝트
 		protected.PUT("/projects/:id", projectHandler.UpdateProject)            // 프로젝트 수정
 		protected.DELETE("/projects/:id", projectHandler.DeleteProject)         // 프로젝트 삭제
+		protected.GET("/ai/usage", projectHandler.GetAIUsageInfo)   // AI 마일스톤 제안
 		protected.POST("/ai/milestones", projectHandler.GenerateAIMilestones)   // AI 마일스톤 제안
 
 		// 💰 지갑 관리

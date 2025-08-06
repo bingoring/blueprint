@@ -236,6 +236,9 @@ func (mm *MarketMakerBot) scanActiveMarkets() error {
 					Metadata:      make(map[string]interface{}),
 				}
 
+				// 🎯 새 마켓에 초기 유동성 제공
+				go mm.provideInitialLiquidity(milestone.ID, option, currentPrice)
+
 				log.Printf("🎯 Added market: %s (price: %.4f)", key, currentPrice)
 			}
 		}
@@ -661,4 +664,56 @@ func (mm *MarketMakerBot) IsRunning() bool {
 	mm.mutex.RLock()
 	defer mm.mutex.RUnlock()
 	return mm.isRunning
+}
+
+// provideInitialLiquidity 새 마켓에 초기 유동성 제공
+func (mm *MarketMakerBot) provideInitialLiquidity(milestoneID uint, optionID string, currentPrice float64) {
+	// 현재 가격 주변에 매수/매도 주문 생성
+	spread := mm.config.MinSpread
+	bidPrice := currentPrice - spread/2
+	askPrice := currentPrice + spread/2
+
+	// 가격 범위 검증
+	if bidPrice < mm.config.MinPrice {
+		bidPrice = mm.config.MinPrice
+	}
+	if askPrice > mm.config.MaxPrice {
+		askPrice = mm.config.MaxPrice
+	}
+
+	// 매수 주문 생성
+	buyOrder := models.CreateOrderRequest{
+		ProjectID:   0, // TODO: milestone에서 project_id 가져오기
+		MilestoneID: milestoneID,
+		OptionID:    optionID,
+		Type:        models.OrderTypeLimit,
+		Side:        models.OrderSideBuy,
+		Quantity:    mm.config.BaseOrderSize,
+		Price:       bidPrice,
+		Currency:    models.CurrencyUSDC,
+	}
+
+	// 매도 주문 생성
+	sellOrder := models.CreateOrderRequest{
+		ProjectID:   0, // TODO: milestone에서 project_id 가져오기
+		MilestoneID: milestoneID,
+		OptionID:    optionID,
+		Type:        models.OrderTypeLimit,
+		Side:        models.OrderSideSell,
+		Quantity:    mm.config.BaseOrderSize,
+		Price:       askPrice,
+		Currency:    models.CurrencyUSDC,
+	}
+
+	log.Printf("🤖 Providing initial liquidity for %s: bid=%.2f¢, ask=%.2f¢",
+		optionID, bidPrice*100, askPrice*100)
+
+	// 주문 생성 (에러 발생 시 로그만 출력)
+	if _, err := mm.tradingService.CreateOrder(mm.config.UserID, buyOrder, "market-maker", "market-maker-bot"); err != nil {
+		log.Printf("❌ Failed to create initial buy order: %v", err)
+	}
+
+	if _, err := mm.tradingService.CreateOrder(mm.config.UserID, sellOrder, "market-maker", "market-maker-bot"); err != nil {
+		log.Printf("❌ Failed to create initial sell order: %v", err)
+	}
 }

@@ -476,9 +476,10 @@ const PolymarketTradingPage: React.FC = () => {
               <Text type="secondary">
                 Last:{" "}
                 {chartData.length > 0
-                  ? chartData[chartData.length - 1].price.toFixed(2)
-                  : "--"}{" "}
-                pts
+                  ? `${Math.round(
+                      chartData[chartData.length - 1].price * 100
+                    )}¢`
+                  : "--"}
               </Text>
             </div>
 
@@ -498,7 +499,8 @@ const PolymarketTradingPage: React.FC = () => {
                     <YAxis
                       stroke="var(--text-secondary)"
                       fontSize={12}
-                      domain={["dataMin - 5", "dataMax + 5"]}
+                      domain={[0, 1]}
+                      tickFormatter={(value) => `${Math.round(value * 100)}¢`}
                     />
                     <Tooltip
                       contentStyle={{
@@ -507,6 +509,10 @@ const PolymarketTradingPage: React.FC = () => {
                         borderRadius: "8px",
                         color: "var(--text-primary)",
                       }}
+                      formatter={(value: number) => [
+                        `${Math.round(value * 100)}¢`,
+                        "Price",
+                      ]}
                     />
                     <Line
                       type="monotone"

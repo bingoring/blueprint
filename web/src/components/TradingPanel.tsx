@@ -23,7 +23,7 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
   const [activeTab, setActiveTab] = useState<OrderSide>("buy");
   const [orderType, setOrderType] = useState<OrderType>("limit");
   const [quantity, setQuantity] = useState<number>(10);
-  const [price, setPrice] = useState<number>(0.5); // 0.01-0.99 범위의 확률값
+  const [price, setPrice] = useState<number>(50); // 1-99 범위의 센트값 (50¢ = 50% 확률)
 
   const handleSubmit = async () => {
     if (!quantity || quantity <= 0) {
@@ -31,13 +31,12 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
       return;
     }
 
-    if (orderType === "limit" && (!price || price < 0.01 || price > 0.99)) {
-      message.error("Please enter a valid price between 0.01 and 0.99");
+    if (orderType === "limit" && (!price || price < 1 || price > 99)) {
+      message.error("Please enter a valid price between 1¢ and 99¢");
       return;
     }
 
-    const effectivePrice = orderType === "limit" ? price : 0.5; // Market orders use mid-price
-    const totalCost = quantity * effectivePrice * 100; // Convert to USDC cents (0.5 probability = 50 cents)
+    const totalCost = quantity * (orderType === "limit" ? price : 50); // Direct cents calculation
 
     if (activeTab === "buy" && totalCost > userBalance) {
       message.error("Insufficient balance");
@@ -49,13 +48,13 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
         side: activeTab,
         type: orderType,
         quantity,
-        price: orderType === "limit" ? price : 0.5, // Market orders use mid-price
+        price: orderType === "limit" ? price / 100 : 0.5, // Convert cents to probability for API
       });
 
       // Reset form on success
       setQuantity(10);
       if (orderType === "limit") {
-        setPrice(0.5);
+        setPrice(50);
       }
 
       message.success(
@@ -69,9 +68,9 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
 
   const calculateTotal = () => {
     if (orderType === "market") {
-      return quantity * 0.5 * 100; // Market price estimate: 0.5 probability = 50 USDC cents
+      return quantity * 50; // Market price estimate: 50¢
     }
-    return quantity * price * 100; // Convert probability to USDC cents
+    return quantity * price; // Direct cents calculation
   };
 
   return (
@@ -119,17 +118,33 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
         {/* Price (for limit orders) */}
         {orderType === "limit" && (
           <div className="form-group">
-            <label className="form-label">Price (Probability)</label>
-            <input
-              type="number"
-              className="form-input"
-              value={price}
-              onChange={(e) => setPrice(Number(e.target.value))}
-              placeholder="0.50"
-              step="0.01"
-              min="0.01"
-              max="0.99"
-            />
+            <label className="form-label">Price</label>
+            <div style={{ position: "relative" }}>
+              <input
+                type="number"
+                className="form-input"
+                value={price}
+                onChange={(e) => setPrice(Math.round(Number(e.target.value)))} // 반올림 처리
+                placeholder="50"
+                step="1"
+                min="1"
+                max="99"
+                style={{ paddingRight: "20px" }}
+              />
+              <span
+                style={{
+                  position: "absolute",
+                  right: "8px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "var(--text-secondary)",
+                  fontSize: "12px",
+                  pointerEvents: "none",
+                }}
+              >
+                ¢
+              </span>
+            </div>
             <div
               style={{
                 fontSize: "11px",
@@ -137,7 +152,7 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
                 marginTop: "4px",
               }}
             >
-              Range: 0.01 - 0.99 (probability)
+              Range: 1¢ - 99¢ (probability in cents)
             </div>
           </div>
         )}

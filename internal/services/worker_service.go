@@ -225,7 +225,8 @@ func (w *WorkerService) processMarketInit(event queue.QueueEvent) error {
 		return fmt.Errorf("market must have at least 2 options")
 	}
 
-	// 각 옵션의 초기 확률은 1/N (균등 분배)
+		// 🎯 각 옵션의 초기 확률은 1/N (균등 분배)
+	// 예: 2개 옵션 = 50¢씩, 5개 옵션 = 20¢씩
 	initialPrice := 1.0 / float64(optionCount)
 
 	// 범위 검증 (0.01-0.99)
@@ -235,7 +236,8 @@ func (w *WorkerService) processMarketInit(event queue.QueueEvent) error {
 		initialPrice = 0.99
 	}
 
-	log.Printf("🎯 Initializing market with %d options at %.4f probability each", optionCount, initialPrice)
+		log.Printf("🎯 Initializing market with %d options at %.2f%% (%.0f¢) each",
+		optionCount, initialPrice*100, initialPrice*100)
 
 	// 각 옵션별로 MarketData 생성
 	for _, option := range optionStrings {
