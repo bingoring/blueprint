@@ -1,10 +1,11 @@
+version: '3.8'
+
 services:
-  # PostgreSQL 데이터베이스
   postgres:
     image: postgres:16-alpine
     container_name: blueprint-postgres
     environment:
-      POSTGRES_DB: blueprint_db
+      POSTGRES_DB: blueprint
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_HOST_AUTH_METHOD: trust
@@ -13,15 +14,27 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - blueprint-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Redis (캐시 및 세션 스토어용)
+  # TimescaleDB for time-series data (price history, trading analytics)
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: blueprint-timescaledb
+    environment:
+      POSTGRES_DB: timeseries
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./timescale-init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: postgres -c shared_preload_libraries=timescaledb
+
   redis:
     image: redis:7-alpine
     container_name: blueprint-redis
@@ -29,76 +42,20 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    networks:
-      - blueprint-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    command: redis-server --appendonly yes
 
-  # Blueprint 백엔드 애플리케이션
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: blueprint-app
+  # 개발용 Redis GUI (선택사항)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: blueprint-redis-gui
     environment:
-      # 데이터베이스 설정
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: password
-      DB_NAME: blueprint_db
-      DB_SSLMODE: disable
-
-      # JWT 설정
-      JWT_SECRET: your-super-secret-jwt-key-blueprint-2024-docker
-
-      # Google OAuth (환경변수에서 로드)
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-your-google-client-id}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-your-google-client-secret}
-      GOOGLE_REDIRECT_URL: http://localhost:8080/api/v1/auth/google/callback
-
-      # 서버 설정
-      PORT: 8080
-      GIN_MODE: debug
-      FRONTEND_URL: http://localhost:3000
-
-      # Redis 설정 (향후 사용)
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      - REDIS_HOSTS=redis:blueprint-redis:6379
     ports:
-      - "8080:8080"
+      - "8081:8081"
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - blueprint-network
-    restart: unless-stopped
-
-  # Blueprint 프론트엔드 애플리케이션
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    container_name: blueprint-web
-    ports:
-      - "3000:3000"
-    depends_on:
-      - app
-    networks:
-      - blueprint-network
-    restart: unless-stopped
+      - redis
 
 volumes:
   postgres_data:
-    driver: local
+  timescale_data:
   redis_data:
-    driver: local
-
-networks:
-  blueprint-network:
-    driver: bridge

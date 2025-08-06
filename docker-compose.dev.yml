@@ -2,16 +2,16 @@ services:
   # PostgreSQL 데이터베이스만
   postgres:
     image: postgres:16-alpine
-    container_name: blueprint-postgres-dev
+    container_name: blueprint-postgres
     environment:
-      POSTGRES_DB: blueprint_db
+      POSTGRES_DB: blueprint
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5432:5432"
     volumes:
-      - postgres_dev_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -19,22 +19,50 @@ services:
       timeout: 5s
       retries: 5
 
+  # TimescaleDB for time-series data (price history, trading analytics)
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: blueprint-timescaledb
+    environment:
+      POSTGRES_DB: timeseries
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./timescale-init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: postgres -c shared_preload_libraries=timescaledb
+
   # Redis (캐시 및 세션 스토어용)
   redis:
     image: redis:7-alpine
-    container_name: blueprint-redis-dev
+    container_name: blueprint-redis
     ports:
       - "6379:6379"
     volumes:
-      - redis_dev_data:/data
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # 개발용 Redis GUI (선택사항)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: blueprint-redis-gui
+    environment:
+      - REDIS_HOSTS=redis:blueprint-redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+
 volumes:
-  postgres_dev_data:
+  postgres_data:
     driver: local
-  redis_dev_data:
+  redis_data:
+    driver: local
+  timescale_data:
     driver: local
