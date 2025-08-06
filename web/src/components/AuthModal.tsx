@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { useAuthStore } from '../stores/useAuthStore';
-import type { LoginRequest, RegisterRequest } from '../types';
+import { useState } from "react";
+import { useAuthStore } from "../stores/useAuthStore";
+import type { LoginRequest, RegisterRequest } from "../types";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -9,12 +9,13 @@ interface AuthModalProps {
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(true);
-  const { login, register, loginWithGoogle, isLoading, error, clearError } = useAuthStore();
+  const { login, register, loginWithGoogle, isLoading, error, clearError } =
+    useAuthStore();
 
   const [formData, setFormData] = useState({
-    email: '',
-    username: '',
-    password: '',
+    email: "",
+    username: "",
+    password: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,33 +61,59 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div
+        className="rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto"
+        style={{
+          backgroundColor: "var(--bg-secondary)",
+          border: "1px solid var(--border-color)",
+          boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
+        }}
+      >
         <div className="p-6">
           {/* 헤더 */}
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-gray-900">
-              {isLogin ? '로그인' : '회원가입'}
+            <h3
+              className="text-xl font-bold"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {isLogin ? "로그인" : "회원가입"}
             </h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-xl"
+              className="text-xl transition-colors"
+              style={{
+                color: "var(--text-secondary)",
+              }}
+              onMouseEnter={(e) =>
+                ((e.target as HTMLElement).style.color = "var(--text-primary)")
+              }
+              onMouseLeave={(e) =>
+                ((e.target as HTMLElement).style.color =
+                  "var(--text-secondary)")
+              }
             >
               ✕
             </button>
           </div>
 
           {/* 탭 전환 */}
-          <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
+          <div
+            className="flex mb-6 rounded-lg p-1"
+            style={{ backgroundColor: "var(--bg-tertiary)" }}
+          >
             <button
               onClick={() => {
                 setIsLogin(true);
                 clearError();
               }}
-              className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-all ${
-                isLogin
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className="flex-1 py-2 px-4 text-sm font-medium rounded-md transition-all"
+              style={{
+                backgroundColor: isLogin
+                  ? "var(--bg-secondary)"
+                  : "transparent",
+                color: isLogin ? "var(--blue)" : "var(--text-secondary)",
+                boxShadow: isLogin ? "0 1px 3px rgba(0, 0, 0, 0.1)" : "none",
+              }}
             >
               로그인
             </button>
@@ -95,11 +122,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 setIsLogin(false);
                 clearError();
               }}
-              className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-all ${
-                !isLogin
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className="flex-1 py-2 px-4 text-sm font-medium rounded-md transition-all"
+              style={{
+                backgroundColor: !isLogin
+                  ? "var(--bg-secondary)"
+                  : "transparent",
+                color: !isLogin ? "var(--blue)" : "var(--text-secondary)",
+                boxShadow: !isLogin ? "0 1px 3px rgba(0, 0, 0, 0.1)" : "none",
+              }}
             >
               회원가입
             </button>
@@ -108,7 +138,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           {/* 폼 */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium mb-1"
+                style={{ color: "var(--text-primary)" }}
+              >
                 이메일
               </label>
               <input
@@ -118,14 +152,30 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 required
                 value={formData.email}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 rounded-md focus:outline-none focus:ring-2 transition-all"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  border: "1px solid var(--border-color)",
+                  color: "var(--text-primary)",
+                }}
                 placeholder="your@email.com"
+                onFocus={(e) =>
+                  ((e.target as HTMLElement).style.boxShadow =
+                    "0 0 0 2px rgba(24, 144, 255, 0.2)")
+                }
+                onBlur={(e) =>
+                  ((e.target as HTMLElement).style.boxShadow = "none")
+                }
               />
             </div>
 
             {!isLogin && (
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="username"
+                  className="block text-sm font-medium mb-1"
+                  style={{ color: "var(--text-primary)" }}
+                >
                   사용자명
                 </label>
                 <input
@@ -135,14 +185,30 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   required
                   value={formData.username}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 rounded-md focus:outline-none focus:ring-2 transition-all"
+                  style={{
+                    backgroundColor: "var(--bg-tertiary)",
+                    border: "1px solid var(--border-color)",
+                    color: "var(--text-primary)",
+                  }}
                   placeholder="사용자명"
+                  onFocus={(e) =>
+                    ((e.target as HTMLElement).style.boxShadow =
+                      "0 0 0 2px rgba(24, 144, 255, 0.2)")
+                  }
+                  onBlur={(e) =>
+                    ((e.target as HTMLElement).style.boxShadow = "none")
+                  }
                 />
               </div>
             )}
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium mb-1"
+                style={{ color: "var(--text-primary)" }}
+              >
                 비밀번호
               </label>
               <input
@@ -152,13 +218,32 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 required
                 value={formData.password}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 rounded-md focus:outline-none focus:ring-2 transition-all"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  border: "1px solid var(--border-color)",
+                  color: "var(--text-primary)",
+                }}
                 placeholder="비밀번호"
+                onFocus={(e) =>
+                  ((e.target as HTMLElement).style.boxShadow =
+                    "0 0 0 2px rgba(24, 144, 255, 0.2)")
+                }
+                onBlur={(e) =>
+                  ((e.target as HTMLElement).style.boxShadow = "none")
+                }
               />
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-md text-sm">
+              <div
+                className="px-3 py-2 rounded-md text-sm"
+                style={{
+                  backgroundColor: "rgba(255, 77, 109, 0.1)",
+                  border: "1px solid rgba(255, 77, 109, 0.3)",
+                  color: "var(--red)",
+                }}
+              >
                 {error}
               </div>
             )}
@@ -166,19 +251,50 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-blue-300 disabled:to-purple-300 text-white font-medium py-2 px-4 rounded-md transition duration-200"
+              className="w-full font-medium py-2 px-4 rounded-md transition duration-200"
+              style={{
+                background: isLoading
+                  ? "linear-gradient(to right, rgba(24, 144, 255, 0.5), rgba(147, 51, 234, 0.5))"
+                  : "linear-gradient(to right, var(--blue), #9333ea)",
+                color: "white",
+                opacity: isLoading ? 0.7 : 1,
+                cursor: isLoading ? "not-allowed" : "pointer",
+              }}
+              onMouseEnter={(e) => {
+                if (!isLoading) {
+                  (e.target as HTMLElement).style.transform =
+                    "translateY(-1px)";
+                  (e.target as HTMLElement).style.boxShadow =
+                    "0 4px 12px rgba(24, 144, 255, 0.3)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLElement).style.transform = "translateY(0)";
+                (e.target as HTMLElement).style.boxShadow = "none";
+              }}
             >
-              {isLoading ? '처리중...' : isLogin ? '로그인' : '회원가입'}
+              {isLoading ? "처리중..." : isLogin ? "로그인" : "회원가입"}
             </button>
           </form>
 
           {/* 구분선 */}
           <div className="relative my-4">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
+              <div
+                className="w-full border-t"
+                style={{ borderColor: "var(--border-color)" }}
+              />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">또는</span>
+              <span
+                className="px-2"
+                style={{
+                  backgroundColor: "var(--bg-secondary)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                또는
+              </span>
             </div>
           </div>
 
@@ -187,7 +303,29 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             type="button"
             onClick={handleGoogleLogin}
             disabled={isLoading}
-            className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+            className="w-full flex justify-center items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 transition duration-200"
+            style={{
+              backgroundColor: "var(--bg-tertiary)",
+              border: "1px solid var(--border-color)",
+              color: "var(--text-primary)",
+              opacity: isLoading ? 0.5 : 1,
+              cursor: isLoading ? "not-allowed" : "pointer",
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoading) {
+                (e.target as HTMLElement).style.backgroundColor =
+                  "var(--bg-primary)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              (e.target as HTMLElement).style.backgroundColor =
+                "var(--bg-tertiary)";
+            }}
+            onFocus={(e) =>
+              ((e.target as HTMLElement).style.boxShadow =
+                "0 0 0 2px rgba(24, 144, 255, 0.2)")
+            }
+            onBlur={(e) => ((e.target as HTMLElement).style.boxShadow = "none")}
           >
             <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
               <path
@@ -207,7 +345,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            Google로 {isLogin ? '로그인' : '회원가입'}
+            Google로 {isLogin ? "로그인" : "회원가입"}
           </button>
         </div>
       </div>

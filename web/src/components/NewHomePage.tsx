@@ -25,9 +25,10 @@ import { useAuthStore } from "../stores/useAuthStore";
 import type { Project } from "../types";
 import AuthModal from "./AuthModal";
 import LanguageSwitcher from "./LanguageSwitcher";
+import ThemeToggle from "./ThemeToggle";
 
 const { Header, Content } = Layout;
-const { Title, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 const NewHomePage: React.FC = () => {
   const { t } = useTranslation();
@@ -166,26 +167,28 @@ const NewHomePage: React.FC = () => {
   };
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
       {/* Header */}
       <Header
         style={{
-          background: "white",
+          background: "var(--bg-secondary)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           padding: "0 24px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          borderBottom: "1px solid var(--border-color)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Title level={3} style={{ margin: 0, color: "#1890ff" }}>
+          <Title level={3} style={{ margin: 0, color: "var(--blue)" }}>
             <ProjectOutlined /> Blueprint
           </Title>
         </div>
 
         <Space size="middle">
           <LanguageSwitcher />
+          <ThemeToggle />
           {isAuthenticated ? (
             <Space>
               <Button onClick={() => navigate("/dashboard")}>대시보드</Button>
@@ -215,20 +218,35 @@ const NewHomePage: React.FC = () => {
         </Space>
       </Header>
 
-      <Content style={{ padding: "40px 24px" }}>
+      <Content
+        style={{ padding: "40px 24px", background: "var(--bg-primary)" }}
+      >
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           {/* Hero Section */}
           <div style={{ textAlign: "center", marginBottom: 60 }}>
-            <Title level={1} style={{ fontSize: 48, marginBottom: 16 }}>
-              당신의 <span style={{ color: "#1890ff" }}>청사진</span>을 현실로
+            <Title
+              level={1}
+              style={{
+                fontSize: 48,
+                marginBottom: 16,
+                color: "var(--text-primary)",
+              }}
+            >
+              당신의 <span style={{ color: "var(--blue)" }}>청사진</span>을
+              현실로
             </Title>
-            <Paragraph
-              style={{ fontSize: 18, marginBottom: 32, color: "#666" }}
+            <Text
+              style={{
+                fontSize: 18,
+                marginBottom: 32,
+                color: "var(--text-secondary)",
+                display: "block",
+              }}
             >
               프로젝트를 공유하고, 투자를 받고, 목표를 달성하세요.
               <br />
               투명한 과정으로 함께 성장하는 플랫폼입니다.
-            </Paragraph>
+            </Text>
 
             {!isAuthenticated && (
               <Space size="middle">
@@ -236,10 +254,24 @@ const NewHomePage: React.FC = () => {
                   type="primary"
                   size="large"
                   onClick={() => setAuthModalVisible(true)}
+                  style={{
+                    background:
+                      "linear-gradient(135deg, var(--blue) 0%, #9333ea 100%)",
+                    borderColor: "var(--blue)",
+                  }}
                 >
                   지금 시작하기
                 </Button>
-                <Button size="large">더 알아보기</Button>
+                <Button
+                  size="large"
+                  style={{
+                    backgroundColor: "transparent",
+                    borderColor: "var(--border-color)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  더 알아보기
+                </Button>
               </Space>
             )}
           </div>
@@ -247,33 +279,51 @@ const NewHomePage: React.FC = () => {
           {/* Stats Section */}
           <Row gutter={[32, 32]} style={{ marginBottom: 60 }}>
             <Col xs={24} md={8}>
-              <Card style={{ textAlign: "center" }}>
+              <Card
+                style={{
+                  textAlign: "center",
+                  backgroundColor: "var(--bg-secondary)",
+                  borderColor: "var(--border-color)",
+                }}
+              >
                 <Statistic
                   title="활성 프로젝트"
                   value={stats.totalProjects}
                   prefix={<ProjectOutlined />}
-                  valueStyle={{ color: "#1890ff" }}
+                  valueStyle={{ color: "var(--blue)" }}
                 />
               </Card>
             </Col>
             <Col xs={24} md={8}>
-              <Card style={{ textAlign: "center" }}>
+              <Card
+                style={{
+                  textAlign: "center",
+                  backgroundColor: "var(--bg-secondary)",
+                  borderColor: "var(--border-color)",
+                }}
+              >
                 <Statistic
                   title="총 투자자"
                   value={stats.totalInvestors}
                   prefix={<UserOutlined />}
-                  valueStyle={{ color: "#52c41a" }}
+                  valueStyle={{ color: "var(--green)" }}
                 />
               </Card>
             </Col>
             <Col xs={24} md={8}>
-              <Card style={{ textAlign: "center" }}>
+              <Card
+                style={{
+                  textAlign: "center",
+                  backgroundColor: "var(--bg-secondary)",
+                  borderColor: "var(--border-color)",
+                }}
+              >
                 <Statistic
                   title="총 투자금"
                   value={stats.totalInvestment}
                   prefix="₩"
                   precision={0}
-                  valueStyle={{ color: "#faad14" }}
+                  valueStyle={{ color: "var(--yellow)" }}
                 />
               </Card>
             </Col>
@@ -281,14 +331,28 @@ const NewHomePage: React.FC = () => {
 
           {/* Projects Section */}
           <div style={{ marginBottom: 40 }}>
-            <Title level={2} style={{ textAlign: "center", marginBottom: 40 }}>
+            <Title
+              level={2}
+              style={{
+                textAlign: "center",
+                marginBottom: 40,
+                color: "var(--text-primary)",
+              }}
+            >
               🌟 최신 프로젝트
             </Title>
 
             {loading ? (
               <div style={{ textAlign: "center", padding: "50px" }}>
                 <Spin size="large" />
-                <div style={{ marginTop: 16 }}>프로젝트를 불러오는 중...</div>
+                <div
+                  style={{
+                    marginTop: 16,
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  프로젝트를 불러오는 중...
+                </div>
               </div>
             ) : (
               <Row gutter={[24, 24]}>
@@ -298,6 +362,10 @@ const NewHomePage: React.FC = () => {
                       hoverable
                       className="h-full cursor-pointer"
                       onClick={() => navigate(`/project/${project.id}`)}
+                      style={{
+                        backgroundColor: "var(--bg-secondary)",
+                        borderColor: "var(--border-color)",
+                      }}
                       actions={[
                         <Button
                           type="primary"
@@ -309,6 +377,11 @@ const NewHomePage: React.FC = () => {
                             } else {
                               setAuthModalVisible(true);
                             }
+                          }}
+                          style={{
+                            background:
+                              "linear-gradient(135deg, var(--blue) 0%, #9333ea 100%)",
+                            borderColor: "var(--blue)",
                           }}
                         >
                           {t("investment.invest")}
@@ -324,35 +397,60 @@ const NewHomePage: React.FC = () => {
                         )}
                       </div>
 
-                      <Title level={4} style={{ marginBottom: 8 }}>
+                      <Title
+                        level={4}
+                        style={{
+                          marginBottom: 8,
+                          color: "var(--text-primary)",
+                        }}
+                      >
                         {project.title}
                       </Title>
-                      <Paragraph
+                      <Text
                         style={{
+                          display: "block",
                           marginBottom: 16,
-                          color: "#666",
-                          height: "40px",
-                          overflow: "hidden",
+                          color: "var(--text-secondary)",
                         }}
                       >
                         {project.description}
-                      </Paragraph>
+                      </Text>
 
                       <div style={{ marginBottom: 12 }}>
                         <Row gutter={16}>
                           <Col span={12}>
-                            <div style={{ fontSize: 12, color: "#999" }}>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: "var(--text-secondary)",
+                              }}
+                            >
                               성공 확률
                             </div>
-                            <div style={{ fontWeight: "bold" }}>
+                            <div
+                              style={{
+                                fontWeight: "bold",
+                                color: "var(--text-primary)",
+                              }}
+                            >
                               {calculateProgress(project)}%
                             </div>
                           </Col>
                           <Col span={12}>
-                            <div style={{ fontSize: 12, color: "#999" }}>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: "var(--text-secondary)",
+                              }}
+                            >
                               남은 시간
                             </div>
-                            <div style={{ fontWeight: "bold" }}>
+                            <div
+                              style={{
+                                fontWeight: "bold",
+                                color: "var(--text-primary)",
+                              }}
+                            >
                               {calculateTimeLeft(project.target_date)}
                             </div>
                           </Col>
@@ -362,11 +460,19 @@ const NewHomePage: React.FC = () => {
                       <div>
                         <Row gutter={16}>
                           <Col span={12}>
-                            <div style={{ fontSize: 12, color: "#999" }}>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: "var(--text-secondary)",
+                              }}
+                            >
                               총 투자금
                             </div>
                             <div
-                              style={{ fontWeight: "bold", color: "#52c41a" }}
+                              style={{
+                                fontWeight: "bold",
+                                color: "var(--green)",
+                              }}
                             >
                               ₩
                               {calculateTotalInvestment(
@@ -375,10 +481,20 @@ const NewHomePage: React.FC = () => {
                             </div>
                           </Col>
                           <Col span={12}>
-                            <div style={{ fontSize: 12, color: "#999" }}>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: "var(--text-secondary)",
+                              }}
+                            >
                               투자자
                             </div>
-                            <div style={{ fontWeight: "bold" }}>
+                            <div
+                              style={{
+                                fontWeight: "bold",
+                                color: "var(--text-primary)",
+                              }}
+                            >
                               {calculateInvestorCount(project)}명
                             </div>
                           </Col>
@@ -397,19 +513,31 @@ const NewHomePage: React.FC = () => {
               style={{
                 textAlign: "center",
                 padding: "40px 0",
-                background: "#f5f5f5",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
                 borderRadius: 8,
                 marginTop: 40,
               }}
             >
-              <Title level={3}>당신의 프로젝트도 시작해보세요!</Title>
-              <Paragraph style={{ marginBottom: 24 }}>
+              <Title level={3} style={{ color: "var(--text-primary)" }}>
+                당신의 프로젝트도 시작해보세요!
+              </Title>
+              <Text
+                style={{ marginBottom: 24, color: "var(--text-secondary)" }}
+              >
                 지금 가입하고 첫 프로젝트를 만들어보세요.
-              </Paragraph>
+              </Text>
+              <br />
               <Button
                 type="primary"
                 size="large"
                 onClick={() => setAuthModalVisible(true)}
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--blue) 0%, #9333ea 100%)",
+                  borderColor: "var(--blue)",
+                  marginTop: "16px",
+                }}
               >
                 무료로 시작하기
               </Button>

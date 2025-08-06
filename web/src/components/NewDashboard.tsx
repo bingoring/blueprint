@@ -40,6 +40,7 @@ import type {
   Milestone,
   ProjectTableRecord,
 } from "../types";
+import ThemeToggle from "./ThemeToggle";
 
 const { Content } = Layout;
 const { Title } = Typography;
@@ -321,8 +322,8 @@ const NewDashboard: React.FC = () => {
   ];
 
   return (
-    <Layout style={{ minHeight: "100vh", background: "#f5f5f5" }}>
-      <Content style={{ padding: "24px" }}>
+    <Layout style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
+      <Content style={{ padding: "24px", background: "var(--bg-primary)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           {/* 헤더 */}
           <div
@@ -331,6 +332,10 @@ const NewDashboard: React.FC = () => {
               justifyContent: "space-between",
               alignItems: "center",
               marginBottom: 24,
+              padding: "16px 24px",
+              background: "var(--bg-secondary)",
+              borderRadius: "8px",
+              border: "1px solid var(--border-color)",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -341,7 +346,11 @@ const NewDashboard: React.FC = () => {
               >
                 홈으로
               </Button>
-              <Title level={3} className="!mb-0">
+              <Title
+                level={3}
+                className="!mb-0"
+                style={{ color: "var(--text-primary)" }}
+              >
                 {t("nav.dashboard")}
               </Title>
             </div>
@@ -360,6 +369,7 @@ const NewDashboard: React.FC = () => {
               >
                 로그아웃
               </Button>
+              <ThemeToggle />
             </Space>
           </div>
 
