@@ -48,9 +48,22 @@ func AutoMigrate() error {
 
 	err := DB.AutoMigrate(
 		&models.User{},
-		&models.UserProfile{},
 		&models.Project{},
 		&models.Milestone{},
+		&models.Order{},                  // P2P 거래 주문
+		&models.Trade{},                  // 체결된 거래
+		&models.Position{},               // 사용자 포지션
+		&models.MarketData{},             // 시장 데이터
+		&models.UserWallet{},             // 사용자 지갑 (하이브리드)
+		&models.PriceHistory{},           // 가격 히스토리
+		// 🆕 하이브리드 화폐 시스템
+		&models.StakingPool{},            // 스테이킹 풀
+		&models.RevenueDistribution{},    // 수수료 분배
+		&models.StakingReward{},          // 스테이커 보상
+		&models.GovernanceProposal{},     // 거버넌스 제안
+		&models.GovernanceVote{},         // 거버넌스 투표
+		&models.BlueprintReward{},        // BLUEPRINT 토큰 보상
+		&models.PlatformFeeConfig{},      // 플랫폼 수수료 설정
 	)
 
 	if err != nil {
