@@ -22,7 +22,7 @@ export interface Project {
   budget: number;
   priority: number;
   is_public: boolean;
-  tags: string; // JSON string
+  tags: string[]; // 단순 string 배열로 변경
   metrics: string;
   created_at: string;
   updated_at: string;
@@ -440,3 +440,251 @@ export type ProjectMilestone = Milestone;
 
 // 기존 타입도 호환성을 위해 유지
 export type ProjectPhase = ProjectMilestone;
+
+// 💰 투자 시스템 타입들
+export interface Investment {
+  id: number;
+  user_id: number;
+  project_id: number;
+  milestone_id: number;
+  bet_option: string;
+  amount: number;
+  shares: number;
+  entry_price: number;
+  status: "pending" | "active" | "settled" | "cancelled";
+  result: "pending" | "win" | "lose" | "tie";
+  payout: number;
+  net_profit: number;
+  fee: number;
+  fee_rate: number;
+  created_at: string;
+  updated_at: string;
+  user?: User;
+  project?: Project;
+  milestone?: Milestone;
+}
+
+export interface MarketData {
+  id: number;
+  milestone_id: number;
+  option_id: string;
+  current_price: number;
+  previous_price: number;
+  price_change_24h: number;
+  volume_24h: number;
+  volume_total: number;
+  trade_count_24h: number;
+  total_yes_shares: number;
+  total_no_shares: number;
+  liquidity_pool: number;
+  buy_pressure: number;
+  sell_pressure: number;
+  max_price_24h: number;
+  min_price_24h: number;
+  avg_price_24h: number;
+  is_active: boolean;
+  last_trade_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// 🪙 화폐 타입
+export type CurrencyType = "USDC" | "BLUEPRINT";
+
+// 💰 하이브리드 지갑
+export interface UserWallet {
+  id: number;
+  user_id: number;
+
+  // 🔵 USDC 잔액 (베팅/보상용)
+  usdc_balance: number; // 사용 가능한 USDC (센트 단위)
+  usdc_locked_balance: number; // 베팅으로 잠긴 USDC
+
+  // 🟦 BLUEPRINT 토큰 잔액 (거버넌스/스테이킹용)
+  blueprint_balance: number; // 사용 가능한 BLUEPRINT
+  blueprint_locked_balance: number; // 스테이킹/분쟁으로 잠긴 BLUEPRINT
+
+  // 📊 통계 (USDC 기준)
+  total_usdc_deposit: number; // 총 USDC 입금
+  total_usdc_withdraw: number; // 총 USDC 출금
+  total_usdc_profit: number; // 총 USDC 수익
+  total_usdc_loss: number; // 총 USDC 손실
+  total_usdc_fees: number; // 총 USDC 수수료
+
+  // 📈 통계 (BLUEPRINT 기준)
+  total_blueprint_earned: number; // 총 BLUEPRINT 획득
+  total_blueprint_spent: number; // 총 BLUEPRINT 사용
+
+  // 🎯 성과
+  win_rate: number; // 승률
+  total_trades: number; // 총 거래 수
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PriceHistory {
+  id: number;
+  milestone_id: number;
+  option_id: string;
+  price: number;
+  volume: number;
+  timestamp: string;
+}
+
+// 투자 생성 요청 (주식 스타일)
+export interface CreateInvestmentRequest {
+  project_id: number;
+  milestone_id: number;
+  bet_option: string;
+  shares: number; // 주식 수 (포인트 금액이 아닌)
+}
+
+// 투자 미리보기 요청 (주식 스타일)
+export interface InvestmentPreviewRequest {
+  project_id: number;
+  milestone_id: number;
+  bet_option: string;
+  shares: number; // 주식 수
+}
+
+// 거래 영향 (주식 스타일)
+export interface TradeImpact {
+  current_price: number; // 현재 주당 가격
+  new_price: number; // 거래 후 주당 가격
+  price_impact: number; // 가격 영향도 (%)
+  shares: number; // 구매할 주식 수
+  total_cost: number; // 총 비용 (주식수 * 가격 + 수수료)
+  fee: number; // 거래 수수료
+  expected_payout: number; // 예상 수익
+  roi_percentage: number; // 예상 ROI (%)
+}
+
+// 투자 미리보기 응답 (주식 스타일)
+export interface InvestmentPreviewResponse {
+  summary: TradeImpact;
+}
+
+export interface MarketStatusResponse {
+  milestone: Milestone;
+  market_data: MarketData[];
+  viewer_count?: number;
+  total_clients?: number;
+  price_history: PriceHistory[];
+  total_volume: number;
+  total_trades: number;
+  is_active: boolean;
+}
+
+// P2P 거래 관련 타입들 (폴리마켓 스타일)
+
+// 주문 타입
+export type OrderType = "market" | "limit";
+export type OrderSide = "buy" | "sell";
+export type OrderStatus =
+  | "pending"
+  | "partial"
+  | "filled"
+  | "cancelled"
+  | "expired";
+
+// 주문
+export interface Order {
+  id: number;
+  user_id: number;
+  project_id: number;
+  milestone_id: number;
+  option_id: string;
+  type: OrderType;
+  side: OrderSide;
+  quantity: number;
+  price: number;
+  filled_quantity: number;
+  avg_price: number;
+  status: OrderStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+// 거래 (Trade)
+export interface Trade {
+  id: number;
+  project_id: number;
+  milestone_id: number;
+  option_id: string;
+  buyer_id: number;
+  seller_id: number;
+  buy_order_id: number;
+  sell_order_id: number;
+  quantity: number;
+  price: number;
+  total_amount: number;
+  buyer_fee: number;
+  seller_fee: number;
+  created_at: string;
+}
+
+// 포지션
+export interface Position {
+  id: number;
+  user_id: number;
+  project_id: number;
+  milestone_id: number;
+  option_id: string;
+  quantity: number;
+  avg_buy_price: number;
+  total_invested: number;
+  unrealized_pnl: number;
+  realized_pnl: number;
+  total_bought: number;
+  total_sold: number;
+  trade_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// 호가창
+export interface OrderBookLevel {
+  price: number;
+  quantity: number;
+  orders: number;
+}
+
+export interface OrderBook {
+  milestone_id: number;
+  option_id: string;
+  bids: OrderBookLevel[]; // 매수 호가 (높은 가격부터)
+  asks: OrderBookLevel[]; // 매도 호가 (낮은 가격부터)
+  spread: number; // 스프레드
+  last_price: number; // 최종 거래가
+  volume_24h: number; // 24시간 거래량
+  timestamp: string;
+}
+
+// API 요청/응답
+
+// 주문 생성 요청 (USDC 기준)
+export interface CreateOrderRequest {
+  project_id: number;
+  milestone_id: number;
+  option_id: string;
+  type: OrderType;
+  side: OrderSide;
+  quantity: number; // 주식 수량
+  price: number; // 확률 (0.01-0.99)
+  currency: CurrencyType; // 화폐 타입 (항상 USDC)
+}
+
+// 주문 응답
+export interface OrderResponse {
+  order: Order;
+  trades?: Trade[]; // 즉시 체결된 거래들
+  position?: Position; // 업데이트된 포지션
+  user_wallet: UserWallet; // 업데이트된 지갑
+}
+
+// 호가창 응답
+export interface OrderBookResponse {
+  order_book: OrderBook;
+  success: boolean;
+  message: string;
+}
