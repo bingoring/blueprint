@@ -50,16 +50,19 @@ func main() {
 	// SSE Service 초기화
 	sseService := services.NewSSEService()
 
-	// Trading Service 초기화
-	tradingService := services.NewTradingService(database.GetDB(), sseService)
-
 	// 고성능 매칭 엔진 초기화 및 시작
 	matchingEngine := services.NewMatchingEngine(database.GetDB())
 	go func() {
 		if err := matchingEngine.Start(); err != nil {
-			log.Printf("Failed to start matching engine: %v", err)
+			log.Printf("❌ CRITICAL: Failed to start matching engine: %v", err)
+			log.Printf("🚨 Trading functionality will not work!")
+		} else {
+			log.Printf("✅ Matching engine started successfully")
 		}
 	}()
+
+	// Trading Service 초기화 (매칭 엔진 주입)
+	tradingService := services.NewTradingService(database.GetDB(), sseService, matchingEngine)
 
 	// Market Maker 봇 초기화 및 시작
 	marketMakerBot := services.NewMarketMakerBot(database.GetDB(), tradingService)
@@ -131,6 +134,7 @@ func main() {
 		api.POST("/milestones/:id/market/init", tradingHandler.InitializeMarket)       // 마켓 초기화
 		api.GET("/milestones/:id/orderbook/:option", tradingHandler.GetOrderBook)      // 호가창 조회 (option별)
 		api.GET("/milestones/:id/trades/:option", tradingHandler.GetRecentTrades)      // 최근 거래 조회 (option별)
+		api.GET("/milestones/:id/price-history/:option", tradingHandler.GetPriceHistory) // 가격 히스토리 조회 (option별)
 
 		// 📡 실시간 연결
 		api.GET("/milestones/:id/stream", tradingHandler.HandleSSEConnection)          // SSE 연결

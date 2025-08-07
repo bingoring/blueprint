@@ -98,7 +98,7 @@ func NewMarketMakerBot(db *gorm.DB, tradingService *TradingService) *MarketMaker
 			MaxOrderSize:     100,
 			MinPrice:         0.05,
 			MaxPrice:         0.95,
-			RefreshInterval:  30, // 30초마다 갱신
+			RefreshInterval:  5, // 30초마다 갱신
 			VolatilityFactor: 2.0,
 			InventoryLimit:   1000,
 			RiskTolerance:    0.1,
@@ -118,12 +118,14 @@ func (mm *MarketMakerBot) Start() error {
 		return fmt.Errorf("market maker bot is already running")
 	}
 
-	mm.isRunning = true
+		mm.isRunning = true
 	log.Println("🤖 Market Maker Bot started!")
 
-	// 초기 마켓 스캔 (약간 지연 후 실행)
+	// 초기 마켓 스캔 (지연 후 실행)
 	go func() {
-		time.Sleep(5 * time.Second) // 5초 대기하여 다른 서비스들이 준비될 시간 제공
+		log.Printf("🤖 Market maker will start scanning in 15 seconds...")
+		time.Sleep(15 * time.Second) // 15초 대기하여 모든 서비스가 완전히 준비될 시간 제공
+		log.Printf("🤖 Starting market scan...")
 		if err := mm.scanActiveMarkets(); err != nil {
 			log.Printf("❌ Error scanning markets: %v", err)
 		}
@@ -343,14 +345,9 @@ func (mm *MarketMakerBot) placeNewOrders() {
 			continue
 		}
 
-		// 포지션 리밸런싱 체크
-		positionRatio := float64(market.Position) / float64(mm.config.InventoryLimit)
-
-		// 매수 주문 생성 조건
-		shouldPlaceBuyOrder := positionRatio > -0.8 // 매도 포지션이 80% 미만일 때
-
-		// 매도 주문 생성 조건
-		shouldPlaceSellOrder := positionRatio < 0.8 // 매수 포지션이 80% 미만일 때
+		// 매수/매도 주문 생성 조건 (균형 잡힌 접근)
+		shouldPlaceBuyOrder := len(market.ActiveOrders) < 2 // 최대 2개 주문만
+		shouldPlaceSellOrder := len(market.ActiveOrders) < 2 // 최대 2개 주문만
 
 		// 현재 가격 기준으로 Bid/Ask 가격 계산
 		bidPrice := market.CurrentPrice * (1 - market.Spread)
@@ -683,6 +680,13 @@ func (mm *MarketMakerBot) provideInitialLiquidity(milestoneID uint, optionID str
 	var milestone models.Milestone
 	if err := mm.db.Where("id = ?", milestoneID).First(&milestone).Error; err != nil {
 		log.Printf("❌ Failed to get milestone %d: %v", milestoneID, err)
+		return
+	}
+
+	// 🔍 MarketData가 존재하는지 확인
+	var marketData models.MarketData
+	if err := mm.db.Where("milestone_id = ? AND option_id = ?", milestoneID, optionID).First(&marketData).Error; err != nil {
+		log.Printf("⚠️ MarketData not found for %d:%s, skipping liquidity provision", milestoneID, optionID)
 		return
 	}
 

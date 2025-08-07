@@ -1,5 +1,5 @@
 import { Button, message } from "antd";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { OrderSide, OrderType } from "../types";
 
 interface TradingPanelProps {
@@ -12,6 +12,7 @@ interface TradingPanelProps {
   }) => Promise<void>;
   loading?: boolean;
   userBalance?: number;
+  currentPrice?: number; // Current market price in probability (0.01-0.99)
 }
 
 const TradingPanel: React.FC<TradingPanelProps> = ({
@@ -19,11 +20,22 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
   onSubmitOrder,
   loading = false,
   userBalance = 0,
+  currentPrice = 0.5, // Default fallback
 }) => {
   const [activeTab, setActiveTab] = useState<OrderSide>("buy");
   const [orderType, setOrderType] = useState<OrderType>("limit");
   const [quantity, setQuantity] = useState<number>(10);
-  const [price, setPrice] = useState<number>(50); // 1-99 범위의 센트값 (50¢ = 50% 확률)
+
+  // Calculate default price based on current market price
+  const defaultPriceCents = Math.round(currentPrice * 100);
+  const [price, setPrice] = useState<number>(defaultPriceCents);
+
+  // Update price when currentPrice changes (for different options)
+  useEffect(() => {
+    const newDefaultPrice = Math.round(currentPrice * 100);
+    setPrice(newDefaultPrice);
+    console.log("💰 Price updated to market price:", newDefaultPrice, "¢");
+  }, [currentPrice]);
 
   const handleSubmit = async () => {
     if (!quantity || quantity <= 0) {
@@ -36,7 +48,8 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
       return;
     }
 
-    const totalCost = quantity * (orderType === "limit" ? price : 50); // Direct cents calculation
+    const totalCost =
+      quantity * (orderType === "limit" ? price : defaultPriceCents); // Direct cents calculation
 
     if (activeTab === "buy" && totalCost > userBalance) {
       message.error("Insufficient balance");
@@ -54,7 +67,7 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
       // Reset form on success
       setQuantity(10);
       if (orderType === "limit") {
-        setPrice(50);
+        setPrice(defaultPriceCents); // Reset to current market price
       }
 
       message.success(
@@ -68,7 +81,7 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
 
   const calculateTotal = () => {
     if (orderType === "market") {
-      return quantity * 50; // Market price estimate: 50¢
+      return quantity * defaultPriceCents; // Market price estimate based on current price
     }
     return quantity * price; // Direct cents calculation
   };
@@ -125,7 +138,7 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
                 className="form-input"
                 value={price}
                 onChange={(e) => setPrice(Math.round(Number(e.target.value)))} // 반올림 처리
-                placeholder="50"
+                placeholder={defaultPriceCents.toString()}
                 step="1"
                 min="1"
                 max="99"

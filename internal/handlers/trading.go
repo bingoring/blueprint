@@ -5,7 +5,6 @@ import (
 	"blueprint/internal/models"
 	"blueprint/internal/services"
 	"fmt"
-	"io"
 	"log"
 	"strconv"
 	"time"
@@ -384,22 +383,164 @@ func (h *TradingHandler) GetMilestoneMarket(c *gin.Context) {
 		return
 	}
 
-	// 마켓 데이터 조회
-	var marketData []models.MarketData
-	if err := h.tradingService.GetDB().Where("milestone_id = ?", milestoneID).Find(&marketData).Error; err != nil {
-		middleware.InternalServerError(c, "Failed to get market data")
+	// 마일스톤 존재 확인
+	var milestone models.Milestone
+	if err := h.tradingService.GetDB().First(&milestone, milestoneID).Error; err != nil {
+		middleware.NotFound(c, "Milestone not found")
 		return
 	}
 
-	// 뷰어 수 조회 (SSE 서비스에서)
-	viewerCount := 0
-	totalClients := 0
+	// 마켓 데이터 조회
+	var marketData []models.MarketData
+	if err := h.tradingService.GetDB().Where("milestone_id = ?", milestoneID).Find(&marketData).Error; err != nil {
+		middleware.InternalServerError(c, "마켓 데이터 조회 실패")
+		return
+	}
+
+	result := gin.H{
+		"milestone":    milestone,
+		"market_data":  marketData,
+		"total_volume": 0, // TODO: 실제 볼륨 계산
+	}
+
+	middleware.Success(c, result, "마켓 정보 조회 성공")
+}
+
+// GetPriceHistory 가격 히스토리 조회 (새로 추가)
+// GET /api/v1/milestones/:id/price-history/:option
+func (h *TradingHandler) GetPriceHistory(c *gin.Context) {
+	milestoneID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		middleware.BadRequest(c, "Invalid milestone ID")
+		return
+	}
+
+	optionID := c.Param("option")
+	if optionID == "" {
+		middleware.BadRequest(c, "Option ID is required")
+		return
+	}
+
+	// 쿼리 파라미터
+	interval := c.DefaultQuery("interval", "1h") // 1m, 5m, 15m, 1h, 1d
+	limit := c.DefaultQuery("limit", "100")
+
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil || limitInt <= 0 {
+		limitInt = 100
+	}
+
+		// 일반 DB에서 fallback 데이터 생성 (TimescaleDB 대신)
+	log.Printf("🔍 Generating fallback price history for milestone %d, option %s", milestoneID, optionID)
+
+	// 1. 마켓 데이터에서 현재 가격 조회
+	var marketData models.MarketData
+	if err := h.tradingService.GetDB().Where("milestone_id = ? AND option_id = ?", milestoneID, optionID).First(&marketData).Error; err != nil {
+		middleware.InternalServerError(c, "마켓 데이터를 찾을 수 없습니다")
+		return
+	}
+
+	// 2. 최근 거래에서 가격 변동 히스토리 생성
+	trades, err := h.tradingService.GetRecentTrades(uint(milestoneID), optionID, limitInt)
+	if err != nil {
+		log.Printf("❌ Error getting recent trades: %v", err)
+	}
+
+	// 3. 가격 히스토리 데이터 생성
+	var priceHistory []map[string]interface{}
+
+	if len(trades) > 0 {
+		// 거래 데이터가 있으면 시간별로 그룹화
+		timeGroups := make(map[string][]models.Trade)
+		for _, trade := range trades {
+			var bucket string
+			switch interval {
+			case "1m":
+				bucket = trade.CreatedAt.Truncate(time.Minute).Format(time.RFC3339)
+			case "5m":
+				bucket = trade.CreatedAt.Truncate(5 * time.Minute).Format(time.RFC3339)
+			case "15m":
+				bucket = trade.CreatedAt.Truncate(15 * time.Minute).Format(time.RFC3339)
+			case "1d":
+				bucket = trade.CreatedAt.Truncate(24 * time.Hour).Format(time.RFC3339)
+			default: // 1h
+				bucket = trade.CreatedAt.Truncate(time.Hour).Format(time.RFC3339)
+			}
+			timeGroups[bucket] = append(timeGroups[bucket], trade)
+		}
+
+		// 각 시간 그룹별로 OHLC 데이터 생성
+		for bucket, groupTrades := range timeGroups {
+			if len(groupTrades) == 0 {
+				continue
+			}
+
+			open := groupTrades[len(groupTrades)-1].Price // 가장 오래된 거래
+			close := groupTrades[0].Price                  // 가장 최근 거래
+			high := groupTrades[0].Price
+			low := groupTrades[0].Price
+			volume := int64(0)
+
+			for _, trade := range groupTrades {
+				if trade.Price > high {
+					high = trade.Price
+				}
+				if trade.Price < low {
+					low = trade.Price
+				}
+				volume += trade.TotalAmount
+			}
+
+			priceHistory = append(priceHistory, map[string]interface{}{
+				"bucket": bucket,
+				"open":   open,
+				"high":   high,
+				"low":    low,
+				"close":  close,
+				"volume": volume,
+				"trades": len(groupTrades),
+			})
+		}
+	} else {
+		// 거래 데이터가 없으면 현재 마켓 데이터로 기본 포인트 생성
+		now := time.Now()
+		for i := limitInt - 1; i >= 0; i-- {
+			var bucket time.Time
+			switch interval {
+			case "1m":
+				bucket = now.Add(-time.Duration(i) * time.Minute).Truncate(time.Minute)
+			case "5m":
+				bucket = now.Add(-time.Duration(i) * 5 * time.Minute).Truncate(5 * time.Minute)
+			case "15m":
+				bucket = now.Add(-time.Duration(i) * 15 * time.Minute).Truncate(15 * time.Minute)
+			case "1d":
+				bucket = now.Add(-time.Duration(i) * 24 * time.Hour).Truncate(24 * time.Hour)
+			default: // 1h
+				bucket = now.Add(-time.Duration(i) * time.Hour).Truncate(time.Hour)
+			}
+
+			priceHistory = append(priceHistory, map[string]interface{}{
+				"bucket": bucket.Format(time.RFC3339),
+				"open":   marketData.CurrentPrice,
+				"high":   marketData.CurrentPrice,
+				"low":    marketData.CurrentPrice,
+				"close":  marketData.CurrentPrice,
+				"volume": marketData.Volume24h / int64(limitInt), // 균등 분배
+				"trades": 0,
+			})
+		}
+	}
+
+	// 시간순 정렬 (오래된 것부터)
+	for i, j := 0, len(priceHistory)-1; i < j; i, j = i+1, j-1 {
+		priceHistory[i], priceHistory[j] = priceHistory[j], priceHistory[i]
+	}
 
 	middleware.Success(c, gin.H{
-		"market_data":   marketData,
-		"viewer_count":  viewerCount,
-		"total_clients": totalClients,
-	}, "마켓 정보 조회 성공")
+		"data":     priceHistory,
+		"interval": interval,
+		"count":    len(priceHistory),
+	}, "가격 히스토리 조회 성공")
 }
 
 // InitializeMarket 마켓 초기화
@@ -473,43 +614,34 @@ func (h *TradingHandler) HandleSSEConnection(c *gin.Context) {
 
 	log.Printf("✅ SSE connection established for milestone %d", milestoneID)
 
-	// SSE 스트림 시작
-	c.Stream(func(w io.Writer) bool {
+	// 초기 연결 성공 메시지 전송
+	connectMsg := fmt.Sprintf("data: {\"type\":\"connection\",\"milestone_id\":%d,\"status\":\"connected\",\"timestamp\":%d}\n\n",
+		milestoneID, time.Now().Unix())
+	c.Writer.Write([]byte(connectMsg))
+	c.Writer.Flush()
+
+	log.Printf("📡 Initial connection message sent for milestone %d", milestoneID)
+
+	// Keep-alive 루프 (논블로킹)
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
 		select {
 		case <-clientGone:
 			log.Printf("🔌 SSE client disconnected for milestone %d", milestoneID)
-			return false
-		default:
-		}
+			return
+		case <-ticker.C:
+			// Keep-alive ping
+			pingMsg := fmt.Sprintf("data: {\"type\":\"ping\",\"milestone_id\":%d,\"timestamp\":%d}\n\n",
+				milestoneID, time.Now().Unix())
 
-		// 초기 연결 성공 메시지
-		connectMsg := fmt.Sprintf("data: {\"type\":\"connection\",\"milestone_id\":%d,\"status\":\"connected\",\"timestamp\":%d}\n\n",
-			milestoneID, time.Now().Unix())
-		fmt.Fprint(w, connectMsg)
-
-		// Keep-alive 메시지 (30초마다)
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-clientGone:
-				log.Printf("🔌 SSE client disconnected for milestone %d", milestoneID)
-				return false
-			case <-ticker.C:
-				// Keep-alive ping
-				pingMsg := fmt.Sprintf("data: {\"type\":\"ping\",\"milestone_id\":%d,\"timestamp\":%d}\n\n",
-					milestoneID, time.Now().Unix())
-				if _, err := fmt.Fprint(w, pingMsg); err != nil {
-					log.Printf("❌ SSE write error for milestone %d: %v", milestoneID, err)
-					return false
-				}
-				log.Printf("📡 SSE ping sent for milestone %d", milestoneID)
-			default:
-				// 실제 거래/마켓 데이터는 Redis Pub/Sub으로 받아서 처리할 예정
-				// 현재는 기본 연결 유지만 구현
-				time.Sleep(1 * time.Second)
+			if _, err := c.Writer.Write([]byte(pingMsg)); err != nil {
+				log.Printf("❌ SSE write error for milestone %d: %v", milestoneID, err)
+				return
 			}
+			c.Writer.Flush()
+			log.Printf("📡 SSE ping sent for milestone %d", milestoneID)
 		}
-	})
+	}
 }

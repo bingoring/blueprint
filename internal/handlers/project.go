@@ -4,6 +4,7 @@ import (
 	"blueprint/internal/database"
 	"blueprint/internal/middleware"
 	"blueprint/internal/models"
+	"blueprint/internal/queue"
 	"blueprint/internal/services"
 	"encoding/json"
 	"log"
@@ -119,7 +120,8 @@ func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 		return
 	}
 
-	// 각 마일스톤에 대한 betting options 설정 🎯
+	// 각 마일스톤에 대한 betting options 설정 및 마켓 초기화 🎯
+	publisher := queue.NewPublisher()
 	for _, milestone := range milestones {
 		// betting options가 비어있으면 기본값 설정
 		if len(milestone.BettingOptions) == 0 {
@@ -134,7 +136,18 @@ func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 				log.Printf("Failed to update betting options for milestone %d: %v", milestone.ID, err)
 			}
 		}
-		// 마켓 초기화는 Trading 시스템에서 동적으로 처리됩니다
+
+		// 🚀 마켓 초기화 이벤트를 큐에 발행
+		err := publisher.EnqueueMarketInit(queue.MarketInitEventData{
+			ProjectID:   project.ID,
+			MilestoneID: milestone.ID,
+			Options:     milestone.BettingOptions,
+		})
+		if err != nil {
+			log.Printf("❌ Failed to enqueue market init for milestone %d: %v", milestone.ID, err)
+		} else {
+			log.Printf("✅ Market init queued for milestone %d with options: %v", milestone.ID, milestone.BettingOptions)
+		}
 	}
 
 	// 생성된 프로젝트와 마일스톤들을 함께 반환

@@ -19,16 +19,7 @@ type TradingService struct {
 }
 
 // NewTradingService 거래 서비스 생성자
-func NewTradingService(db *gorm.DB, sseService *SSEService) *TradingService {
-	matchingEngine := NewMatchingEngine(db)
-
-	// 매칭 엔진 시작
-	go func() {
-		if err := matchingEngine.Start(); err != nil {
-			log.Printf("Failed to start matching engine: %v", err)
-		}
-	}()
-
+func NewTradingService(db *gorm.DB, sseService *SSEService, matchingEngine *MatchingEngine) *TradingService {
 	return &TradingService{
 		db:             db,
 		sseService:     sseService,

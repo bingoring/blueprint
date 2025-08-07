@@ -62,7 +62,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
   };
 
   const formatNumber = (num: number, decimals = 2) => {
-    return num.toFixed(decimals);
+    return `$${num.toFixed(decimals)}`;
   };
 
   const handlePriceClick = (probability: number) => {

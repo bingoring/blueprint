@@ -66,11 +66,12 @@ const PolymarketTradingPage: React.FC = () => {
   const [userWallet, setUserWallet] = useState<UserWallet | null>(null);
 
   // Trading state
-  const [selectedOption, setSelectedOption] = useState<string>("success");
+  const [selectedOption, setSelectedOption] = useState<string>("");
   const [orderBook, setOrderBook] = useState<OrderBookType | null>(null);
   const [recentTrades, setRecentTrades] = useState<Trade[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [orderLoading, setOrderLoading] = useState(false);
+  const [currentPrice, setCurrentPrice] = useState<number>(0.5); // Current market price for selected option
 
   // SSE connection
   const [isSSEConnected, setIsSSEConnected] = useState(false);
@@ -124,7 +125,15 @@ const PolymarketTradingPage: React.FC = () => {
             foundMilestone.betting_options &&
             foundMilestone.betting_options.length > 0
           ) {
-            setSelectedOption(foundMilestone.betting_options[0]);
+            const firstOption = foundMilestone.betting_options[0];
+            setSelectedOption(firstOption);
+            console.log("🎯 Selected option set to:", firstOption);
+
+            // Load market data for the selected option
+            setTimeout(() => {
+              console.log("🔄 Loading market data for option:", firstOption);
+              loadMarketDataForOption(firstOption);
+            }, 100);
           }
         }
       }
@@ -132,9 +141,6 @@ const PolymarketTradingPage: React.FC = () => {
       if (walletRes?.success && walletRes.data) {
         setUserWallet(walletRes.data);
       }
-
-      // Load market data (independently of SSE)
-      await loadMarketData();
     } catch (error) {
       console.error("Failed to load initial data:", error);
       message.error("Failed to load data");
@@ -145,19 +151,46 @@ const PolymarketTradingPage: React.FC = () => {
 
   const loadMarketData = async () => {
     if (!milestoneId || !selectedOption) return;
+    await loadMarketDataForOption(selectedOption);
+  };
+
+  const loadMarketDataForOption = async (optionId: string) => {
+    if (!milestoneId || !optionId) return;
 
     try {
-      const [orderBookRes, tradesRes] = await Promise.all([
+      console.log("📊 Loading market data for:", optionId);
+      const [orderBookRes, tradesRes, priceHistoryRes] = await Promise.all([
         apiClient
-          .getOrderBook(parseInt(milestoneId), selectedOption)
+          .getOrderBook(parseInt(milestoneId), optionId)
           .catch(() => ({ success: false, data: null })),
         apiClient
-          .getRecentTrades(parseInt(milestoneId), selectedOption, 20)
+          .getRecentTrades(parseInt(milestoneId), optionId, 20)
+          .catch(() => ({ success: false, data: null })),
+        apiClient
+          .getPriceHistory(parseInt(milestoneId), optionId, "1h", 24)
           .catch(() => ({ success: false, data: null })),
       ]);
 
       if (orderBookRes.success && orderBookRes.data) {
         setOrderBook(orderBookRes.data.order_book);
+
+        // Extract current market price from order book or price history
+        const orderBookData = orderBookRes.data.order_book;
+        if (
+          orderBookData &&
+          (orderBookData.asks.length > 0 || orderBookData.bids.length > 0)
+        ) {
+          // Use best ask/bid average as current price
+          const bestAsk = orderBookData.asks[0]?.price || 0.5;
+          const bestBid = orderBookData.bids[0]?.price || 0.5;
+          const marketPrice = (bestAsk + bestBid) / 2;
+          setCurrentPrice(marketPrice);
+          console.log(
+            "💰 Market price updated from order book:",
+            Math.round(marketPrice * 100),
+            "¢"
+          );
+        }
       }
 
       if (tradesRes.success && tradesRes.data) {
@@ -165,8 +198,47 @@ const PolymarketTradingPage: React.FC = () => {
           ? tradesRes.data
           : (tradesRes.data as { trades: Trade[] }).trades || [];
         setRecentTrades(trades);
+      }
 
-        // Create chart data from trades
+      // 가격 히스토리에서 차트 데이터 생성 (우선순위 1)
+      if (priceHistoryRes.success && priceHistoryRes.data?.data) {
+        const historyData = priceHistoryRes.data.data;
+        if (historyData.length > 0) {
+          const chartPoints: ChartDataPoint[] = historyData.map((point) => {
+            const pointData = point as Record<string, unknown>;
+            return {
+              time: new Date(pointData.bucket as string).toLocaleTimeString(),
+              timestamp: new Date(pointData.bucket as string).getTime(),
+              price:
+                (pointData.close as number) ||
+                (pointData.open as number) ||
+                0.5,
+              volume: (pointData.volume as number) || 0,
+            };
+          });
+          setChartData(chartPoints);
+
+          // Set current price from latest data point
+          const latestPrice = chartPoints[chartPoints.length - 1]?.price || 0.5;
+          setCurrentPrice(latestPrice);
+          console.log(
+            "📈 Chart data loaded from price history:",
+            chartPoints.length,
+            "points"
+          );
+          console.log(
+            "💰 Current price set from history:",
+            Math.round(latestPrice * 100),
+            "¢"
+          );
+        }
+      }
+      // Fallback: 거래 데이터에서 차트 생성 (우선순위 2)
+      else if (tradesRes.success && tradesRes.data) {
+        const trades = Array.isArray(tradesRes.data)
+          ? tradesRes.data
+          : (tradesRes.data as { trades: Trade[] }).trades || [];
+
         if (trades.length > 0) {
           const chartPoints: ChartDataPoint[] = trades.map((trade: Trade) => ({
             time: new Date(trade.created_at).toLocaleTimeString(),
@@ -175,6 +247,11 @@ const PolymarketTradingPage: React.FC = () => {
             volume: trade.quantity,
           }));
           setChartData(chartPoints.reverse());
+          console.log(
+            "📈 Chart data loaded from trades:",
+            chartPoints.length,
+            "points"
+          );
         }
       }
     } catch (error) {
@@ -220,6 +297,11 @@ const PolymarketTradingPage: React.FC = () => {
 
         // Close the current connection
         eventSource.close();
+
+        // Load initial data even if SSE fails
+        if (milestone) {
+          loadMarketData();
+        }
 
         // Don't auto-reconnect aggressively, just show disconnected state
         // The user can still use the app without real-time updates
@@ -333,8 +415,17 @@ const PolymarketTradingPage: React.FC = () => {
         >
           <Spin size="large" />
           <Text style={{ color: "var(--text-primary)" }}>
-            Loading trading data...
+            {!milestone
+              ? "Loading milestone data..."
+              : !selectedOption
+              ? "Setting up options..."
+              : "Loading trading data..."}
           </Text>
+          {milestone && !isSSEConnected && (
+            <Text style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+              Real-time updates unavailable, using cached data
+            </Text>
+          )}
         </div>
       </div>
     );
@@ -382,7 +473,7 @@ const PolymarketTradingPage: React.FC = () => {
       <div className="trading-header">
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <button
-            onClick={() => navigate(`/projects/${projectId}`)}
+            onClick={() => navigate(`/project/${projectId}`)}
             style={{
               background: "none",
               border: "none",
@@ -417,7 +508,12 @@ const PolymarketTradingPage: React.FC = () => {
                 className={`trading-tab ${
                   selectedOption === option ? "active" : ""
                 }`}
-                onClick={() => setSelectedOption(option)}
+                onClick={() => {
+                  console.log("🎯 Option changed to:", option);
+                  setSelectedOption(option);
+                  // Load market data for new option
+                  loadMarketDataForOption(option);
+                }}
                 style={{ padding: "8px 16px" }}
               >
                 {option}
@@ -471,7 +567,7 @@ const PolymarketTradingPage: React.FC = () => {
           <div className="chart-container">
             <div className="chart-header">
               <Title level={4} style={{ margin: 0 }}>
-                Price Chart - {selectedOption}
+                Price Chart - {selectedOption || "Loading..."}
               </Title>
               <Text type="secondary">
                 Last:{" "}
@@ -592,6 +688,7 @@ const PolymarketTradingPage: React.FC = () => {
             onSubmitOrder={handleSubmitOrder}
             loading={orderLoading}
             userBalance={userWallet?.usdc_balance || 0}
+            currentPrice={currentPrice}
           />
 
           {/* User Stats */}

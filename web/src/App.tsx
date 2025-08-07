@@ -92,10 +92,6 @@ function App() {
               <Route path="/edit-project/:id" element={<EditProjectPage />} />
               <Route path="/project/:id" element={<ProjectDetailPage />} />
               <Route
-                path="/projects/:projectId"
-                element={<ProjectDetailPage />}
-              />
-              <Route
                 path="/trade/:projectId/:milestoneId"
                 element={<PolymarketTradingPage />}
               />

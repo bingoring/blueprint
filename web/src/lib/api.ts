@@ -440,6 +440,18 @@ class ApiClient {
       `/milestones/${milestoneId}/trades/${optionId}?limit=${limit}`
     );
   }
+
+  // 가격 히스토리 조회
+  async getPriceHistory(
+    milestoneId: number,
+    optionId: string,
+    interval: string = "1h",
+    limit: number = 100
+  ): Promise<ApiResponse<{ data: object[]; interval: string; count: number }>> {
+    return this.request<{ data: object[]; interval: string; count: number }>(
+      `/milestones/${milestoneId}/price-history/${optionId}?interval=${interval}&limit=${limit}`
+    );
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);

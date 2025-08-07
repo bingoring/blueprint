@@ -155,18 +155,24 @@ func (me *MatchingEngine) Start() error {
 	defer me.mutex.Unlock()
 
 	if me.isRunning {
+		log.Println("⚠️ Matching engine is already running")
 		return nil
+	}
+
+	log.Println("🚀 Starting Matching Engine...")
+
+	// 기존 주문들을 메모리로 로드
+	log.Println("📊 Loading existing orders...")
+	if err := me.loadExistingOrders(); err != nil {
+		log.Printf("❌ CRITICAL ERROR: Failed to load existing orders: %v", err)
+		return err // 중요한 오류는 리턴
 	}
 
 	me.isRunning = true
 	log.Println("🔥 High-Performance Matching Engine started!")
 
-	// 기존 주문들을 메모리로 로드
-	if err := me.loadExistingOrders(); err != nil {
-		log.Printf("❌ Failed to load existing orders: %v", err)
-	}
-
 	// 매칭 워커 시작 (동시 처리)
+	log.Println("🔧 Starting matching workers...")
 	for i := 0; i < 4; i++ { // 4개 워커로 병렬 처리
 		go me.matchingWorker(i)
 	}
@@ -174,6 +180,7 @@ func (me *MatchingEngine) Start() error {
 	// 통계 업데이트 워커
 	go me.statsWorker()
 
+	log.Println("✅ All matching engine workers started successfully")
 	return nil
 }
 
@@ -210,11 +217,12 @@ func (me *MatchingEngine) SubmitOrder(order *models.Order) (*MatchingResult, err
 	// 논블로킹 전송
 	select {
 	case me.orderChan <- request:
-		// 응답 대기 (타임아웃 5초)
+		// 응답 대기 (타임아웃 30초로 증가)
 		select {
 		case result := <-responseChan:
 			return result, nil
-		case <-time.After(5 * time.Second):
+		case <-time.After(30 * time.Second):
+			log.Printf("❌ Matching timeout for order: %+v", order)
 			return nil, fmt.Errorf("matching timeout")
 		}
 	default:
@@ -239,14 +247,22 @@ func (me *MatchingEngine) matchingWorker(workerID int) {
 			result := me.processOrder(request.Order)
 
 			// 성능 통계 업데이트
-			me.updateStats(time.Since(startTime))
+			processingTime := time.Since(startTime)
+			me.updateStats(processingTime)
 
-			// 응답 전송
-			select {
-			case request.Response <- result:
-			default:
-				log.Printf("❌ Failed to send matching result")
+			// 느린 주문만 로그 출력 (100ms 이상)
+			if processingTime > 100*time.Millisecond {
+				log.Printf("⚠️ Slow order processing: Worker %d, Order %d, Time %v", workerID, request.Order.ID, processingTime)
 			}
+
+					// 응답 전송 (논블로킹)
+		select {
+		case request.Response <- result:
+			// 성공적으로 응답 전송
+		default:
+			// 응답 채널이 이미 닫혔거나 수신자가 없음 (타임아웃 발생)
+			log.Printf("⚠️ Response channel unavailable for order %d (likely timeout)", request.Order.ID)
+		}
 		}
 	}
 }
@@ -261,13 +277,8 @@ func (me *MatchingEngine) processOrder(order *models.Order) *MatchingResult {
 
 	var trades []models.Trade
 
-	if order.Type == models.OrderTypeMarket {
-		// 시장가 주문 - 즉시 체결
-		trades = me.executeMarketOrder(orderBook, order)
-	} else {
-		// 지정가 주문 - 조건부 체결
-		trades = me.executeLimitOrder(orderBook, order)
-	}
+	// 폴리마켓 스타일: Limit Order만 처리
+	trades = me.executeLimitOrder(orderBook, order)
 
 	// 체결된 거래가 있으면 처리
 	if len(trades) > 0 {
@@ -288,105 +299,6 @@ func (me *MatchingEngine) processOrder(order *models.Order) *MatchingResult {
 	}
 }
 
-// executeMarketOrder 시장가 주문 체결
-func (me *MatchingEngine) executeMarketOrder(orderBook *OrderBookEngine, order *models.Order) []models.Trade {
-	var trades []models.Trade
-	remaining := order.Quantity
-
-	if order.Side == models.OrderSideBuy {
-		// 매수 시장가: 최저 매도가부터 체결
-		for remaining > 0 && orderBook.SellOrders.Len() > 0 {
-			bestSell := (*orderBook.SellOrders)[0]
-
-			if bestSell.Remaining <= 0 {
-				heap.Pop(orderBook.SellOrders)
-				continue
-			}
-
-			matchQuantity := min(remaining, bestSell.Remaining)
-
-			trade := models.Trade{
-				ProjectID:    order.ProjectID,
-				MilestoneID:  order.MilestoneID,
-				OptionID:     order.OptionID,
-				BuyOrderID:   order.ID,
-				SellOrderID:  bestSell.ID,
-				BuyerID:      order.UserID,
-				SellerID:     bestSell.UserID,
-				Quantity:     matchQuantity,
-				Price:        bestSell.Price, // 시장가는 상대방 가격으로 체결
-				TotalAmount:  int64(float64(matchQuantity) * bestSell.Price),
-				CreatedAt:    time.Now(),
-			}
-
-			trades = append(trades, trade)
-
-			// 수량 업데이트
-			remaining -= matchQuantity
-			bestSell.Remaining -= matchQuantity
-			bestSell.Filled += matchQuantity
-
-			// 완전 체결된 주문 제거
-			if bestSell.Remaining <= 0 {
-				heap.Pop(orderBook.SellOrders)
-				bestSell.Status = models.OrderStatusFilled
-			}
-
-			orderBook.lastPrice = bestSell.Price
-		}
-	} else {
-		// 매도 시장가: 최고 매수가부터 체결
-		for remaining > 0 && orderBook.BuyOrders.Len() > 0 {
-			bestBuy := (*orderBook.BuyOrders)[0]
-
-			if bestBuy.Remaining <= 0 {
-				heap.Pop(orderBook.BuyOrders)
-				continue
-			}
-
-			matchQuantity := min(remaining, bestBuy.Remaining)
-
-			trade := models.Trade{
-				ProjectID:    order.ProjectID,
-				MilestoneID:  order.MilestoneID,
-				OptionID:     order.OptionID,
-				BuyOrderID:   bestBuy.ID,
-				SellOrderID:  order.ID,
-				BuyerID:      bestBuy.UserID,
-				SellerID:     order.UserID,
-				Quantity:     matchQuantity,
-				Price:        bestBuy.Price,
-				TotalAmount:  int64(float64(matchQuantity) * bestBuy.Price),
-				CreatedAt:    time.Now(),
-			}
-
-			trades = append(trades, trade)
-
-			remaining -= matchQuantity
-			bestBuy.Remaining -= matchQuantity
-			bestBuy.Filled += matchQuantity
-
-			if bestBuy.Remaining <= 0 {
-				heap.Pop(orderBook.BuyOrders)
-				bestBuy.Status = models.OrderStatusFilled
-			}
-
-			orderBook.lastPrice = bestBuy.Price
-		}
-	}
-
-	// 주문 상태 업데이트
-	order.Filled = order.Quantity - remaining
-	order.Remaining = remaining
-
-	if remaining <= 0 {
-		order.Status = models.OrderStatusFilled
-	} else if order.Filled > 0 {
-		order.Status = models.OrderStatusPartial
-	}
-
-	return trades
-}
 
 // executeLimitOrder 지정가 주문 체결
 func (me *MatchingEngine) executeLimitOrder(orderBook *OrderBookEngine, order *models.Order) []models.Trade {
@@ -516,10 +428,14 @@ func (me *MatchingEngine) getMarketKey(milestoneID uint, optionID string) string
 }
 
 func (me *MatchingEngine) getOrCreateOrderBook(milestoneID uint, optionID string) *OrderBookEngine {
-	key := me.getMarketKey(milestoneID, optionID)
-
 	me.mutex.Lock()
 	defer me.mutex.Unlock()
+	return me.getOrCreateOrderBookUnsafe(milestoneID, optionID)
+}
+
+// getOrCreateOrderBookUnsafe - mutex 없이 오더북 생성 (내부 호출용)
+func (me *MatchingEngine) getOrCreateOrderBookUnsafe(milestoneID uint, optionID string) *OrderBookEngine {
+	key := me.getMarketKey(milestoneID, optionID)
 
 	if orderBook, exists := me.orderBooks[key]; exists {
 		return orderBook
@@ -553,7 +469,8 @@ func (me *MatchingEngine) loadExistingOrders() error {
 	}
 
 	for _, order := range orders {
-		orderBook := me.getOrCreateOrderBook(order.MilestoneID, order.OptionID)
+		// mutex가 이미 Start()에서 잠겨있으므로 Unsafe 버전 사용
+		orderBook := me.getOrCreateOrderBookUnsafe(order.MilestoneID, order.OptionID)
 		orderBook.mutex.Lock()
 
 		if order.Side == models.OrderSideBuy {
