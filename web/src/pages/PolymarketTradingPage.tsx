@@ -637,11 +637,20 @@ const PolymarketTradingPage: React.FC = () => {
 
           {/* Recent Trades */}
           <div className="orderbook">
-            <div className="orderbook-header">Recent Trades</div>
+            <div
+              className="orderbook-header"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Recent Trades
+            </div>
             <div className="trades-list">
               {recentTrades.length > 0 ? (
                 recentTrades.map((trade, index) => (
-                  <div key={index} className="trade-row">
+                  <div
+                    key={index}
+                    className="trade-row"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     <span
                       className={`trade-price ${
                         trade.price > 50 ? "buy" : "sell"
@@ -649,8 +658,10 @@ const PolymarketTradingPage: React.FC = () => {
                     >
                       {trade.price.toFixed(2)}
                     </span>
-                    <span>{trade.quantity.toLocaleString()}</span>
-                    <span>
+                    <span style={{ color: "var(--text-primary)" }}>
+                      {trade.quantity.toLocaleString()}
+                    </span>
+                    <span style={{ color: "var(--text-secondary)" }}>
                       {new Date(trade.created_at).toLocaleTimeString()}
                     </span>
                   </div>

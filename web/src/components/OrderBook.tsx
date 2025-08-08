@@ -16,7 +16,12 @@ const OrderBook: React.FC<OrderBookProps> = ({
   if (loading) {
     return (
       <div className="orderbook">
-        <div className="orderbook-header">Order Book</div>
+        <div
+          className="orderbook-header"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Order Book
+        </div>
         <div
           style={{
             display: "flex",
@@ -34,7 +39,12 @@ const OrderBook: React.FC<OrderBookProps> = ({
   if (!orderBook) {
     return (
       <div className="orderbook">
-        <div className="orderbook-header">Order Book</div>
+        <div
+          className="orderbook-header"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Order Book
+        </div>
         <div
           style={{
             display: "flex",
@@ -75,7 +85,10 @@ const OrderBook: React.FC<OrderBookProps> = ({
 
   return (
     <div className="orderbook">
-      <div className="orderbook-header">
+      <div
+        className="orderbook-header"
+        style={{ color: "var(--text-primary)" }}
+      >
         <div
           style={{
             display: "grid",
@@ -103,13 +116,25 @@ const OrderBook: React.FC<OrderBookProps> = ({
                   key={`ask-${index}`}
                   className="orderbook-row ask-row"
                   onClick={() => handlePriceClick(level.price)}
-                  style={{ cursor: onPriceClick ? "pointer" : "default" }}
+                  style={{
+                    cursor: onPriceClick ? "pointer" : "default",
+                    color: "var(--red)",
+                  }}
                 >
-                  <span>{formatPrice(level.price)}</span>
-                  <span style={{ textAlign: "center" }}>
+                  <span style={{ color: "var(--red)" }}>
+                    {formatPrice(level.price)}
+                  </span>
+                  <span
+                    style={{
+                      textAlign: "center",
+                      color: "var(--text-primary)",
+                    }}
+                  >
                     {level.quantity.toLocaleString()}
                   </span>
-                  <span style={{ textAlign: "right" }}>
+                  <span
+                    style={{ textAlign: "right", color: "var(--text-primary)" }}
+                  >
                     {formatNumber(total)}
                   </span>
                 </div>
@@ -119,7 +144,10 @@ const OrderBook: React.FC<OrderBookProps> = ({
 
         {/* Spread */}
         {spread > 0 && (
-          <div className="spread-row">
+          <div
+            className="spread-row"
+            style={{ color: "var(--text-secondary)" }}
+          >
             Spread: {Math.round(spread * 100)}¢ (
             {((spread / ((asks[0]?.price + bids[0]?.price) / 2)) * 100).toFixed(
               2
@@ -137,13 +165,22 @@ const OrderBook: React.FC<OrderBookProps> = ({
                 key={`bid-${index}`}
                 className="orderbook-row bid-row"
                 onClick={() => handlePriceClick(level.price)}
-                style={{ cursor: onPriceClick ? "pointer" : "default" }}
+                style={{
+                  cursor: onPriceClick ? "pointer" : "default",
+                  color: "var(--green)",
+                }}
               >
-                <span>{formatPrice(level.price)}</span>
-                <span style={{ textAlign: "center" }}>
+                <span style={{ color: "var(--green)" }}>
+                  {formatPrice(level.price)}
+                </span>
+                <span
+                  style={{ textAlign: "center", color: "var(--text-primary)" }}
+                >
                   {level.quantity.toLocaleString()}
                 </span>
-                <span style={{ textAlign: "right" }}>
+                <span
+                  style={{ textAlign: "right", color: "var(--text-primary)" }}
+                >
                   {formatNumber(total)}
                 </span>
               </div>

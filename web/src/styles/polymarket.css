@@ -75,6 +75,7 @@ body {
   border-bottom: 1px solid var(--border-color);
   font-weight: 600;
   font-size: 14px;
+  color: var(--text-primary);
 }
 
 .orderbook-content {
@@ -93,6 +94,7 @@ body {
   font-size: 12px;
   font-family: 'Monaco', 'Menlo', monospace;
   transition: var(--transition);
+  color: var(--text-primary);
 }
 
 .orderbook-row:hover {
@@ -264,6 +266,7 @@ body {
 .trades-list {
   max-height: 300px;
   overflow-y: auto;
+  color: var(--text-primary);
 }
 
 .trade-row {
@@ -273,6 +276,7 @@ body {
   font-size: 12px;
   font-family: 'Monaco', 'Menlo', monospace;
   border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
 }
 
 .trade-row:last-child {
