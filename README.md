@@ -2,6 +2,17 @@
 
 개인의 장기 목표 달성을 위해 전문가 집단이 데이터 기반으로 최적 경로를 제안하고, 성과에 따라 보상받는 분산형 라이프 코칭 플랫폼
 
+## 📁 프로젝트 구조
+
+```
+blueprint/
+├── blueprint-be/     # 백엔드 (Go)
+├── blueprint-fe/     # 프론트엔드 (React + TypeScript)
+├── module/          # 공통 모듈 (MSA 대비)
+├── docker-compose.yml
+└── README.md
+```
+
 ## 🚀 기능
 
 ### Milestone 1 (Current)
@@ -267,6 +278,32 @@ make logs
 # 특정 서비스만
 make logs-app
 make logs-db
+```
+
+## 🚀 개발 환경 설정
+
+### 1. 데이터베이스 시작
+```bash
+docker-compose up -d postgres redis
+```
+
+### 2. 백엔드 실행
+```bash
+cd blueprint-be
+go run cmd/server/main.go
+```
+
+### 3. 프론트엔드 실행
+```bash
+cd blueprint-fe
+npm install
+npm run dev
+```
+
+### 4. 전체 개발 환경 (백엔드만)
+```bash
+cd blueprint-be
+make dev-start  # 데이터베이스 + 백엔드 시작
 ```
 
 ## 🔮 다음 단계

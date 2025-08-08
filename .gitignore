@@ -4,8 +4,8 @@
 *.dll
 *.so
 *.dylib
-server
-main
+blueprint-be/server
+blueprint-be/main
 
 # Test binary, built with `go test -c`
 *.test
@@ -86,14 +86,14 @@ build/
 .local/
 
 # Node.js (frontend)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+blueprint-fe/node_modules/
+blueprint-fe/npm-debug.log*
+blueprint-fe/yarn-debug.log*
+blueprint-fe/yarn-error.log*
 
 # Production builds
-dist/
-build/
+blueprint-fe/dist/
+blueprint-fe/build/
 
 # Environment variables 🔒
 .env

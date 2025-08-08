@@ -23,12 +23,12 @@ build:
 # Start all services (with database)
 up:
 	@echo "🚀 Starting all services..."
-	docker-compose up -d
+	cd .. && docker-compose up -d
 
 # Stop all services
 down:
 	@echo "🛑 Stopping all services..."
-	docker-compose down
+	cd .. && docker-compose down
 
 # Show logs for all services
 logs:
@@ -46,17 +46,17 @@ install: build up
 
 dev-db: ## 데이터베이스만 시작 (로컬 개발용)
 	@echo "Starting development databases..."
-	docker-compose -f docker-compose.dev.yml up -d
+	cd .. && docker-compose up -d postgres redis timescaledb
 	@echo "✅ Development databases started!"
 	@echo "🗄️  PostgreSQL: localhost:5432"
 	@echo "🔴 Redis: localhost:6379"
 	@echo ""
 	@echo "이제 백엔드와 프론트엔드를 로컬에서 실행하세요:"
 	@echo "  Backend:  make run-backend"
-	@echo "  Frontend: make run-frontend"
+	@echo "  Frontend: cd ../blueprint-fe && npm run dev"
 
 dev-db-down: ## 개발 데이터베이스 중지
-	docker-compose -f docker-compose.dev.yml down
+	cd .. && docker-compose down
 
 # 🚀 Development Commands (Local)
 # Start only database and Redis for local development
@@ -238,8 +238,7 @@ nuke-all:
 	@sleep 1 && echo "💥 2..."
 	@sleep 1 && echo "💥 1..."
 	@echo "💀 NUKING ALL DATA..."
-	docker-compose -f docker-compose.dev.yml down -v --remove-orphans
-	docker-compose down -v --remove-orphans
+	cd .. && docker-compose down -v --remove-orphans
 	docker system prune -f --volumes
 	docker volume prune -f
 	@echo "💀 ✅ Everything has been destroyed!"
@@ -262,8 +261,8 @@ nuke-db:
 	@sleep 1 && echo "💥 2..."
 	@sleep 1 && echo "💥 1..."
 	@echo "💀 NUKING DATABASE DATA..."
-	docker-compose -f docker-compose.dev.yml down -v
-	docker volume rm blueprint_postgres-dev-data blueprint_redis-dev-data blueprint_timescale-data 2>/dev/null || true
+	cd .. && docker-compose down -v
+	docker volume rm blueprint_postgres_data blueprint_redis_data blueprint_timescale_data 2>/dev/null || true
 	@echo "💀 ✅ All database data has been destroyed!"
 	@echo "🔄 Run 'make dev-db' to restart clean databases"
 
