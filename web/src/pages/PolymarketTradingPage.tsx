@@ -42,6 +42,7 @@ interface SSEMessage {
     | "market_update"
     | "price_change"
     | "order_update"
+    | "orderbook_update"
     | "trade"
     | "ping"
     | "error";
@@ -332,19 +333,113 @@ const PolymarketTradingPage: React.FC = () => {
         loadMarketData();
         break;
       case "trade":
-        // Add new trade to recent trades
+        // Handle real-time trade updates
         if (message.data) {
-          const trade = message.data as Trade;
-          setRecentTrades((prev) => [trade, ...prev.slice(0, 19)]);
-
-          // Update chart
-          const newPoint: ChartDataPoint = {
-            time: new Date(trade.created_at).toLocaleTimeString(),
-            timestamp: new Date(trade.created_at).getTime(),
-            price: trade.price,
-            volume: trade.quantity,
+          const tradeData = message.data as {
+            trade_id: number;
+            option_id: string;
+            buyer_id: number;
+            seller_id: number;
+            quantity: number;
+            price: number;
+            total_amount: number;
+            timestamp: number;
           };
-          setChartData((prev) => [...prev, newPoint].slice(-50));
+
+          // Update recent trades immediately
+          const newTrade: Trade = {
+            id: tradeData.trade_id,
+            project_id: project?.id || 0,
+            milestone_id: milestone?.id || 0,
+            option_id: tradeData.option_id,
+            buyer_id: tradeData.buyer_id,
+            seller_id: tradeData.seller_id,
+            buy_order_id: 0,
+            sell_order_id: 0,
+            quantity: tradeData.quantity,
+            price: tradeData.price,
+            total_amount: tradeData.total_amount,
+            created_at: new Date(tradeData.timestamp * 1000).toISOString(),
+            buyer_fee: 0,
+            seller_fee: 0,
+          };
+
+          // Only show trades for the currently selected option
+          if (tradeData.option_id === selectedOption) {
+            setRecentTrades((prev) => [newTrade, ...prev.slice(0, 19)]);
+
+            // Update chart data
+            const newPoint: ChartDataPoint = {
+              time: new Date(newTrade.created_at).toLocaleTimeString(),
+              timestamp: new Date(newTrade.created_at).getTime(),
+              price: newTrade.price,
+              volume: newTrade.quantity,
+            };
+            setChartData((prev) => [...prev, newPoint].slice(-50));
+          }
+
+          console.log(
+            `📈 Real-time trade: ${tradeData.quantity}@${(
+              tradeData.price * 100
+            ).toFixed(0)}¢ for ${tradeData.option_id}`
+          );
+        }
+        break;
+      case "orderbook_update":
+        // Handle real-time order book updates
+        if (message.data) {
+          const orderBookData = message.data as {
+            milestone_id: number;
+            option_id: string;
+            buy_orders: Array<{ price: number; quantity: number }>;
+            sell_orders: Array<{ price: number; quantity: number }>;
+          };
+
+          // Only update if it's for the currently selected option
+          if (orderBookData.option_id === selectedOption) {
+            setOrderBook({
+              milestone_id: orderBookData.milestone_id,
+              option_id: orderBookData.option_id,
+              bids: orderBookData.buy_orders.map((order) => ({
+                price: order.price,
+                quantity: order.quantity,
+                orders: 1,
+              })),
+              asks: orderBookData.sell_orders.map((order) => ({
+                price: order.price,
+                quantity: order.quantity,
+                orders: 1,
+              })),
+              spread: 0,
+              last_price: 0,
+              volume_24h: 0,
+              timestamp: new Date().toISOString(),
+            });
+
+            console.log(
+              `📊 Real-time order book update for ${orderBookData.option_id}`
+            );
+          }
+        }
+        break;
+      case "price_change":
+        // Handle real-time price changes
+        if (message.data) {
+          const priceData = message.data as {
+            option: string;
+            old_price: number;
+            new_price: number;
+          };
+
+          // Only update if it's for the currently selected option
+          if (priceData.option === selectedOption) {
+            setCurrentPrice(priceData.new_price);
+            console.log(
+              `💰 Price change: ${priceData.option} ${(
+                priceData.old_price * 100
+              ).toFixed(0)}¢ → ${(priceData.new_price * 100).toFixed(0)}¢`
+            );
+          }
         }
         break;
       default:

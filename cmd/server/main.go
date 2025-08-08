@@ -50,8 +50,8 @@ func main() {
 	// SSE Service 초기화
 	sseService := services.NewSSEService()
 
-	// 고성능 매칭 엔진 초기화 및 시작
-	matchingEngine := services.NewMatchingEngine(database.GetDB())
+	// 고성능 매칭 엔진 초기화 및 시작 (SSE 서비스 주입)
+	matchingEngine := services.NewMatchingEngine(database.GetDB(), sseService)
 	go func() {
 		if err := matchingEngine.Start(); err != nil {
 			log.Printf("❌ CRITICAL: Failed to start matching engine: %v", err)

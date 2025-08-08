@@ -25,7 +25,7 @@ func Connect(cfg *config.Config) error {
 
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logger.Error), // 에러만 로깅
 	})
 
 	if err != nil {

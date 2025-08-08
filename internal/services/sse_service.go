@@ -188,6 +188,36 @@ func (s *SSEService) BroadcastMarketUpdate(event MarketUpdateEvent) {
 	}
 }
 
+// BroadcastTradeUpdate broadcasts trade updates to clients watching specific milestone
+func (s *SSEService) BroadcastTradeUpdate(milestoneID uint, optionID string, tradeData map[string]interface{}) {
+	message := SSEMessage{
+		Type:      "trade",
+		Data:      tradeData,
+		Timestamp: time.Now().Unix(),
+	}
+
+	select {
+	case s.broadcast <- message:
+	default:
+		log.Println("Warning: SSE broadcast channel is full")
+	}
+}
+
+// BroadcastOrderBookUpdate broadcasts order book updates to clients watching specific milestone
+func (s *SSEService) BroadcastOrderBookUpdate(milestoneID uint, optionID string, orderBookData map[string]interface{}) {
+	message := SSEMessage{
+		Type:      "orderbook_update",
+		Data:      orderBookData,
+		Timestamp: time.Now().Unix(),
+	}
+
+	select {
+	case s.broadcast <- message:
+	default:
+		log.Println("Warning: SSE broadcast channel is full")
+	}
+}
+
 // BroadcastPriceChange broadcasts price changes to clients watching specific milestone
 func (s *SSEService) BroadcastPriceChange(milestoneID uint, option string, oldPrice, newPrice float64) {
 	priceChangeEvent := map[string]interface{}{
@@ -196,7 +226,12 @@ func (s *SSEService) BroadcastPriceChange(milestoneID uint, option string, oldPr
 		"old_price":    oldPrice,
 		"new_price":    newPrice,
 		"change":       newPrice - oldPrice,
-		"change_pct":   ((newPrice - oldPrice) / oldPrice) * 100,
+		"change_pct":   func() float64 {
+			if oldPrice > 0 {
+				return ((newPrice - oldPrice) / oldPrice) * 100
+			}
+			return 0
+		}(),
 	}
 
 	message := SSEMessage{

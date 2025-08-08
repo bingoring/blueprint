@@ -37,7 +37,35 @@ func (s *TradingService) CreateOrder(userID uint, req models.CreateOrderRequest,
 		}
 	}()
 
-	// 1. 주문 생성
+	// 1. 매수 주문인 경우 지갑 잠금 처리
+	if req.Side == models.OrderSideBuy {
+		requiredUSDC := int64(float64(req.Quantity) * req.Price * 100) // 확률을 센트로 변환
+
+		var wallet models.UserWallet
+		if err := tx.Where("user_id = ?", userID).First(&wallet).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("지갑 조회 실패: %v", err)
+		}
+
+		// 잔액에서 잠긴 잔액으로 이동
+		if wallet.USDCBalance < requiredUSDC {
+			tx.Rollback()
+			return nil, fmt.Errorf("USDC 잔액 부족: 필요 $%.2f, 보유 $%.2f",
+				float64(requiredUSDC)/100, float64(wallet.USDCBalance)/100)
+		}
+
+		wallet.USDCBalance -= requiredUSDC
+		wallet.USDCLockedBalance += requiredUSDC
+
+		if err := tx.Save(&wallet).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("지갑 업데이트 실패: %v", err)
+		}
+
+		log.Printf("🔒 Locked %d USDC for user %d order", requiredUSDC, userID)
+	}
+
+	// 2. 주문 생성
 	order := models.Order{
 		ProjectID:   req.ProjectID,
 		MilestoneID: req.MilestoneID,
@@ -60,14 +88,14 @@ func (s *TradingService) CreateOrder(userID uint, req models.CreateOrderRequest,
 		return nil, fmt.Errorf("failed to create order: %v", err)
 	}
 
-	// 2. 고성능 매칭 엔진으로 매칭 실행
+	// 3. 고성능 매칭 엔진으로 매칭 실행
 	result, err := s.matchingEngine.SubmitOrder(&order)
 	if err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("matching failed: %v", err)
 	}
 
-	// 3. 결과 저장 및 브로드캐스트
+	// 4. 결과 저장 및 브로드캐스트
 	var trades []models.Trade
 	if result.Executed && len(result.Trades) > 0 {
 		trades = result.Trades

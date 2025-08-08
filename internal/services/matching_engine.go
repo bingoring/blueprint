@@ -19,6 +19,7 @@ import (
 type MatchingEngine struct {
 	db             *gorm.DB
 	queuePublisher *queue.Publisher
+	sseService     *SSEService // SSE 실시간 브로드캐스트용
 
 	// 매칭 엔진 상태
 	isRunning      bool
@@ -136,10 +137,11 @@ type MatchingStats struct {
 }
 
 // NewMatchingEngine 매칭 엔진 생성자
-func NewMatchingEngine(db *gorm.DB) *MatchingEngine {
+func NewMatchingEngine(db *gorm.DB, sseService *SSEService) *MatchingEngine {
 	return &MatchingEngine{
 		db:             db,
 		queuePublisher: queue.NewPublisher(),
+		sseService:     sseService,
 		stopChan:       make(chan struct{}),
 		orderChan:      make(chan *OrderMatchRequest, 10000), // 고성능 버퍼
 		orderBooks:     make(map[string]*OrderBookEngine),
@@ -285,6 +287,15 @@ func (me *MatchingEngine) processOrder(order *models.Order) *MatchingResult {
 		// 데이터베이스에 저장 (비동기)
 		go me.persistTrades(trades)
 
+		// 사용자 지갑 잔액 업데이트 (비동기)
+		go me.updateUserWallets(trades)
+
+		// 사용자 Position 업데이트 (비동기)
+		go me.updateUserPositions(trades)
+
+		// MarketData 업데이트 (비동기)
+		go me.updateMarketData(order.MilestoneID, order.OptionID, trades)
+
 		// 실시간 브로드캐스트
 		go me.broadcastTrades(trades)
 
@@ -321,6 +332,10 @@ func (me *MatchingEngine) executeLimitOrder(orderBook *OrderBookEngine, order *m
 
 			matchQuantity := min(remaining, bestSell.Remaining)
 
+			totalAmount := int64(float64(matchQuantity) * bestSell.Price * 100) // 센트 단위로 변환
+			buyerFee := totalAmount * 25 / 10000   // 0.25% 수수료
+			sellerFee := totalAmount * 25 / 10000  // 0.25% 수수료
+
 			trade := models.Trade{
 				ProjectID:    order.ProjectID,
 				MilestoneID:  order.MilestoneID,
@@ -331,7 +346,9 @@ func (me *MatchingEngine) executeLimitOrder(orderBook *OrderBookEngine, order *m
 				SellerID:     bestSell.UserID,
 				Quantity:     matchQuantity,
 				Price:        bestSell.Price,
-				TotalAmount:  int64(float64(matchQuantity) * bestSell.Price),
+				TotalAmount:  totalAmount,
+				BuyerFee:     buyerFee,
+				SellerFee:    sellerFee,
 				CreatedAt:    time.Now(),
 			}
 
@@ -372,6 +389,10 @@ func (me *MatchingEngine) executeLimitOrder(orderBook *OrderBookEngine, order *m
 
 			matchQuantity := min(remaining, bestBuy.Remaining)
 
+			totalAmount := int64(float64(matchQuantity) * bestBuy.Price * 100) // 센트 단위로 변환
+			buyerFee := totalAmount * 25 / 10000   // 0.25% 수수료
+			sellerFee := totalAmount * 25 / 10000  // 0.25% 수수료
+
 			trade := models.Trade{
 				ProjectID:    order.ProjectID,
 				MilestoneID:  order.MilestoneID,
@@ -382,7 +403,9 @@ func (me *MatchingEngine) executeLimitOrder(orderBook *OrderBookEngine, order *m
 				SellerID:     order.UserID,
 				Quantity:     matchQuantity,
 				Price:        bestBuy.Price,
-				TotalAmount:  int64(float64(matchQuantity) * bestBuy.Price),
+				TotalAmount:  totalAmount,
+				BuyerFee:     buyerFee,
+				SellerFee:    sellerFee,
 				CreatedAt:    time.Now(),
 			}
 
@@ -497,9 +520,31 @@ func (me *MatchingEngine) persistTrades(trades []models.Trade) {
 
 func (me *MatchingEngine) broadcastTrades(trades []models.Trade) {
 	for _, trade := range trades {
-		// 실시간 브로드캐스트
+		// Redis 브로드캐스트 (기존)
 		redis.BroadcastTradeUpdate(trade.MilestoneID, trade.OptionID, trade)
 		redis.BroadcastPriceChange(trade.MilestoneID, trade.OptionID, trade.Price)
+
+		// SSE 실시간 브로드캐스트 (신규 추가)
+		if me.sseService != nil {
+			// 거래 이벤트 브로드캐스트
+			me.sseService.BroadcastTradeUpdate(trade.MilestoneID, trade.OptionID, map[string]interface{}{
+				"trade_id":     trade.ID,
+				"option_id":    trade.OptionID,
+				"buyer_id":     trade.BuyerID,
+				"seller_id":    trade.SellerID,
+				"quantity":     trade.Quantity,
+				"price":        trade.Price,
+				"total_amount": trade.TotalAmount,
+				"timestamp":    trade.CreatedAt.Unix(),
+			})
+
+			// 가격 변동 브로드캐스트
+			me.sseService.BroadcastPriceChange(trade.MilestoneID, trade.OptionID, 0, trade.Price)
+
+			// Order Book 업데이트 브로드캐스트
+			orderBook := me.getOrCreateOrderBook(trade.MilestoneID, trade.OptionID)
+			me.broadcastOrderBookUpdate(orderBook, trade.MilestoneID, trade.OptionID)
+		}
 
 		// 큐에 작업 추가
 		me.queuePublisher.EnqueueTradeWork(trade.MilestoneID, trade.OptionID, queue.TradeEventData{
@@ -519,6 +564,400 @@ func (me *MatchingEngine) updateMarketCache(milestoneID uint, optionID string, t
 		lastTrade := trades[len(trades)-1]
 		redis.SetMarketPrice(milestoneID, optionID, lastTrade.Price)
 		redis.SetRecentTrades(milestoneID, optionID, trades)
+	}
+}
+
+// broadcastOrderBookUpdate Order Book 변경사항을 SSE로 브로드캐스트
+func (me *MatchingEngine) broadcastOrderBookUpdate(orderBook *OrderBookEngine, milestoneID uint, optionID string) {
+	if me.sseService == nil {
+		return
+	}
+
+	orderBook.mutex.RLock()
+	defer orderBook.mutex.RUnlock()
+
+	// 상위 5개 매수/매도 주문 추출
+	buyOrders := make([]map[string]interface{}, 0, 5)
+	sellOrders := make([]map[string]interface{}, 0, 5)
+
+	// 매수 주문 (높은 가격순)
+	buyCount := 0
+	for i := 0; i < orderBook.BuyOrders.Len() && buyCount < 5; i++ {
+		order := (*orderBook.BuyOrders)[i]
+		if order.Remaining > 0 {
+			buyOrders = append(buyOrders, map[string]interface{}{
+				"price":    order.Price,
+				"quantity": order.Remaining,
+			})
+			buyCount++
+		}
+	}
+
+	// 매도 주문 (낮은 가격순)
+	sellCount := 0
+	for i := 0; i < orderBook.SellOrders.Len() && sellCount < 5; i++ {
+		order := (*orderBook.SellOrders)[i]
+		if order.Remaining > 0 {
+			sellOrders = append(sellOrders, map[string]interface{}{
+				"price":    order.Price,
+				"quantity": order.Remaining,
+			})
+			sellCount++
+		}
+	}
+
+	orderBookData := map[string]interface{}{
+		"milestone_id": milestoneID,
+		"option_id":    optionID,
+		"buy_orders":   buyOrders,
+		"sell_orders":  sellOrders,
+	}
+
+	me.sseService.BroadcastOrderBookUpdate(milestoneID, optionID, orderBookData)
+}
+
+// updateMarketData MarketData 테이블 업데이트
+func (me *MatchingEngine) updateMarketData(milestoneID uint, optionID string, trades []models.Trade) {
+	if len(trades) == 0 {
+		return
+	}
+
+	// 최신 거래 정보
+	lastTrade := trades[len(trades)-1]
+	newPrice := lastTrade.Price
+	tradeTime := lastTrade.CreatedAt
+
+	// 기존 MarketData 조회
+	var marketData models.MarketData
+	err := me.db.Where("milestone_id = ? AND option_id = ?", milestoneID, optionID).First(&marketData).Error
+
+	if err != nil {
+		// MarketData가 없으면 새로 생성
+		marketData = models.MarketData{
+			MilestoneID:   milestoneID,
+			OptionID:      optionID,
+			CurrentPrice:  newPrice,
+			PreviousPrice: newPrice,
+			HighPrice24h:  newPrice,
+			LowPrice24h:   newPrice,
+			LastTradeTime: tradeTime,
+		}
+	} else {
+		// 기존 데이터 업데이트
+		marketData.PreviousPrice = marketData.CurrentPrice
+		marketData.CurrentPrice = newPrice
+		marketData.LastTradeTime = tradeTime
+
+		// 24시간 고가/저가 업데이트
+		if newPrice > marketData.HighPrice24h {
+			marketData.HighPrice24h = newPrice
+		}
+		if newPrice < marketData.LowPrice24h || marketData.LowPrice24h == 0 {
+			marketData.LowPrice24h = newPrice
+		}
+
+		// 24시간 변동폭 계산 (24시간 전 가격과 비교)
+		var price24hAgo float64
+		me.db.Model(&models.Trade{}).
+			Where("milestone_id = ? AND option_id = ? AND created_at <= ?",
+				milestoneID, optionID, tradeTime.Add(-24*time.Hour)).
+			Order("created_at DESC").
+			Limit(1).
+			Pluck("price", &price24hAgo)
+
+		if price24hAgo > 0 {
+			marketData.Change24h = newPrice - price24hAgo
+			marketData.ChangePercent = (marketData.Change24h / price24hAgo) * 100
+		} else {
+			// 24시간 전 데이터가 없으면 현재 가격 기준
+			marketData.Change24h = 0
+			marketData.ChangePercent = 0
+		}
+	}
+
+	// 24시간 거래량 및 거래 수 계산
+	var volume24h int64
+	var trades24h int
+
+	me.db.Model(&models.Trade{}).
+		Where("milestone_id = ? AND option_id = ? AND created_at > ?",
+			milestoneID, optionID, tradeTime.Add(-24*time.Hour)).
+		Select("COALESCE(SUM(quantity), 0) as volume, COUNT(*) as trades").
+		Row().Scan(&volume24h, &trades24h)
+
+	marketData.Volume24h = volume24h
+	marketData.Trades24h = trades24h
+
+	// 현재 호가창에서 BidPrice, AskPrice, Spread 계산
+	orderBook := me.getOrCreateOrderBook(milestoneID, optionID)
+	orderBook.mutex.RLock()
+
+	if orderBook.BuyOrders.Len() > 0 {
+		marketData.BidPrice = (*orderBook.BuyOrders)[0].Price
+	}
+	if orderBook.SellOrders.Len() > 0 {
+		marketData.AskPrice = (*orderBook.SellOrders)[0].Price
+	}
+	if marketData.BidPrice > 0 && marketData.AskPrice > 0 {
+		marketData.Spread = marketData.AskPrice - marketData.BidPrice
+	}
+
+	orderBook.mutex.RUnlock()
+	marketData.UpdatedAt = time.Now()
+
+	// 데이터베이스에 저장
+	if marketData.ID == 0 {
+		err = me.db.Create(&marketData).Error
+	} else {
+		err = me.db.Save(&marketData).Error
+	}
+
+		if err != nil {
+		log.Printf("❌ Failed to update market data for %d:%s: %v", milestoneID, optionID, err)
+	} else {
+		log.Printf("📊 Updated market data for %d:%s: price %.4f, volume %d",
+			milestoneID, optionID, newPrice, volume24h)
+	}
+}
+
+// updateUserPositions 사용자 포지션 업데이트
+func (me *MatchingEngine) updateUserPositions(trades []models.Trade) {
+	for _, trade := range trades {
+		// 매수자 포지션 업데이트 (+수량)
+		me.updateSinglePosition(trade.BuyerID, trade.ProjectID, trade.MilestoneID,
+			trade.OptionID, trade.Quantity, trade.Price, trade.TotalAmount, true)
+
+		// 매도자 포지션 업데이트 (-수량)
+		me.updateSinglePosition(trade.SellerID, trade.ProjectID, trade.MilestoneID,
+			trade.OptionID, -trade.Quantity, trade.Price, trade.TotalAmount, false)
+	}
+}
+
+// updateSinglePosition 개별 사용자 포지션 업데이트
+func (me *MatchingEngine) updateSinglePosition(userID, projectID, milestoneID uint,
+	optionID string, quantity int64, price float64, totalAmount int64, isBuy bool) {
+
+	// 기존 포지션 조회
+	var position models.Position
+	err := me.db.Where("user_id = ? AND project_id = ? AND milestone_id = ? AND option_id = ?",
+		userID, projectID, milestoneID, optionID).First(&position).Error
+
+	if err != nil {
+		// 새로운 포지션 생성
+		if isBuy {
+			position = models.Position{
+				UserID:      userID,
+				ProjectID:   projectID,
+				MilestoneID: milestoneID,
+				OptionID:    optionID,
+				Quantity:    quantity,
+				AvgPrice:    price,
+				TotalCost:   totalAmount,
+				Realized:    0,
+				Unrealized:  0,
+				UpdatedAt:   time.Now(),
+			}
+		} else {
+			// 매도인데 기존 포지션이 없으면 숏포지션 생성
+			position = models.Position{
+				UserID:      userID,
+				ProjectID:   projectID,
+				MilestoneID: milestoneID,
+				OptionID:    optionID,
+				Quantity:    quantity, // 음수
+				AvgPrice:    price,
+				TotalCost:   -totalAmount, // 매도로 인한 수익
+				Realized:    0,
+				Unrealized:  0,
+				UpdatedAt:   time.Now(),
+			}
+		}
+
+		err = me.db.Create(&position).Error
+		if err != nil {
+			log.Printf("❌ Failed to create position for user %d: %v", userID, err)
+		} else {
+			log.Printf("🆕 Created new position for user %d: %s %d@%.4f",
+				userID, optionID, quantity, price)
+		}
+	} else {
+		// 기존 포지션 업데이트
+		oldQuantity := position.Quantity
+		newQuantity := oldQuantity + quantity
+
+		if isBuy {
+			// 매수: 평균단가 재계산
+			if newQuantity > 0 {
+				// 순매수 포지션
+				totalValue := float64(position.TotalCost) + float64(totalAmount)
+				position.AvgPrice = totalValue / float64(newQuantity)
+				position.TotalCost += totalAmount
+			} else if newQuantity == 0 {
+				// 포지션 완전 청산
+				position.Realized += totalAmount - int64(float64(quantity)*position.AvgPrice)
+				position.AvgPrice = 0
+				position.TotalCost = 0
+			} else {
+				// 일부 청산 (숏포지션으로 전환)
+				realizedPnL := int64(float64(oldQuantity) * (price - position.AvgPrice))
+				position.Realized += realizedPnL
+				position.AvgPrice = price
+				position.TotalCost = int64(float64(newQuantity) * price)
+			}
+		} else {
+			// 매도: 실현손익 계산
+			if oldQuantity > 0 {
+				// 기존 매수 포지션에서 매도
+				sellQuantity := -quantity
+				realizedPnL := int64(float64(sellQuantity) * (price - position.AvgPrice))
+				position.Realized += realizedPnL
+
+				if newQuantity > 0 {
+					// 일부 매도
+					position.TotalCost = int64(float64(newQuantity) * position.AvgPrice)
+				} else if newQuantity == 0 {
+					// 전량 매도
+					position.AvgPrice = 0
+					position.TotalCost = 0
+				} else {
+					// 과매도 (숏포지션)
+					position.AvgPrice = price
+					position.TotalCost = int64(float64(newQuantity) * price)
+				}
+			} else {
+				// 기존 숏포지션에서 추가 매도 또는 신규 숏매도
+				if oldQuantity == 0 {
+					// 신규 숏매도
+					position.AvgPrice = price
+					position.TotalCost = int64(float64(newQuantity) * price)
+				} else {
+					// 기존 숏포지션에 추가
+					totalValue := float64(position.TotalCost) + float64(totalAmount)
+					position.AvgPrice = totalValue / float64(newQuantity)
+					position.TotalCost += totalAmount
+				}
+			}
+		}
+
+		position.Quantity = newQuantity
+		position.UpdatedAt = time.Now()
+
+		// 미실현 손익 계산 (현재 시장가 기준)
+		if newQuantity != 0 {
+			currentPrice := me.getCurrentMarketPrice(milestoneID, optionID)
+			if currentPrice > 0 {
+				position.Unrealized = int64(float64(newQuantity) * (currentPrice - position.AvgPrice))
+			}
+		} else {
+			position.Unrealized = 0
+		}
+
+		err = me.db.Save(&position).Error
+		if err != nil {
+			log.Printf("❌ Failed to update position for user %d: %v", userID, err)
+		} else {
+			log.Printf("🔄 Updated position for user %d: %s %d@%.4f (realized: %d)",
+				userID, optionID, newQuantity, position.AvgPrice, position.Realized)
+		}
+	}
+}
+
+// getCurrentMarketPrice 현재 시장가 조회
+func (me *MatchingEngine) getCurrentMarketPrice(milestoneID uint, optionID string) float64 {
+	orderBook := me.getOrCreateOrderBook(milestoneID, optionID)
+	orderBook.mutex.RLock()
+	defer orderBook.mutex.RUnlock()
+
+	// 마지막 체결가가 있으면 사용
+	if orderBook.lastPrice > 0 {
+		return orderBook.lastPrice
+	}
+
+	// 호가창 중간값 사용
+	if orderBook.BuyOrders.Len() > 0 && orderBook.SellOrders.Len() > 0 {
+		bidPrice := (*orderBook.BuyOrders)[0].Price
+		askPrice := (*orderBook.SellOrders)[0].Price
+		return (bidPrice + askPrice) / 2
+	}
+
+	// 기본값 (초기 확률)
+	return 0.33 // 33¢
+}
+
+// updateUserWallets 사용자 지갑 잔액 업데이트
+func (me *MatchingEngine) updateUserWallets(trades []models.Trade) {
+	for _, trade := range trades {
+		// 매수자 지갑 업데이트: USDC 차감, LockedBalance 감소
+		me.updateBuyerWallet(trade.BuyerID, trade.TotalAmount, trade.BuyerFee)
+
+		// 매도자 지갑 업데이트: USDC 증가, LockedBalance 감소
+		me.updateSellerWallet(trade.SellerID, trade.TotalAmount, trade.SellerFee)
+	}
+}
+
+// updateBuyerWallet 매수자 지갑 업데이트
+func (me *MatchingEngine) updateBuyerWallet(buyerID uint, totalAmount, fee int64) {
+	var wallet models.UserWallet
+	err := me.db.Where("user_id = ?", buyerID).First(&wallet).Error
+
+	if err != nil {
+		log.Printf("❌ Failed to find buyer wallet for user %d: %v", buyerID, err)
+		return
+	}
+
+		// 잠긴 잔액에서 거래금액 차감, 수수료는 일반 잔액에서 차감
+	if wallet.USDCLockedBalance >= totalAmount {
+		wallet.USDCLockedBalance -= totalAmount
+		wallet.USDCBalance -= fee // 수수료는 일반 잔액에서 차감
+	} else {
+		log.Printf("⚠️ Insufficient locked balance for buyer %d: locked=%d, needed=%d",
+			buyerID, wallet.USDCLockedBalance, totalAmount)
+		// 부족하면 일반 잔액에서 모두 차감
+		remaining := totalAmount - wallet.USDCLockedBalance
+		wallet.USDCLockedBalance = 0
+		wallet.USDCBalance -= (remaining + fee)
+	}
+
+	// 통계 업데이트
+	wallet.TotalUSDCFees += fee
+	wallet.TotalTrades++
+	wallet.UpdatedAt = time.Now()
+
+	err = me.db.Save(&wallet).Error
+	if err != nil {
+		log.Printf("❌ Failed to update buyer wallet for user %d: %v", buyerID, err)
+	} else {
+		log.Printf("💰 Updated buyer wallet for user %d: paid %d USDC (fee: %d)",
+			buyerID, totalAmount, fee)
+	}
+}
+
+// updateSellerWallet 매도자 지갑 업데이트
+func (me *MatchingEngine) updateSellerWallet(sellerID uint, totalAmount, fee int64) {
+	var wallet models.UserWallet
+	err := me.db.Where("user_id = ?", sellerID).First(&wallet).Error
+
+	if err != nil {
+		log.Printf("❌ Failed to find seller wallet for user %d: %v", sellerID, err)
+		return
+	}
+
+	// 매도 수익 추가 (수수료 제외)
+	netProceeds := totalAmount - fee
+	wallet.USDCBalance += netProceeds
+
+	// 통계 업데이트
+	wallet.TotalUSDCProfit += netProceeds
+	wallet.TotalUSDCFees += fee
+	wallet.TotalTrades++
+	wallet.UpdatedAt = time.Now()
+
+	err = me.db.Save(&wallet).Error
+	if err != nil {
+		log.Printf("❌ Failed to update seller wallet for user %d: %v", sellerID, err)
+	} else {
+		log.Printf("💰 Updated seller wallet for user %d: received %d USDC (fee: %d)",
+			sellerID, netProceeds, fee)
 	}
 }
 
