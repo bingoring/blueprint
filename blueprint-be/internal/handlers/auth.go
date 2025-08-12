@@ -1,11 +1,9 @@
 package handlers
 
 import (
-	"blueprint/internal/config"
-	"blueprint/internal/database"
-	"blueprint/internal/middleware"
-	"blueprint/internal/models"
-	"blueprint/pkg/utils"
+	"blueprint-module/pkg/config"
+	"blueprint-module/pkg/models"
+	"blueprint-module/pkg/queue"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -15,12 +13,14 @@ import (
 	"strings"
 	"time"
 
+	"blueprint/internal/database"
+	"blueprint/internal/middleware"
+	"blueprint/pkg/utils"
+
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"gorm.io/gorm"
-
-	"blueprint/internal/queue"
 )
 
 // Google 사용자 정보 구조체
@@ -89,9 +89,9 @@ type AuthHandler struct {
 
 func NewAuthHandler(cfg *config.Config) *AuthHandler {
 	googleConfig := &oauth2.Config{
-		ClientID:     cfg.Google.ClientID,
-		ClientSecret: cfg.Google.ClientSecret,
-		RedirectURL:  cfg.Google.RedirectURL,
+		ClientID:     cfg.OAuth.Google.ClientID,
+		ClientSecret: cfg.OAuth.Google.ClientSecret,
+		RedirectURL:  cfg.OAuth.Google.RedirectURL,
 		Scopes:       []string{"openid", "email", "profile"},
 		Endpoint:     google.Endpoint,
 	}
@@ -100,124 +100,6 @@ func NewAuthHandler(cfg *config.Config) *AuthHandler {
 		cfg:         cfg,
 		googleOAuth: googleConfig,
 	}
-}
-
-// 회원가입
-func (h *AuthHandler) Register(c *gin.Context) {
-	var req models.CreateUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		middleware.BadRequest(c, err.Error())
-		return
-	}
-
-	// 이메일 중복 확인
-	var existingUser models.User
-	if err := database.GetDB().Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
-		middleware.Conflict(c, "Email already exists")
-		return
-	}
-
-	// 사용자명 중복 확인
-	if err := database.GetDB().Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
-		middleware.Conflict(c, "Username already exists")
-		return
-	}
-
-	// 비밀번호 해시화
-	hashedPassword, err := utils.HashPassword(req.Password)
-	if err != nil {
-		middleware.InternalServerError(c, "Failed to hash password")
-		return
-	}
-
-	// 사용자 생성
-	user := models.User{
-		Email:    req.Email,
-		Username: req.Username,
-		Password: hashedPassword,
-		Provider: "local",
-		IsActive: true,
-	}
-
-	if err := database.GetDB().Create(&user).Error; err != nil {
-		middleware.InternalServerError(c, "Failed to create user")
-		return
-	}
-
-	// 기본 프로필 생성 (즉시 처리 - 중요한 메인 동작)
-	profile := models.UserProfile{
-		UserID: user.ID,
-	}
-	database.GetDB().Create(&profile)
-
-	// 🆕 후속 작업들을 큐로 비동기 처리
-	publisher := queue.NewPublisher()
-	err = publisher.EnqueueUserCreated(queue.UserCreatedEventData{
-		UserID:   user.ID,
-		Email:    user.Email,
-		Username: user.Username,
-		Provider: "local",
-	})
-	if err != nil {
-		log.Printf("❌ Failed to enqueue user created tasks: %v", err)
-		// 에러가 나도 회원가입은 성공으로 처리 (백그라운드 작업은 나중에 재시도 가능)
-	}
-
-	// JWT 토큰 생성
-	token, err := utils.GenerateToken(&user, h.cfg.JWT.Secret)
-	if err != nil {
-		middleware.InternalServerError(c, "Failed to generate token")
-		return
-	}
-
-	middleware.SuccessWithStatus(c, http.StatusCreated, gin.H{
-		"token": token,
-		"user":  user,
-	}, "User created successfully")
-}
-
-// 로그인
-func (h *AuthHandler) Login(c *gin.Context) {
-	var req models.LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		middleware.BadRequest(c, err.Error())
-		return
-	}
-
-	// 사용자 조회
-	var user models.User
-	if err := database.GetDB().Where("email = ?", req.Email).First(&user).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			middleware.Unauthorized(c, "Invalid credentials")
-			return
-		}
-		middleware.InternalServerError(c, "Database error")
-		return
-	}
-
-	// 비밀번호 확인
-	if !utils.CheckPassword(req.Password, user.Password) {
-		middleware.Unauthorized(c, "Invalid credentials")
-		return
-	}
-
-	// 계정 활성화 확인
-	if !user.IsActive {
-		middleware.Unauthorized(c, "Account is disabled")
-		return
-	}
-
-	// JWT 토큰 생성
-	token, err := utils.GenerateToken(&user, h.cfg.JWT.Secret)
-	if err != nil {
-		middleware.InternalServerError(c, "Failed to generate token")
-		return
-	}
-
-	middleware.Success(c, gin.H{
-		"token": token,
-		"user":  user,
-	}, "Login successful")
 }
 
 // Google OAuth 로그인 시작
@@ -322,7 +204,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	}
 
 	var user models.User
-	if err := database.GetDB().Preload("Profile").First(&user, userID).Error; err != nil {
+	if err := database.GetDB().Preload("Profile").Preload("Verification").First(&user, userID).Error; err != nil {
 		middleware.NotFound(c, "User not found")
 		return
 	}

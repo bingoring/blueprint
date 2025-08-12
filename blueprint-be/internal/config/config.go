@@ -12,6 +12,9 @@ type Config struct {
 	Database DatabaseConfig
 	JWT      JWTConfig
 	Google   GoogleConfig
+	LinkedIn LinkedInConfig
+	Twitter  TwitterConfig
+	GitHub   GitHubConfig
 	Server   ServerConfig
 	AI       AIConfig
 	Redis    RedisConfig
@@ -62,6 +65,24 @@ type RedisConfig struct {
 	DB       int
 }
 
+type LinkedInConfig struct {
+	ClientID     string
+	ClientSecret string
+	RedirectURL  string
+}
+
+type TwitterConfig struct {
+	ClientID     string
+	ClientSecret string
+	RedirectURL  string
+}
+
+type GitHubConfig struct {
+	ClientID     string
+	ClientSecret string
+	RedirectURL  string
+}
+
 // LoadConfig .env 파일을 로드하고 설정을 반환합니다 🔧
 func LoadConfig() *Config {
 	// .env 파일 로드 (파일이 없어도 오류 없이 진행)
@@ -87,6 +108,21 @@ func LoadConfig() *Config {
 			ClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
 			ClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
 			RedirectURL:  getEnv("GOOGLE_REDIRECT_URL", "http://localhost:8080/api/v1/auth/google/callback"),
+		},
+		LinkedIn: LinkedInConfig{
+			ClientID:     getEnv("LINKEDIN_CLIENT_ID", ""),
+			ClientSecret: getEnv("LINKEDIN_CLIENT_SECRET", ""),
+			RedirectURL:  getEnv("LINKEDIN_REDIRECT_URL", "http://localhost:8080/api/v1/auth/linkedin/callback"),
+		},
+		Twitter: TwitterConfig{
+			ClientID:     getEnv("TWITTER_CLIENT_ID", ""),
+			ClientSecret: getEnv("TWITTER_CLIENT_SECRET", ""),
+			RedirectURL:  getEnv("TWITTER_REDIRECT_URL", "http://localhost:8080/api/v1/auth/twitter/callback"),
+		},
+		GitHub: GitHubConfig{
+			ClientID:     getEnv("GITHUB_CLIENT_ID", ""),
+			ClientSecret: getEnv("GITHUB_CLIENT_SECRET", ""),
+			RedirectURL:  getEnv("GITHUB_REDIRECT_URL", "http://localhost:8080/api/v1/auth/github/callback"),
 		},
 		Server: ServerConfig{
 			Port:        getEnv("PORT", "8080"),

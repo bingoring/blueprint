@@ -11,7 +11,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"blueprint/internal/queue"
+	"blueprint-module/pkg/queue"
 
 	"github.com/gin-gonic/gin"
 )

@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"blueprint/internal/models"
+	"blueprint-module/pkg/models"
 	"errors"
 	"time"
 

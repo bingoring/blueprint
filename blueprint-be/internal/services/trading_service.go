@@ -2,10 +2,11 @@ package services
 
 import (
 	"blueprint/internal/models"
-	"blueprint/internal/queue"
 	"fmt"
 	"log"
 	"time"
+
+	"blueprint-module/pkg/queue"
 
 	"gorm.io/gorm"
 )

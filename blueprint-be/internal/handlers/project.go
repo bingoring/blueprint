@@ -1,27 +1,35 @@
 package handlers
 
 import (
-	"blueprint/internal/database"
-	"blueprint/internal/middleware"
-	"blueprint/internal/models"
-	"blueprint/internal/queue"
-	"blueprint/internal/services"
+	"blueprint-module/pkg/config"
+	"blueprint-module/pkg/logger"
+	"blueprint-module/pkg/models"
+	"blueprint-module/pkg/queue"
+	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"strconv"
+
+	"blueprint/internal/database"
+	"blueprint/internal/middleware"
+	internalModels "blueprint/internal/models"
+	"blueprint/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-// ProjectHandler 프로젝트 핸들러
+// ProjectHandler 프로젝트 관련 핸들러
 type ProjectHandler struct {
-	aiService  services.AIServiceInterface
+	cfg       *config.Config
+	aiService services.AIServiceInterface
 }
 
-func NewProjectHandler(aiService services.AIServiceInterface) *ProjectHandler {
+func NewProjectHandler(cfg *config.Config, aiService services.AIServiceInterface) *ProjectHandler {
 	return &ProjectHandler{
-		aiService:  aiService,
+		cfg:       cfg,
+		aiService: aiService,
 	}
 }
 
@@ -152,6 +160,15 @@ func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 
 	// 생성된 프로젝트와 마일스톤들을 함께 반환
 	project.Milestones = milestones
+
+	// 활동 로그 기록 (비동기)
+	if userIDUint, ok := userID.(uint); ok {
+		logErr := logger.LogProjectActivity(context.Background(), userIDUint, models.ActionProjectCreate, project.ID, project.Title,
+			fmt.Sprintf("새 프로젝트 '%s'를 생성했습니다", project.Title))
+		if logErr != nil {
+			log.Printf("❌ 프로젝트 생성 활동 로그 실패: %v", logErr)
+		}
+	}
 
 	middleware.SuccessWithStatus(c, 201, project, "프로젝트와 마일스톤이 성공적으로 등록되었습니다! 투자 시장도 열렸어요! 🎯✨")
 }
@@ -488,21 +505,23 @@ func (h *ProjectHandler) GenerateAIMilestones(c *gin.Context) {
 		return
 	}
 
-	// CreateProjectWithMilestonesRequest를 CreateProjectRequest로 변환
-	projectReq := models.CreateProjectRequest{
-		Title:       req.Title,
-		Description: req.Description,
-		Category:    req.Category,
-		TargetDate:  req.TargetDate,
-		Budget:      req.Budget,
-		Priority:    req.Priority,
-		IsPublic:    req.IsPublic,
-		Tags:        req.Tags,
-		Metrics:     req.Metrics,
+	// 모듈 models를 내부 models로 변환
+	convertToInternalRequest := func(req models.CreateProjectWithMilestonesRequest) internalModels.CreateProjectRequest {
+		return internalModels.CreateProjectRequest{
+			Title:       req.Title,
+			Description: req.Description,
+			Category:    internalModels.ProjectCategory(req.Category),
+			TargetDate:  req.TargetDate,
+			Budget:      req.Budget,
+			Priority:    req.Priority,
+			IsPublic:    req.IsPublic,
+			Tags:        req.Tags,
+			Metrics:     req.Metrics,
+		}
 	}
 
 	// AI 마일스톤 생성
-	aiResponse, err := h.aiService.GenerateMilestones(projectReq)
+	aiResponse, err := h.aiService.GenerateMilestones(convertToInternalRequest(req))
 	if err != nil {
 		middleware.InternalServerError(c, "AI 마일스톤 생성에 실패했습니다: "+err.Error())
 		return
