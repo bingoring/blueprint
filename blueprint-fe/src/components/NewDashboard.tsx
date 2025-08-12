@@ -1,13 +1,20 @@
 import {
-  ArrowLeftOutlined,
-  CalendarOutlined,
+  BellOutlined,
+  ClockCircleOutlined,
+  CompassOutlined,
   DollarOutlined,
-  EditOutlined,
-  LoginOutlined,
+  FireOutlined,
+  MoonOutlined,
   PlusOutlined,
   ProjectOutlined,
+  RiseOutlined,
+  RocketOutlined,
+  SearchOutlined,
+  StarOutlined,
+  SunOutlined,
   TeamOutlined,
   TrophyOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import {
   Avatar,
@@ -15,574 +22,746 @@ import {
   Button,
   Card,
   Col,
-  Empty,
+  Divider,
+  Dropdown,
+  Input,
   Layout,
   List,
   Progress,
   Row,
   Space,
-  Spin,
   Statistic,
-  Table,
-  Tabs,
   Tag,
   Typography,
-  message,
+  type MenuProps,
 } from "antd";
 import React, { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { apiClient } from "../lib/api";
+import { useTheme } from "../hooks/useTheme";
 import { useAuthStore } from "../stores/useAuthStore";
-import type {
-  ActivityRecord,
-  InvestmentTableRecord,
-  Milestone,
-  ProjectTableRecord,
-} from "../types";
-import ThemeToggle from "./ThemeToggle";
+import LanguageSwitcher from "./LanguageSwitcher";
 
-const { Content } = Layout;
-const { Title } = Typography;
+const { Header, Content } = Layout;
+const { Title, Text, Paragraph } = Typography;
+const { Search } = Input;
 
-const NewDashboard: React.FC = () => {
-  const { t } = useTranslation();
+// Types
+interface NextMilestone {
+  title: string;
+  daysLeft: number;
+  progress: number;
+  mentorName: string;
+  mentorAvatar: string;
+}
+
+// Mock data for demonstration
+const mockActivityFeed = [
+  {
+    id: 1,
+    type: "mentor_feedback",
+    title:
+      "멘토 Elon M.님이 '화성 탐사선' 마일스톤에 새로운 피드백을 남겼습니다.",
+    time: "2분 전",
+    avatar: "https://api.dicebear.com/6.x/avataaars/svg?seed=elon",
+  },
+  {
+    id: 2,
+    type: "project_completed",
+    title:
+      "'카페 창업' 프로젝트가 성공적으로 완료되었습니다! 지금 확인해 보세요.",
+    time: "1시간 전",
+    avatar: null,
+  },
+  {
+    id: 3,
+    type: "probability_change",
+    title: "내가 투자한 '앱 개발' 마일스톤의 성공 확률이 65%로 상승했습니다.",
+    time: "3시간 전",
+    avatar: null,
+  },
+];
+
+const mockFeaturedProjects = [
+  {
+    id: 1,
+    title: "AI 스타트업 창업",
+    creator: "김영훈",
+    category: "business",
+    currentPrice: 0.45,
+    totalInvestment: 125000,
+    badge: "펀딩 성공!",
+    badgeColor: "green",
+  },
+  {
+    id: 2,
+    title: "요가 강사 자격증 취득",
+    creator: "박민지",
+    category: "personal",
+    currentPrice: 0.72,
+    totalInvestment: 89000,
+    badge: "가파른 성장!",
+    badgeColor: "volcano",
+  },
+  {
+    id: 3,
+    title: "웹툰 작가 데뷔",
+    creator: "이창호",
+    category: "career",
+    currentPrice: 0.38,
+    totalInvestment: 203000,
+    badge: "거물의 선택!",
+    badgeColor: "gold",
+  },
+];
+
+const mockTopMentors = [
+  {
+    id: 1,
+    name: "김사업가",
+    specialty: "창업·사업",
+    successRate: 92,
+    avatar: "https://api.dicebear.com/6.x/avataaars/svg?seed=kim",
+    achievement: "스타트업 5개 성공 exit",
+  },
+  {
+    id: 2,
+    name: "박개발자",
+    specialty: "개발·기술",
+    successRate: 88,
+    avatar: "https://api.dicebear.com/6.x/avataaars/svg?seed=park",
+    achievement: "FAANG 시니어 엔지니어",
+  },
+  {
+    id: 3,
+    name: "이커리어",
+    specialty: "커리어·취업",
+    successRate: 95,
+    avatar: "https://api.dicebear.com/6.x/avataaars/svg?seed=lee",
+    achievement: "헤드헌터 10년 경력",
+  },
+];
+
+const popularGoalTemplates = [
+  { label: "커리어전환", icon: "💼" },
+  { label: "창업", icon: "🚀" },
+  { label: "사이드프로젝트", icon: "💡" },
+  { label: "자격증", icon: "📚" },
+  { label: "건강관리", icon: "💪" },
+  { label: "투자공부", icon: "💰" },
+];
+
+const MissionControlDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("projects");
-
-  // 실제 데이터 state
-  const [projectTableData, setProjectTableData] = useState<
-    ProjectTableRecord[]
-  >([]);
-  const [statistics, setStatistics] = useState({
-    totalProjects: 0,
-    totalReceived: 0,
-    totalInvestments: 0,
-    avgProgress: 0,
+  const { user, logout } = useAuthStore();
+  const { isDark, toggleTheme } = useTheme();
+  const [nextMilestone, setNextMilestone] = useState<NextMilestone | null>(
+    null
+  );
+  const [portfolio] = useState({
+    totalInvested: 5200,
+    currentValue: 6150,
+    profit: 950,
+    profitPercent: 18.2,
+    blueprintTokens: 12500,
   });
 
-  // 임시 투자 데이터 (아직 백엔드 API 없음)
-  const mockInvestments: InvestmentTableRecord[] = [
-    {
-      id: 1,
-      projectId: 3,
-      projectTitle: "요가 강사 자격증 취득",
-      developer: "박요가",
-      amount: 50000,
-      investedAt: "2024-01-20",
-      status: "active",
-      progress: 45,
-    },
-    {
-      id: 2,
-      projectId: 4,
-      projectTitle: "웹툰 작가 데뷔 프로젝트",
-      developer: "김웹툰",
-      amount: 100000,
-      investedAt: "2024-01-10",
-      status: "active",
-      progress: 30,
-    },
-  ];
-
   useEffect(() => {
-    if (!isAuthenticated) {
-      message.error("로그인이 필요합니다");
-      navigate("/");
-      return;
-    }
-    loadUserData();
-  }, [isAuthenticated, navigate]);
+    loadDashboardData();
+  }, []);
 
-  const loadUserData = async () => {
+  const loadDashboardData = async () => {
     try {
-      setLoading(true);
-      console.log("🔄 사용자 프로젝트 데이터 로딩 중...");
-
-      // 실제 API 호출: 사용자 프로젝트 목록
-      const response = await apiClient.getProjects({
-        page: 1,
-        limit: 50,
-        sort: "created_at",
-        order: "desc",
+      // TODO: Load user's next milestone and portfolio data
+      setNextMilestone({
+        title: "MVP 개발 완료",
+        daysLeft: 35,
+        progress: 65,
+        mentorName: "박개발자",
+        mentorAvatar: "https://api.dicebear.com/6.x/avataaars/svg?seed=mentor",
       });
-
-      if (response.success && response.data) {
-        const projects = response.data.projects || [];
-        // Project 데이터를 ProjectTableRecord 형태로 변환
-        const tableData: ProjectTableRecord[] = projects.map((project) => ({
-          id: project.id!,
-          title: project.title,
-          category: project.category,
-          status: project.status || "draft",
-          progress: calculateProjectProgress(project.milestones || []),
-          totalInvestment: 0, // TODO: 투자 데이터 API 연결 후 계산
-          investors: 0, // TODO: 투자자 수 API 연결 후 계산
-          milestones: project.milestones?.length || 0,
-          currentMilestone: getCurrentMilestoneIndex(project.milestones || []),
-          createdAt: project.created_at?.split("T")[0] || "",
-          targetDate: project.target_date?.split("T")[0] || "",
-        }));
-
-        setProjectTableData(tableData);
-
-        // 통계 계산
-        const stats = {
-          totalProjects: projects.length,
-          totalReceived: tableData.reduce(
-            (sum, proj) => sum + proj.totalInvestment,
-            0
-          ),
-          totalInvestments: mockInvestments.reduce(
-            (sum, inv) => sum + inv.amount,
-            0
-          ),
-          avgProgress:
-            tableData.length > 0
-              ? tableData.reduce((sum, proj) => sum + proj.progress, 0) /
-                tableData.length
-              : 0,
-        };
-        setStatistics(stats);
-
-        console.log("✅ 프로젝트 데이터 로딩 완료:", projects.length, "개");
-      } else {
-        throw new Error(response.error || "프로젝트 조회 실패");
-      }
     } catch (error) {
-      console.error("❌ 프로젝트 데이터 로딩 실패:", error);
-      message.error("프로젝트 데이터를 불러오는데 실패했습니다");
-
-      // 에러 시 빈 데이터로 초기화
-      setProjectTableData([]);
-    } finally {
-      setLoading(false);
+      console.error("Dashboard data loading failed:", error);
     }
   };
 
-  // 프로젝트 진행률 계산 (완료된 마일스톤 비율)
-  const calculateProjectProgress = (milestones: Milestone[]): number => {
-    if (!milestones || milestones.length === 0) return 0;
-
-    const completedCount = milestones.filter(
-      (milestone) => milestone.status === "completed"
-    ).length;
-
-    return Math.round((completedCount / milestones.length) * 100);
-  };
-
-  // 현재 진행 중인 마일스톤 인덱스 계산
-  const getCurrentMilestoneIndex = (milestones: Milestone[]): number => {
-    if (!milestones || milestones.length === 0) return 0;
-
-    const completedCount = milestones.filter(
-      (milestone) => milestone.status === "completed"
-    ).length;
-
-    return Math.min(completedCount + 1, milestones.length);
-  };
-
-  // 프로젝트 테이블 컬럼
-  const projectColumns = [
+  const userMenuItems: MenuProps["items"] = [
     {
-      title: t("project.projectTitle"),
-      dataIndex: "title",
-      key: "title",
-      render: (title: string, record: ProjectTableRecord) => (
-        <div>
-          <Button
-            type="link"
-            className="font-medium p-0 h-auto text-left"
-            onClick={() => navigate(`/project/${record.id}`)}
-          >
-            {title}
-          </Button>
-          <div className="text-sm text-gray-500">
-            {t(`categories.${record.category}`)}
+      key: "profile-header",
+      label: (
+        <div
+          style={{
+            padding: "8px 0",
+            borderBottom: "1px solid var(--border-color)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Avatar
+              size={40}
+              src={`https://api.dicebear.com/6.x/avataaars/svg?seed=${user?.username}`}
+            />
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>
+                {user?.username}
+              </div>
+              <div style={{ color: "var(--text-secondary)", fontSize: 12 }}>
+                @{user?.username}
+              </div>
+            </div>
           </div>
         </div>
       ),
+      disabled: true,
     },
     {
-      title: t("project.status"),
-      dataIndex: "status",
-      key: "status",
-      render: (status: string) => (
-        <Badge
-          status={status === "completed" ? "success" : "processing"}
-          text={t(`status.${status}`)}
-        />
-      ),
+      key: "my-profile",
+      icon: <RocketOutlined />,
+      label: "내 프로필",
+      onClick: () => navigate(`/profile/${user?.username}`),
     },
     {
-      title: t("project.constructionProgress"),
-      dataIndex: "progress",
-      key: "progress",
-      render: (progress: number) => (
-        <Progress
-          percent={progress}
-          size="small"
-          status={progress === 100 ? "success" : "active"}
-        />
-      ),
+      key: "settings",
+      icon: <UserOutlined />,
+      label: "계정 설정",
+      onClick: () => navigate("/settings"),
     },
     {
-      title: t("milestone.milestones"),
-      key: "milestones",
-      render: (_: unknown, record: ProjectTableRecord) => (
-        <span>
-          {record.currentMilestone}/{record.milestones}
-        </span>
-      ),
+      key: "theme",
+      icon: isDark ? <SunOutlined /> : <MoonOutlined />,
+      label: isDark ? "라이트 모드" : "다크 모드",
+      onClick: toggleTheme,
     },
     {
-      title: t("investment.totalInvestment"),
-      dataIndex: "totalInvestment",
-      key: "totalInvestment",
-      render: (amount: number) => `₩${amount.toLocaleString()}`,
+      type: "divider",
     },
     {
-      title: t("investment.investors"),
-      dataIndex: "investors",
-      key: "investors",
-      render: (count: number) => (
-        <Space>
-          <TeamOutlined />
-          {count}명
-        </Space>
-      ),
-    },
-    {
-      title: "작업",
-      key: "actions",
-      render: (_: unknown, record: ProjectTableRecord) => (
-        <Space size="small">
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => navigate(`/edit-project/${record.id}`)}
-            disabled={record.investors > 0}
-            title={
-              record.investors > 0
-                ? "투자자가 있는 프로젝트는 수정할 수 없습니다"
-                : "프로젝트 수정"
-            }
-          >
-            {record.investors > 0 ? "🔒" : "수정"}
-          </Button>
-        </Space>
-      ),
-    },
-  ];
-
-  // 투자 테이블 컬럼
-  const investmentColumns = [
-    {
-      title: t("project.projectTitle"),
-      dataIndex: "projectTitle",
-      key: "projectTitle",
-      render: (title: string, record: InvestmentTableRecord) => (
-        <div>
-          <div className="font-medium">{title}</div>
-          <div className="text-sm text-gray-500">{record.developer}</div>
+      key: "wallet-header",
+      label: (
+        <div
+          style={{
+            color: "var(--text-secondary)",
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          지갑 현황
         </div>
       ),
+      disabled: true,
     },
     {
-      title: t("investment.investmentAmount"),
-      dataIndex: "amount",
-      key: "amount",
-      render: (amount: number) => `₩${amount.toLocaleString()}`,
-    },
-    {
-      title: t("project.constructionProgress"),
-      dataIndex: "progress",
-      key: "progress",
-      render: (progress: number) => (
-        <Progress percent={progress} size="small" />
+      key: "wallet-usdc",
+      icon: <DollarOutlined style={{ color: "var(--green)" }} />,
+      label: (
+        <div>
+          <div>USDC 잔액</div>
+          <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+            ${(portfolio.totalInvested / 100).toFixed(2)}
+          </div>
+        </div>
       ),
+      disabled: true,
     },
     {
-      title: "투자일",
-      dataIndex: "investedAt",
-      key: "investedAt",
-    },
-    {
-      title: t("project.status"),
-      dataIndex: "status",
-      key: "status",
-      render: (status: string) => (
-        <Tag color={status === "active" ? "green" : "orange"}>
-          {status === "active" ? "진행중" : "완료"}
-        </Tag>
+      key: "wallet-blueprint",
+      icon: <StarOutlined style={{ color: "var(--gold)" }} />,
+      label: (
+        <div>
+          <div>BLUEPRINT 토큰</div>
+          <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+            {portfolio.blueprintTokens.toLocaleString()}
+          </div>
+        </div>
       ),
+      disabled: true,
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: "logout",
+      icon: <UserOutlined />,
+      label: "로그아웃",
+      onClick: logout,
+      style: { color: "var(--red)" },
     },
   ];
 
   return (
     <Layout style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
-      <Content style={{ padding: "24px", background: "var(--bg-primary)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          {/* 헤더 */}
-          <div
+      {/* Mission Control Navigation */}
+      <Header
+        style={{
+          background: "var(--bg-secondary)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          padding: "0 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: "1px solid var(--border-color)",
+          position: "sticky",
+          top: 0,
+          zIndex: 1000,
+        }}
+      >
+        {/* Logo */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <Title level={3} style={{ margin: 0, color: "var(--blue)" }}>
+            <RocketOutlined /> The Blueprint
+          </Title>
+        </div>
+
+        {/* Central Search */}
+        <div style={{ flex: 1, maxWidth: 500, margin: "0 40px" }}>
+          <Search
+            placeholder="프로젝트, 마일스톤, 멘토 검색..."
+            allowClear
+            size="large"
+            prefix={<SearchOutlined />}
+            style={{ width: "100%" }}
+          />
+        </div>
+
+        {/* Right Navigation */}
+        <Space size="middle">
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            size="large"
+            onClick={() => navigate("/create-project")}
+            className="btn-primary"
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 24,
-              padding: "16px 24px",
-              background: "var(--bg-secondary)",
-              borderRadius: "8px",
-              border: "1px solid var(--border-color)",
+              height: "40px",
+              fontSize: "14px",
+              fontWeight: "600",
+              padding: "0 16px",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate("/")}
-                type="text"
-              >
-                홈으로
-              </Button>
-              <Title
-                level={3}
-                className="!mb-0"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {t("nav.dashboard")}
-              </Title>
-            </div>
+            새 프로젝트 시작
+          </Button>
 
-            <Space>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => navigate("/create-project")}
-              >
-                {t("project.newProject")}
-              </Button>
-              <Button
-                icon={<LoginOutlined />}
-                onClick={() => useAuthStore.getState().logout()}
-              >
-                로그아웃
-              </Button>
-              <ThemeToggle />
-            </Space>
-          </div>
+          <Space size="large">
+            <Button
+              type="text"
+              icon={<ProjectOutlined />}
+              onClick={() => navigate("/dashboard")}
+              className="btn-ghost"
+              style={{
+                color: "var(--blue)",
+                fontWeight: 600,
+                fontSize: "14px",
+              }}
+            >
+              내 프로젝트
+            </Button>
+            <Button
+              type="text"
+              icon={<CompassOutlined />}
+              onClick={() => navigate("/explore")}
+              className="btn-ghost"
+              style={{
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+            >
+              프로젝트 탐색
+            </Button>
+            <Button
+              type="text"
+              icon={<TeamOutlined />}
+              className="btn-ghost"
+              style={{
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+            >
+              멘토링
+            </Button>
+            <Button
+              type="text"
+              icon={<TrophyOutlined />}
+              className="btn-ghost"
+              style={{
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+            >
+              명예의 전당
+            </Button>
+          </Space>
 
-          {loading ? (
-            <div style={{ textAlign: "center", padding: "50px" }}>
-              <Spin size="large" />
-              <div style={{ marginTop: 16 }}>데이터를 불러오는 중...</div>
-            </div>
-          ) : (
-            <>
-              {/* 통계 카드 */}
-              <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col span={6}>
-                  <Card>
+          <Space>
+            <Badge count={3} size="small">
+              <Button type="text" icon={<BellOutlined />} size="large" />
+            </Badge>
+
+            <LanguageSwitcher />
+
+            <Dropdown
+              menu={{ items: userMenuItems }}
+              placement="bottomRight"
+              trigger={["click"]}
+            >
+              <Avatar
+                src={`https://api.dicebear.com/6.x/avataaars/svg?seed=${user?.username}`}
+                style={{ cursor: "pointer" }}
+              />
+            </Dropdown>
+          </Space>
+        </Space>
+      </Header>
+
+      <Content style={{ padding: "24px", background: "var(--bg-primary)" }}>
+        <Row gutter={24} style={{ height: "100%" }}>
+          {/* Left Column: My Journey */}
+          <Col xs={24} lg={14}>
+            <Space direction="vertical" size="large" style={{ width: "100%" }}>
+              {/* Next Milestone */}
+              <Card
+                style={{
+                  background:
+                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  border: "none",
+                  borderRadius: 16,
+                  color: "white",
+                }}
+                bodyStyle={{ padding: 24 }}
+              >
+                <Row align="middle" gutter={24}>
+                  <Col flex="auto">
+                    <Space
+                      direction="vertical"
+                      size="small"
+                      style={{ width: "100%" }}
+                    >
+                      <Text
+                        style={{ color: "rgba(255,255,255,0.8)", fontSize: 14 }}
+                      >
+                        🚀 나의 다음 마일스톤
+                      </Text>
+                      <Title level={2} style={{ color: "white", margin: 0 }}>
+                        {nextMilestone?.title || "설정된 마일스톤이 없습니다"}
+                      </Title>
+                      {nextMilestone && (
+                        <>
+                          <Space size="large">
+                            <Text style={{ color: "white", fontSize: 16 }}>
+                              <ClockCircleOutlined /> D-{nextMilestone.daysLeft}
+                            </Text>
+                            <Text style={{ color: "white", fontSize: 16 }}>
+                              진행률 {nextMilestone.progress}%
+                            </Text>
+                          </Space>
+                          <Progress
+                            percent={nextMilestone.progress}
+                            strokeColor="white"
+                            trailColor="rgba(255,255,255,0.3)"
+                            strokeWidth={8}
+                            showInfo={false}
+                          />
+                        </>
+                      )}
+                    </Space>
+                  </Col>
+                  {nextMilestone && (
+                    <Col>
+                      <Space direction="vertical" align="center">
+                        <Avatar size={64} src={nextMilestone.mentorAvatar} />
+                        <Text
+                          style={{
+                            color: "rgba(255,255,255,0.9)",
+                            fontSize: 12,
+                          }}
+                        >
+                          핵심 멘토
+                        </Text>
+                        <Text style={{ color: "white", fontWeight: 600 }}>
+                          {nextMilestone.mentorName}
+                        </Text>
+                      </Space>
+                    </Col>
+                  )}
+                </Row>
+                <Row gutter={16} style={{ marginTop: 20 }}>
+                  <Col span={12}>
+                    <Button
+                      size="large"
+                      block
+                      style={{
+                        background: "rgba(255,255,255,0.2)",
+                        border: "1px solid rgba(255,255,255,0.3)",
+                        color: "white",
+                      }}
+                    >
+                      진행 상황 업데이트
+                    </Button>
+                  </Col>
+                  <Col span={12}>
+                    <Button
+                      size="large"
+                      block
+                      style={{
+                        background: "rgba(255,255,255,0.2)",
+                        border: "1px solid rgba(255,255,255,0.3)",
+                        color: "white",
+                      }}
+                    >
+                      멘토와 대화하기
+                    </Button>
+                  </Col>
+                </Row>
+              </Card>
+
+              {/* Portfolio Summary */}
+              <Card
+                title={
+                  <Space>
+                    <DollarOutlined style={{ color: "var(--green)" }} />
+                    나의 포트폴리오
+                  </Space>
+                }
+                extra={<Button type="link">자세히 보기 →</Button>}
+                style={{ borderRadius: 12 }}
+              >
+                <Row gutter={16}>
+                  <Col span={8}>
                     <Statistic
-                      title={t("project.myProjects")}
-                      value={statistics.totalProjects}
-                      prefix={<ProjectOutlined />}
-                      valueStyle={{ color: "#1890ff" }}
+                      title="총 투자액"
+                      value={portfolio.totalInvested}
+                      prefix="$"
+                      suffix="USDC"
+                      valueStyle={{ color: "var(--text-primary)" }}
                     />
-                  </Card>
-                </Col>
-                <Col span={6}>
-                  <Card>
+                  </Col>
+                  <Col span={8}>
                     <Statistic
-                      title="받은 총 투자금"
-                      value={statistics.totalReceived}
-                      prefix="₩"
-                      precision={0}
-                      valueStyle={{ color: "#52c41a" }}
+                      title="현재 평가액"
+                      value={portfolio.currentValue}
+                      prefix="$"
+                      suffix="USDC"
+                      valueStyle={{ color: "var(--green)" }}
                     />
-                  </Card>
-                </Col>
-                <Col span={6}>
-                  <Card>
+                  </Col>
+                  <Col span={8}>
                     <Statistic
-                      title={t("investment.myInvestments")}
-                      value={statistics.totalInvestments}
-                      prefix="₩"
-                      precision={0}
-                      valueStyle={{ color: "#faad14" }}
-                    />
-                  </Card>
-                </Col>
-                <Col span={6}>
-                  <Card>
-                    <Statistic
-                      title="평균 진행률"
-                      value={statistics.avgProgress}
+                      title="수익률"
+                      value={portfolio.profitPercent}
+                      prefix="+"
                       suffix="%"
-                      precision={1}
-                      prefix={<TrophyOutlined />}
-                      valueStyle={{ color: "#722ed1" }}
+                      valueStyle={{ color: "var(--green)" }}
                     />
-                  </Card>
-                </Col>
-              </Row>
+                  </Col>
+                </Row>
+                <Divider />
+                <Space>
+                  <StarOutlined style={{ color: "var(--gold)" }} />
+                  <Text strong>보유 토큰:</Text>
+                  <Text style={{ color: "var(--blue)", fontWeight: 600 }}>
+                    {portfolio.blueprintTokens.toLocaleString()} BLUEPRINT
+                  </Text>
+                </Space>
+              </Card>
 
-              {/* 탭 컨텐츠 */}
-              <Card>
-                <Tabs
-                  activeKey={activeTab}
-                  onChange={setActiveTab}
-                  items={[
-                    {
-                      key: "projects",
-                      label: (
-                        <span>
-                          <ProjectOutlined />
-                          {t("project.myProjects")}
-                        </span>
-                      ),
-                      children: (
-                        <Table
-                          columns={projectColumns}
-                          dataSource={projectTableData}
-                          rowKey="id"
-                          pagination={false}
-                          locale={{
-                            emptyText: (
-                              <Empty
-                                description="아직 등록된 프로젝트가 없습니다"
-                                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                              >
-                                <Button
-                                  type="primary"
-                                  icon={<PlusOutlined />}
-                                  onClick={() => navigate("/create-project")}
-                                >
-                                  첫 프로젝트 만들기
-                                </Button>
-                              </Empty>
-                            ),
-                          }}
-                        />
-                      ),
-                    },
-                    {
-                      key: "investments",
-                      label: (
-                        <span>
-                          <DollarOutlined />
-                          {t("investment.myInvestments")}
-                        </span>
-                      ),
-                      children: (
-                        <Table
-                          columns={investmentColumns}
-                          dataSource={mockInvestments}
-                          rowKey="id"
-                          pagination={false}
-                          locale={{
-                            emptyText: (
-                              <Empty
-                                description="아직 투자한 프로젝트가 없습니다"
-                                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                              >
-                                <Button type="primary">
-                                  프로젝트 둘러보기
-                                </Button>
-                              </Empty>
-                            ),
-                          }}
-                        />
-                      ),
-                    },
-                    {
-                      key: "activity",
-                      label: (
-                        <span>
-                          <CalendarOutlined />
-                          최근 활동
-                        </span>
-                      ),
-                      children: (
-                        <List
-                          itemLayout="horizontal"
-                          dataSource={
-                            [
-                              {
-                                id: 1,
-                                type: "investment" as const,
-                                title: "새로운 투자를 받았습니다",
-                                description:
-                                  "김투자님이 카페 창업 프로젝트에 50,000원을 투자했습니다",
-                                time: "2시간 전",
-                              },
-                              {
-                                id: 2,
-                                type: "milestone" as const,
-                                title: "단계가 완료되었습니다",
-                                description:
-                                  "AI 개발자 프로젝트의 3단계가 완료되었습니다",
-                                time: "1일 전",
-                              },
-                              {
-                                id: 3,
-                                type: "project" as const,
-                                title: "새 프로젝트를 등록했습니다",
-                                description:
-                                  "카페 창업 프로젝트를 등록했습니다",
-                                time: "3일 전",
-                              },
-                            ] as ActivityRecord[]
-                          }
-                          renderItem={(item: ActivityRecord) => (
-                            <List.Item>
-                              <List.Item.Meta
-                                avatar={
-                                  <Avatar
-                                    icon={
-                                      item.type === "investment" ? (
-                                        <DollarOutlined />
-                                      ) : item.type === "milestone" ? (
-                                        <CalendarOutlined />
-                                      ) : (
-                                        <ProjectOutlined />
-                                      )
-                                    }
-                                  />
-                                }
-                                title={item.title}
-                                description={
-                                  <div>
-                                    <div>{item.description}</div>
-                                    <div className="text-sm text-gray-400 mt-1">
-                                      {item.time}
-                                    </div>
-                                  </div>
-                                }
-                              />
-                            </List.Item>
-                          )}
-                          locale={{
-                            emptyText: (
-                              <Empty
-                                description="최근 활동이 없습니다"
-                                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                              />
-                            ),
-                          }}
-                        />
-                      ),
-                    },
-                  ]}
+              {/* Activity Feed */}
+              <Card
+                title={
+                  <Space>
+                    <BellOutlined style={{ color: "var(--orange)" }} />
+                    나의 활동 피드
+                  </Space>
+                }
+                style={{ borderRadius: 12 }}
+              >
+                <List
+                  dataSource={mockActivityFeed}
+                  renderItem={(item) => (
+                    <List.Item style={{ border: "none", padding: "12px 0" }}>
+                      <List.Item.Meta
+                        avatar={
+                          item.avatar ? (
+                            <Avatar src={item.avatar} />
+                          ) : (
+                            <Avatar style={{ background: "var(--blue)" }}>
+                              <BellOutlined />
+                            </Avatar>
+                          )
+                        }
+                        title={
+                          <Text style={{ fontSize: 14, lineHeight: 1.4 }}>
+                            {item.title}
+                          </Text>
+                        }
+                        description={
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            {item.time}
+                          </Text>
+                        }
+                      />
+                    </List.Item>
+                  )}
                 />
               </Card>
-            </>
-          )}
-        </div>
+            </Space>
+          </Col>
+
+          {/* Right Column: Discover Opportunities */}
+          <Col xs={24} lg={10}>
+            <Space direction="vertical" size="large" style={{ width: "100%" }}>
+              {/* Featured Projects */}
+              <Card
+                title={
+                  <Space>
+                    <FireOutlined style={{ color: "var(--red)" }} />
+                    주목할 만한 프로젝트
+                  </Space>
+                }
+                extra={<Button type="link">더 보기 →</Button>}
+                style={{ borderRadius: 12 }}
+              >
+                <Space
+                  direction="vertical"
+                  size="middle"
+                  style={{ width: "100%" }}
+                >
+                  {mockFeaturedProjects.map((project) => (
+                    <Card
+                      key={project.id}
+                      size="small"
+                      style={{
+                        background: "var(--bg-secondary)",
+                        border: "1px solid var(--border-color)",
+                        borderRadius: 8,
+                        cursor: "pointer",
+                      }}
+                      bodyStyle={{ padding: 16 }}
+                      onClick={() => navigate(`/project/${project.id}`)}
+                    >
+                      <Row justify="space-between" align="middle">
+                        <Col flex="auto">
+                          <Space direction="vertical" size={4}>
+                            <Space>
+                              <Text strong>{project.title}</Text>
+                              <Tag
+                                color={project.badgeColor}
+                                style={{ fontSize: 10 }}
+                              >
+                                {project.badge}
+                              </Tag>
+                            </Space>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                              by {project.creator}
+                            </Text>
+                            <Space>
+                              <Text style={{ fontSize: 12 }}>
+                                @ ${project.currentPrice.toFixed(2)} USDC
+                              </Text>
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                TVL: $
+                                {(project.totalInvestment / 1000).toFixed(0)}K
+                              </Text>
+                            </Space>
+                          </Space>
+                        </Col>
+                        <Col>
+                          <RiseOutlined
+                            style={{ color: "var(--green)", fontSize: 16 }}
+                          />
+                        </Col>
+                      </Row>
+                    </Card>
+                  ))}
+                </Space>
+              </Card>
+
+              {/* AI Path Recommendation */}
+              <Card
+                title={
+                  <Space>
+                    <RocketOutlined style={{ color: "var(--purple)" }} />
+                    AI 추천 경로
+                  </Space>
+                }
+                style={{ borderRadius: 12 }}
+              >
+                <Space
+                  direction="vertical"
+                  size="middle"
+                  style={{ width: "100%" }}
+                >
+                  <Paragraph
+                    style={{ margin: 0, color: "var(--text-secondary)" }}
+                  >
+                    당신의 다음 목표는 무엇인가요?
+                  </Paragraph>
+                  <Search
+                    placeholder="목표를 입력하면 AI가 경로를 제안해드려요..."
+                    enterButton="추천받기"
+                    size="large"
+                    style={{ width: "100%" }}
+                  />
+                  <Space wrap>
+                    {popularGoalTemplates.map((template) => (
+                      <Button
+                        key={template.label}
+                        size="small"
+                        style={{
+                          borderRadius: 16,
+                          background: "var(--bg-tertiary)",
+                          border: "1px solid var(--border-color)",
+                        }}
+                      >
+                        {template.icon} {template.label}
+                      </Button>
+                    ))}
+                  </Space>
+                </Space>
+              </Card>
+
+              {/* Top Mentors */}
+              <Card
+                title={
+                  <Space>
+                    <TrophyOutlined style={{ color: "var(--gold)" }} />
+                    이주의 멘토
+                  </Space>
+                }
+                style={{ borderRadius: 12 }}
+              >
+                <Space
+                  direction="vertical"
+                  size="middle"
+                  style={{ width: "100%" }}
+                >
+                  {mockTopMentors.map((mentor) => (
+                    <Row key={mentor.id} align="middle" gutter={12}>
+                      <Col>
+                        <Avatar src={mentor.avatar} size={48} />
+                      </Col>
+                      <Col flex="auto">
+                        <Space direction="vertical" size={2}>
+                          <Text strong>{mentor.name}</Text>
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            {mentor.specialty}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: "var(--green)" }}>
+                            성공률 {mentor.successRate}% • {mentor.achievement}
+                          </Text>
+                        </Space>
+                      </Col>
+                      <Col>
+                        <Button size="small" type="primary" ghost>
+                          멘토링
+                        </Button>
+                      </Col>
+                    </Row>
+                  ))}
+                </Space>
+              </Card>
+            </Space>
+          </Col>
+        </Row>
       </Content>
     </Layout>
   );
 };
 
-export default NewDashboard;
+export default MissionControlDashboard;

@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { User, LoginRequest, RegisterRequest } from '../types';
-import { apiClient } from '../lib/api';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { apiClient } from "../lib/api";
+import type { User } from "../types";
 
 interface AuthState {
   user: User | null;
@@ -10,13 +10,11 @@ interface AuthState {
   error: string | null;
 
   // Actions
-  login: (credentials: LoginRequest) => Promise<void>;
-  register: (userData: RegisterRequest) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   handleGoogleCallback: (code: string) => Promise<void>;
-  logout: () => Promise<void>; // 비동기로 변경
+  logout: () => Promise<void>;
   getCurrentUser: () => Promise<void>;
-  refreshToken: () => Promise<boolean>; // 새로 추가
+  refreshToken: () => Promise<boolean>;
   clearError: () => void;
 
   // 세션 관리
@@ -35,88 +33,35 @@ export const useAuthStore = create<AuthState>()(
         isLoading: false,
         error: null,
 
-        login: async (credentials: LoginRequest) => {
-          set({ isLoading: true, error: null });
-
-          try {
-            const response = await apiClient.login(credentials);
-
-            if (response.success && response.data) {
-              set({
-                user: response.data.user,
-                isAuthenticated: true,
-                isLoading: false,
-                error: null,
-              });
-
-              // 로그인 성공 시 세션 체크 시작
-              get().startSessionCheck();
-            } else {
-              set({
-                error: response.error || 'Login failed',
-                isLoading: false,
-              });
-            }
-          } catch (error) {
-            set({
-              error: error instanceof Error ? error.message : 'Login failed',
-              isLoading: false,
-            });
-          }
-        },
-
-        register: async (userData: RegisterRequest) => {
-          set({ isLoading: true, error: null });
-
-          try {
-            const response = await apiClient.register(userData);
-
-            if (response.success && response.data) {
-              set({
-                user: response.data.user,
-                isAuthenticated: true,
-                isLoading: false,
-                error: null,
-              });
-
-              // 회원가입 성공 시 세션 체크 시작
-              get().startSessionCheck();
-            } else {
-              set({
-                error: response.error || 'Registration failed',
-                isLoading: false,
-              });
-            }
-          } catch (error) {
-            set({
-              error: error instanceof Error ? error.message : 'Registration failed',
-              isLoading: false,
-            });
-          }
-        },
-
         loginWithGoogle: async () => {
           set({ isLoading: true, error: null });
           try {
-            console.log('🔵 Google 로그인 시작...');
+            console.log("🔵 Google 로그인 시작...");
             const response = await apiClient.getGoogleAuthUrl();
-            console.log('📡 API 응답:', response);
+            console.log("📡 API 응답:", response);
             if (response.success && response.data) {
               // 같은 창에서 Google OAuth로 리다이렉트
-              console.log('🚀 Google OAuth로 리다이렉트:', response.data.auth_url);
+              console.log(
+                "🚀 Google OAuth로 리다이렉트:",
+                response.data.auth_url
+              );
               window.location.href = response.data.auth_url;
             } else {
-              console.error('❌ Google Auth URL 가져오기 실패:', response);
+              console.error("❌ Google Auth URL 가져오기 실패:", response);
               set({
                 isLoading: false,
-                error: response.message || response.error || 'Failed to get Google auth URL',
+                error:
+                  response.message ||
+                  response.error ||
+                  "Failed to get Google auth URL",
               });
             }
           } catch (error) {
-            console.error('❌ Google 로그인 에러:', error);
+            console.error("❌ Google 로그인 에러:", error);
             set({
               isLoading: false,
-              error: error instanceof Error ? error.message : 'Google login failed',
+              error:
+                error instanceof Error ? error.message : "Google login failed",
             });
           }
         },
@@ -126,25 +71,37 @@ export const useAuthStore = create<AuthState>()(
             const response = await apiClient.handleGoogleCallback(code);
             if (response.success && response.data) {
               // 부모 창에 성공 메시지 전송
-              window.opener?.postMessage({
-                type: 'GOOGLE_AUTH_SUCCESS',
-                user: response.data.user,
-                token: response.data.token,
-              }, window.location.origin);
+              window.opener?.postMessage(
+                {
+                  type: "GOOGLE_AUTH_SUCCESS",
+                  user: response.data.user,
+                  token: response.data.token,
+                },
+                window.location.origin
+              );
               window.close();
             } else {
               // 부모 창에 에러 메시지 전송
-              window.opener?.postMessage({
-                type: 'GOOGLE_AUTH_ERROR',
-                error: response.message || 'Google login failed',
-              }, window.location.origin);
+              window.opener?.postMessage(
+                {
+                  type: "GOOGLE_AUTH_ERROR",
+                  error: response.message || "Google login failed",
+                },
+                window.location.origin
+              );
               window.close();
             }
           } catch (error) {
-            window.opener?.postMessage({
-              type: 'GOOGLE_AUTH_ERROR',
-              error: error instanceof Error ? error.message : 'Google login failed',
-            }, window.location.origin);
+            window.opener?.postMessage(
+              {
+                type: "GOOGLE_AUTH_ERROR",
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : "Google login failed",
+              },
+              window.location.origin
+            );
             window.close();
           }
         },
@@ -152,18 +109,12 @@ export const useAuthStore = create<AuthState>()(
         // 개선된 로그아웃 🚪
         logout: async () => {
           try {
-            console.log('🚪 로그아웃 시작...');
+            console.log("🚪 로그아웃 시작...");
 
-            // 세션 체크 중단
+            // 세션 체크 중단 (가장 먼저)
             get().stopSessionCheck();
 
-            // 백엔드에 로그아웃 요청 (토큰이 있는 경우에만)
-            if (apiClient.getToken()) {
-              await apiClient.logout();
-              console.log('✅ 서버 로그아웃 완료');
-            }
-
-            // 상태 초기화
+            // 즉시 상태 초기화 (UI 반응성 향상)
             set({
               user: null,
               isAuthenticated: false,
@@ -171,19 +122,50 @@ export const useAuthStore = create<AuthState>()(
               error: null,
             });
 
-            console.log('✅ 로그아웃 완료');
+            // 백엔드에 로그아웃 요청 (토큰이 있는 경우에만)
+            if (apiClient.getToken()) {
+              try {
+                await apiClient.logout();
+                console.log("✅ 서버 로그아웃 완료");
+              } catch (error) {
+                console.warn("⚠️ 서버 로그아웃 실패 (무시):", error);
+              }
+            }
+
+            // 토큰 정리
+            apiClient.clearToken();
+
+            // persist 저장소 강제 동기화
+            localStorage.removeItem("auth-storage");
+
+            console.log("✅ 로그아웃 완료");
+
+            // 홈페이지로 리다이렉트 (지연 없이)
+            if (typeof window !== "undefined") {
+              window.location.href = "/";
+            }
           } catch (error) {
-            console.error('❌ 로그아웃 실패:', error);
+            console.error("❌ 로그아웃 실패:", error);
 
             // 서버 오류가 있어도 클라이언트에서는 로그아웃 처리
             apiClient.clearToken();
             get().stopSessionCheck();
+
+            // 상태 강제 초기화
             set({
               user: null,
               isAuthenticated: false,
               isLoading: false,
               error: null,
             });
+
+            // persist 저장소 정리
+            localStorage.removeItem("auth-storage");
+
+            // 에러가 있어도 홈페이지로 리다이렉트
+            if (typeof window !== "undefined") {
+              window.location.href = "/";
+            }
           }
         },
 
@@ -191,19 +173,19 @@ export const useAuthStore = create<AuthState>()(
           // 토큰이 있으면 인증 시도 (Google OAuth 플로우 지원)
           const hasToken = apiClient.getToken();
           if (!get().isAuthenticated && !hasToken) {
-            console.log('🚫 토큰이 없어서 getCurrentUser 건너뜀');
+            console.log("🚫 토큰이 없어서 getCurrentUser 건너뜀");
             return;
           }
 
           set({ isLoading: true });
 
           try {
-            console.log('📡 /api/v1/me 호출 중...');
+            console.log("📡 /api/v1/me 호출 중...");
             const response = await apiClient.getCurrentUser();
-            console.log('📡 /api/v1/me 응답:', response);
+            console.log("📡 /api/v1/me 응답:", response);
 
             if (response.success && response.data) {
-              console.log('✅ 사용자 정보 로드 성공:', response.data);
+              console.log("✅ 사용자 정보 로드 성공:", response.data);
               set({
                 user: response.data,
                 isAuthenticated: true, // ← 중요: 인증 상태 true로 설정
@@ -214,12 +196,12 @@ export const useAuthStore = create<AuthState>()(
               // getCurrentUser 성공 시 세션 체크 시작
               get().startSessionCheck();
             } else {
-              console.error('❌ 사용자 정보 로드 실패:', response);
+              console.error("❌ 사용자 정보 로드 실패:", response);
               // 토큰이 만료되었거나 유효하지 않음
               get().logout();
             }
           } catch (error) {
-            console.error('❌ getCurrentUser 에러:', error);
+            console.error("❌ getCurrentUser 에러:", error);
             get().logout();
           }
         },
@@ -227,12 +209,12 @@ export const useAuthStore = create<AuthState>()(
         // 토큰 갱신 🔄
         refreshToken: async () => {
           try {
-            console.log('🔄 토큰 갱신 시도...');
+            console.log("🔄 토큰 갱신 시도...");
 
             const response = await apiClient.refreshToken();
 
             if (response.success && response.data) {
-              console.log('✅ 토큰 갱신 성공');
+              console.log("✅ 토큰 갱신 성공");
               set({
                 user: response.data.user,
                 isAuthenticated: true,
@@ -240,12 +222,12 @@ export const useAuthStore = create<AuthState>()(
               });
               return true;
             } else {
-              console.log('❌ 토큰 갱신 실패');
+              console.log("❌ 토큰 갱신 실패");
               get().logout(); // 갱신 실패 시 자동 로그아웃
               return false;
             }
           } catch (error) {
-            console.error('❌ 토큰 갱신 오류:', error);
+            console.error("❌ 토큰 갱신 오류:", error);
             get().logout(); // 오류 시 자동 로그아웃
             return false;
           }
@@ -262,44 +244,45 @@ export const useAuthStore = create<AuthState>()(
           sessionCheckInterval = setInterval(async () => {
             const { isAuthenticated } = get();
             if (isAuthenticated) {
-              console.log('⏰ 토큰 상태 확인 중...');
+              console.log("⏰ 토큰 상태 확인 중...");
 
               try {
                 // 토큰 만료 상태 확인
                 const expiryResponse = await apiClient.checkTokenExpiry();
 
                 if (expiryResponse.success && expiryResponse.data) {
-                  const { should_refresh, remaining_minutes, is_expired } = expiryResponse.data;
+                  const { should_refresh, remaining_minutes, is_expired } =
+                    expiryResponse.data;
 
                   console.log(`⏰ 토큰 상태: ${remaining_minutes}분 남음`);
 
                   if (is_expired) {
-                    console.log('❌ 토큰 만료 - 자동 로그아웃');
+                    console.log("❌ 토큰 만료 - 자동 로그아웃");
                     get().logout();
                   } else if (should_refresh) {
-                    console.log('🔄 토큰 자동 갱신 시작...');
+                    console.log("🔄 토큰 자동 갱신 시작...");
                     const refreshSuccess = await get().refreshToken();
 
                     if (refreshSuccess) {
-                      console.log('✅ 토큰 자동 갱신 성공');
+                      console.log("✅ 토큰 자동 갱신 성공");
                     } else {
-                      console.log('❌ 토큰 자동 갱신 실패 - 로그아웃');
+                      console.log("❌ 토큰 자동 갱신 실패 - 로그아웃");
                     }
                   } else {
-                    console.log('✅ 토큰 상태 양호');
+                    console.log("✅ 토큰 상태 양호");
                   }
                 } else {
-                  console.log('❌ 토큰 상태 확인 실패');
+                  console.log("❌ 토큰 상태 확인 실패");
                   get().logout();
                 }
               } catch {
-                console.log('❌ 세션 체크 오류 - 자동 로그아웃');
+                console.log("❌ 세션 체크 오류 - 자동 로그아웃");
                 get().logout();
               }
             }
           }, 2 * 60 * 1000); // 2분
 
-          console.log('⏰ 세션 체크 시작 (2분 간격, 자동 토큰 갱신 포함)');
+          console.log("⏰ 세션 체크 시작 (2분 간격, 자동 토큰 갱신 포함)");
         },
 
         // 세션 체크 중단 ⏹️
@@ -307,7 +290,7 @@ export const useAuthStore = create<AuthState>()(
           if (sessionCheckInterval) {
             clearInterval(sessionCheckInterval);
             sessionCheckInterval = null;
-            console.log('⏹️ 세션 체크 중단');
+            console.log("⏹️ 세션 체크 중단");
           }
         },
 
@@ -315,7 +298,7 @@ export const useAuthStore = create<AuthState>()(
       };
     },
     {
-      name: 'auth-storage',
+      name: "auth-storage",
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,

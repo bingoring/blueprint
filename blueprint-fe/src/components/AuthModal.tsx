@@ -1,6 +1,17 @@
+import { CopyOutlined, GoogleOutlined } from "@ant-design/icons";
+import {
+  Button,
+  Divider,
+  Input,
+  Typography,
+  message,
+  notification,
+} from "antd";
 import { useState } from "react";
+import { apiClient } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
-import type { LoginRequest, RegisterRequest } from "../types";
+
+const { Title, Text } = Typography;
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -8,59 +19,106 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const [isLogin, setIsLogin] = useState(true);
-  const { login, register, loginWithGoogle, isLoading, error, clearError } =
-    useAuthStore();
+  const [step, setStep] = useState<"email" | "verify">("email");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { loginWithGoogle } = useAuthStore();
 
-  const [formData, setFormData] = useState({
-    email: "",
-    username: "",
-    password: "",
-  });
+  const handleEmailSubmit = async () => {
+    if (!email) {
+      message.error("이메일을 입력해주세요");
+      return;
+    }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    clearError();
-
+    setIsLoading(true);
     try {
-      if (isLogin) {
-        const credentials: LoginRequest = {
-          email: formData.email,
-          password: formData.password,
-        };
-        await login(credentials);
-      } else {
-        const userData: RegisterRequest = {
-          email: formData.email,
-          username: formData.username,
-          password: formData.password,
-        };
-        await register(userData);
-      }
+      const response = await apiClient.createMagicLink({ email });
 
-      // 성공시 모달 닫기
-      onClose();
-    } catch {
-      // 에러는 스토어에서 처리됨
+      if (response.success && response.data) {
+        setVerificationCode(response.data.code); // 개발/테스트용
+        setStep("verify");
+
+        notification.success({
+          message: "인증 코드 발송 완료",
+          description:
+            "이메일로 인증 코드가 발송되었습니다. 받은 편지함을 확인해주세요.",
+          placement: "topRight",
+          duration: 4,
+        });
+      }
+    } catch (error) {
+      console.error("Magic link creation failed:", error);
+      notification.error({
+        message: "인증 코드 발송 실패",
+        description: "이메일 발송 중 오류가 발생했습니다. 다시 시도해주세요.",
+        placement: "topRight",
+        duration: 4,
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const handleCodeSubmit = async () => {
+    if (!code) {
+      message.error("인증 코드를 입력해주세요");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await apiClient.verifyMagicLink({ code });
+
+      if (response.success && response.data) {
+        notification.success({
+          message: "인증 완료",
+          description: "성공적으로 로그인되었습니다. 계정 설정을 완료해주세요.",
+          placement: "topRight",
+          duration: 3,
+        });
+
+        // 토큰 설정 및 사용자 정보 업데이트
+        apiClient.setToken(response.data.token);
+
+        onClose();
+
+        // 계정 설정 페이지로 이동
+        window.location.href = "/settings";
+      }
+    } catch (error) {
+      console.error("Magic link verification failed:", error);
+      notification.error({
+        message: "인증 실패",
+        description: "인증 코드가 올바르지 않거나 만료되었습니다.",
+        placement: "topRight",
+        duration: 4,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleGoogleLogin = async () => {
-    await loginWithGoogle();
-    // Google 로그인은 리다이렉트되므로 모달을 닫지 않음
+  const copyCode = () => {
+    navigator.clipboard.writeText(verificationCode);
+    message.success("인증 코드가 복사되었습니다");
+  };
+
+  const resetFlow = () => {
+    setStep("email");
+    setEmail("");
+    setCode("");
+    setVerificationCode("");
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      onClick={onClose}
+    >
       <div
         className="rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto"
         style={{
@@ -68,285 +126,207 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           border: "1px solid var(--border-color)",
           boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
           {/* 헤더 */}
           <div className="flex justify-between items-center mb-6">
-            <h3
-              className="text-xl font-bold"
-              style={{ color: "var(--text-primary)" }}
+            <Title
+              level={3}
+              style={{ margin: 0, color: "var(--text-primary)" }}
             >
-              {isLogin ? "로그인" : "회원가입"}
-            </h3>
+              {step === "email" ? "Blueprint에 로그인" : "Check your email"}
+            </Title>
             <button
               onClick={onClose}
               className="text-xl transition-colors"
-              style={{
-                color: "var(--text-secondary)",
-              }}
-              onMouseEnter={(e) =>
-                ((e.target as HTMLElement).style.color = "var(--text-primary)")
-              }
-              onMouseLeave={(e) =>
-                ((e.target as HTMLElement).style.color =
-                  "var(--text-secondary)")
-              }
+              style={{ color: "var(--text-secondary)" }}
             >
               ✕
             </button>
           </div>
 
-          {/* 탭 전환 */}
-          <div
-            className="flex mb-6 rounded-lg p-1"
-            style={{ backgroundColor: "var(--bg-tertiary)" }}
-          >
-            <button
-              onClick={() => {
-                setIsLogin(true);
-                clearError();
-              }}
-              className="flex-1 py-2 px-4 text-sm font-medium rounded-md transition-all"
-              style={{
-                backgroundColor: isLogin
-                  ? "var(--bg-secondary)"
-                  : "transparent",
-                color: isLogin ? "var(--blue)" : "var(--text-secondary)",
-                boxShadow: isLogin ? "0 1px 3px rgba(0, 0, 0, 0.1)" : "none",
-              }}
-            >
-              로그인
-            </button>
-            <button
-              onClick={() => {
-                setIsLogin(false);
-                clearError();
-              }}
-              className="flex-1 py-2 px-4 text-sm font-medium rounded-md transition-all"
-              style={{
-                backgroundColor: !isLogin
-                  ? "var(--bg-secondary)"
-                  : "transparent",
-                color: !isLogin ? "var(--blue)" : "var(--text-secondary)",
-                boxShadow: !isLogin ? "0 1px 3px rgba(0, 0, 0, 0.1)" : "none",
-              }}
-            >
-              회원가입
-            </button>
-          </div>
-
-          {/* 폼 */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium mb-1"
-                style={{ color: "var(--text-primary)" }}
-              >
-                이메일
-              </label>
-              <input
-                type="email"
-                name="email"
-                id="email"
-                required
-                value={formData.email}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 rounded-md focus:outline-none focus:ring-2 transition-all"
-                style={{
-                  backgroundColor: "var(--bg-tertiary)",
-                  border: "1px solid var(--border-color)",
-                  color: "var(--text-primary)",
-                }}
-                placeholder="your@email.com"
-                onFocus={(e) =>
-                  ((e.target as HTMLElement).style.boxShadow =
-                    "0 0 0 2px rgba(24, 144, 255, 0.2)")
-                }
-                onBlur={(e) =>
-                  ((e.target as HTMLElement).style.boxShadow = "none")
-                }
-              />
-            </div>
-
-            {!isLogin && (
-              <div>
-                <label
-                  htmlFor="username"
-                  className="block text-sm font-medium mb-1"
-                  style={{ color: "var(--text-primary)" }}
+          {step === "email" ? (
+            // 이메일 입력 단계
+            <div className="space-y-4">
+              <div className="text-center mb-6">
+                <div
+                  className="mb-4"
+                  style={{ fontSize: 48, color: "var(--blue)" }}
                 >
-                  사용자명
-                </label>
-                <input
-                  type="text"
-                  name="username"
-                  id="username"
-                  required
-                  value={formData.username}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 rounded-md focus:outline-none focus:ring-2 transition-all"
+                  📧
+                </div>
+                <Text style={{ color: "var(--text-secondary)" }}>
+                  이메일 주소를 입력하면 로그인 링크를 보내드립니다
+                </Text>
+              </div>
+
+              <div>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  size="large"
                   style={{
                     backgroundColor: "var(--bg-tertiary)",
                     border: "1px solid var(--border-color)",
                     color: "var(--text-primary)",
                   }}
-                  placeholder="사용자명"
-                  onFocus={(e) =>
-                    ((e.target as HTMLElement).style.boxShadow =
-                      "0 0 0 2px rgba(24, 144, 255, 0.2)")
-                  }
-                  onBlur={(e) =>
-                    ((e.target as HTMLElement).style.boxShadow = "none")
-                  }
+                  onPressEnter={handleEmailSubmit}
                 />
               </div>
-            )}
 
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium mb-1"
-                style={{ color: "var(--text-primary)" }}
-              >
-                비밀번호
-              </label>
-              <input
-                type="password"
-                name="password"
-                id="password"
-                required
-                value={formData.password}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 rounded-md focus:outline-none focus:ring-2 transition-all"
+              <Button
+                type="primary"
+                size="large"
+                loading={isLoading}
+                onClick={handleEmailSubmit}
+                className="w-full btn-primary"
                 style={{
-                  backgroundColor: "var(--bg-tertiary)",
-                  border: "1px solid var(--border-color)",
-                  color: "var(--text-primary)",
+                  height: "48px",
+                  fontSize: "16px",
+                  fontWeight: "500",
                 }}
-                placeholder="비밀번호"
-                onFocus={(e) =>
-                  ((e.target as HTMLElement).style.boxShadow =
-                    "0 0 0 2px rgba(24, 144, 255, 0.2)")
-                }
-                onBlur={(e) =>
-                  ((e.target as HTMLElement).style.boxShadow = "none")
-                }
-              />
+              >
+                {isLoading ? "발송 중..." : "로그인 링크 보내기"}
+              </Button>
+
+              <Divider style={{ color: "var(--text-secondary)" }}>또는</Divider>
+
+              <Button
+                size="large"
+                onClick={loginWithGoogle}
+                className="w-full"
+                style={{
+                  height: "48px",
+                  fontSize: "16px",
+                  fontWeight: "500",
+                  backgroundColor: "#1f2937",
+                  color: "white",
+                  border: "1px solid #374151",
+                  transition: "all 0.2s ease-in-out",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#1f2937";
+                  e.currentTarget.style.color = "#3b82f6";
+                  e.currentTarget.style.borderColor = "#3b82f6";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#1f2937";
+                  e.currentTarget.style.color = "white";
+                  e.currentTarget.style.borderColor = "#374151";
+                }}
+              >
+                <GoogleOutlined style={{ marginRight: 8 }} />
+                Google로 계속하기
+              </Button>
             </div>
-
-            {error && (
-              <div
-                className="px-3 py-2 rounded-md text-sm"
-                style={{
-                  backgroundColor: "rgba(255, 77, 109, 0.1)",
-                  border: "1px solid rgba(255, 77, 109, 0.3)",
-                  color: "var(--red)",
-                }}
-              >
-                {error}
+          ) : (
+            // 인증 코드 확인 단계
+            <div className="space-y-4">
+              <div className="text-center mb-6">
+                <div
+                  className="mb-4"
+                  style={{ fontSize: 48, color: "var(--blue)" }}
+                >
+                  📬
+                </div>
+                <Text style={{ color: "var(--text-primary)", fontSize: 16 }}>
+                  로그인 링크를 다음 주소로 보냈습니다:
+                </Text>
+                <div
+                  style={{
+                    color: "var(--blue)",
+                    fontSize: 16,
+                    fontWeight: 600,
+                    marginTop: 8,
+                  }}
+                >
+                  {email}
+                </div>
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full font-medium py-2 px-4 rounded-md transition duration-200"
-              style={{
-                background: isLoading
-                  ? "linear-gradient(to right, rgba(24, 144, 255, 0.5), rgba(147, 51, 234, 0.5))"
-                  : "linear-gradient(to right, var(--blue), #9333ea)",
-                color: "white",
-                opacity: isLoading ? 0.7 : 1,
-                cursor: isLoading ? "not-allowed" : "pointer",
-              }}
-              onMouseEnter={(e) => {
-                if (!isLoading) {
-                  (e.target as HTMLElement).style.transform =
-                    "translateY(-1px)";
-                  (e.target as HTMLElement).style.boxShadow =
-                    "0 4px 12px rgba(24, 144, 255, 0.3)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                (e.target as HTMLElement).style.transform = "translateY(0)";
-                (e.target as HTMLElement).style.boxShadow = "none";
-              }}
-            >
-              {isLoading ? "처리중..." : isLogin ? "로그인" : "회원가입"}
-            </button>
-          </form>
+              {/* 개발/테스트용 코드 표시 */}
+              {verificationCode && (
+                <div
+                  className="text-center p-4 rounded-lg"
+                  style={{ backgroundColor: "var(--bg-tertiary)" }}
+                >
+                  <Text
+                    style={{ color: "var(--text-secondary)", fontSize: 14 }}
+                  >
+                    개발용 인증 코드:
+                  </Text>
+                  <div
+                    className="text-center cursor-pointer mt-2"
+                    onClick={copyCode}
+                    style={{
+                      fontSize: 24,
+                      fontWeight: "bold",
+                      color: "var(--text-primary)",
+                      padding: "8px",
+                      borderRadius: "8px",
+                      backgroundColor: "var(--bg-secondary)",
+                      border: "2px dashed var(--border-color)",
+                    }}
+                  >
+                    {verificationCode}
+                    <CopyOutlined style={{ marginLeft: 8, fontSize: 16 }} />
+                  </div>
+                </div>
+              )}
 
-          {/* 구분선 */}
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <div
-                className="w-full border-t"
-                style={{ borderColor: "var(--border-color)" }}
-              />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span
-                className="px-2"
+              <div>
+                <Text style={{ color: "var(--text-primary)", fontSize: 14 }}>
+                  보안 코드 입력:
+                </Text>
+                <Input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="123456"
+                  size="large"
+                  maxLength={6}
+                  style={{
+                    backgroundColor: "var(--bg-tertiary)",
+                    border: "1px solid var(--border-color)",
+                    color: "var(--text-primary)",
+                    fontSize: 18,
+                    textAlign: "center",
+                    letterSpacing: "4px",
+                    marginTop: 8,
+                  }}
+                  onPressEnter={handleCodeSubmit}
+                />
+              </div>
+
+              <Button
+                type="primary"
+                size="large"
+                loading={isLoading}
+                onClick={handleCodeSubmit}
+                className="w-full btn-primary"
                 style={{
-                  backgroundColor: "var(--bg-secondary)",
-                  color: "var(--text-secondary)",
+                  height: "48px",
+                  fontSize: "16px",
+                  fontWeight: "500",
                 }}
               >
-                또는
-              </span>
-            </div>
-          </div>
+                {isLoading ? "인증 중..." : "인증하고 로그인"}
+              </Button>
 
-          {/* Google 로그인 버튼 */}
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={isLoading}
-            className="w-full flex justify-center items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 transition duration-200"
-            style={{
-              backgroundColor: "var(--bg-tertiary)",
-              border: "1px solid var(--border-color)",
-              color: "var(--text-primary)",
-              opacity: isLoading ? 0.5 : 1,
-              cursor: isLoading ? "not-allowed" : "pointer",
-            }}
-            onMouseEnter={(e) => {
-              if (!isLoading) {
-                (e.target as HTMLElement).style.backgroundColor =
-                  "var(--bg-primary)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              (e.target as HTMLElement).style.backgroundColor =
-                "var(--bg-tertiary)";
-            }}
-            onFocus={(e) =>
-              ((e.target as HTMLElement).style.boxShadow =
-                "0 0 0 2px rgba(24, 144, 255, 0.2)")
-            }
-            onBlur={(e) => ((e.target as HTMLElement).style.boxShadow = "none")}
-          >
-            <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              />
-            </svg>
-            Google로 {isLogin ? "로그인" : "회원가입"}
-          </button>
+              <div className="text-center">
+                <Button
+                  type="link"
+                  onClick={resetFlow}
+                  className="btn-ghost"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  다른 이메일로 시도하기
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

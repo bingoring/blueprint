@@ -8,6 +8,87 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+
+  // 프로필 관련 필드
+  displayName?: string; // 표시 이름
+  bio?: string; // 자기소개
+  avatar?: string; // 프로필 이미지 URL
+
+  // 평판 관련 필드
+  projectSuccessRate?: number; // 프로젝트 성공률 (%)
+  mentoringSuccessRate?: number; // 멘토링 성공률 (%)
+  totalInvestment?: number; // 총 투자액 (USDC cents)
+  sbtCount?: number; // 획득한 SBT 개수
+
+  // 설정 관련 필드
+  emailNotifications?: boolean; // 이메일 알림 수신 여부
+  pushNotifications?: boolean; // 푸시 알림 수신 여부
+  marketingNotifications?: boolean; // 마케팅 알림 수신 여부
+  profilePublic?: boolean; // 프로필 공개 여부
+  investmentPublic?: boolean; // 투자 내역 공개 여부
+}
+
+// 계정 설정: 프로필
+export interface UserProfileSettings {
+  id?: number;
+  user_id?: number;
+  display_name?: string;
+  avatar?: string;
+  bio?: string;
+  email_notifications?: boolean;
+  push_notifications?: boolean;
+  marketing_notifications?: boolean;
+  profile_public?: boolean;
+  investment_public?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// 프로필 업데이트 요청
+export interface UpdateProfileRequest {
+  display_name?: string;
+  avatar?: string;
+  bio?: string;
+}
+
+// 신원 증명 상태
+export type VerificationStatus =
+  | "unverified"
+  | "pending"
+  | "approved"
+  | "rejected";
+
+export interface UserVerificationStatus {
+  id?: number;
+  user_id?: number;
+  // Level 1
+  email_verified?: boolean;
+  email_verified_at?: string | null;
+  phone_verified?: boolean;
+  phone_verified_at?: string | null;
+  // Level 2
+  linkedin_connected?: boolean;
+  github_connected?: boolean;
+  twitter_connected?: boolean;
+  work_email_verified?: boolean;
+  work_email_company?: string;
+  work_email_verified_at?: string | null;
+  // Level 3
+  professional_status?: VerificationStatus;
+  professional_title?: string;
+  professional_doc_path?: string;
+  professional_verified_at?: string | null;
+  education_status?: VerificationStatus;
+  education_degree?: string;
+  education_doc_path?: string;
+  education_verified_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SettingsAggregateResponse {
+  profile: UserProfileSettings | null;
+  verification: UserVerificationStatus | null;
 }
 
 // 목표 관련 타입
@@ -305,17 +386,6 @@ export interface PaginatedResponse<T> {
 }
 
 // 인증 관련 타입들
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  email: string;
-  username: string;
-  password: string;
-}
-
 export interface AuthResponse {
   token: string;
   user: User;
@@ -348,6 +418,77 @@ export interface TokenExpiryResponse {
   is_expired: boolean;
   should_refresh: boolean;
   checked_at: string;
+}
+
+// 프로필 관련 타입들
+export interface ProfileStats {
+  projectSuccessRate: number; // 프로젝트 성공률
+  mentoringSuccessRate: number; // 멘토링 성공률
+  totalInvestment: number; // 총 투자액 (USDC cents)
+  sbtCount: number; // SBT 개수
+}
+
+export interface CurrentProject {
+  id: number;
+  title: string;
+  progress: number;
+  category: string;
+  status: string;
+}
+
+export interface FeaturedProject {
+  id: number;
+  title: string;
+  description: string;
+  status: string;
+  investment: number; // 받은 투자액
+  successRate: number; // 성공률
+}
+
+export interface RecentActivity {
+  id: number;
+  type: string; // investment, milestone, project 등
+  description: string; // 활동 설명
+  timestamp: string; // "2시간 전" 형태
+}
+
+export interface ProfileResponse {
+  username: string;
+  displayName: string;
+  bio: string;
+  avatar: string;
+  joinedDate: string;
+  stats: ProfileStats;
+  currentProjects: CurrentProject[];
+  featuredProjects: FeaturedProject[];
+  recentActivities: RecentActivity[];
+}
+
+export interface ActivityLogParams {
+  limit?: number;
+  offset?: number;
+  types?: string[];
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface ActivityLogResponse {
+  activities: RecentActivity[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    pages: number;
+  };
+}
+
+export interface ActivitySummaryResponse {
+  activity_counts: Array<{
+    activity_type: string;
+    count: number;
+  }>;
+  recent_activities: RecentActivity[];
+  summary_period: string;
 }
 
 // 차트 및 통계 타입

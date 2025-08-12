@@ -1,12 +1,14 @@
 import type {
   AIMilestoneResponse,
   AIUsageInfo,
+  ActivityLogParams,
+  ActivityLogResponse,
+  ActivitySummaryResponse,
   ApiResponse,
   AuthResponse,
   CreateOrderRequest,
   CreateProjectWithMilestonesRequest,
   Expert,
-  LoginRequest,
   LogoutResponse,
   MarketStatusResponse,
   MentoringSession,
@@ -18,16 +20,20 @@ import type {
   Path,
   PathPrediction,
   Position,
+  ProfileResponse,
   Project,
   ProjectCategoryOption,
   ProjectStatus,
   ProjectStatusOption,
   RefreshTokenResponse,
-  RegisterRequest,
+  SettingsAggregateResponse,
   TokenExpiryResponse,
   Trade,
+  UpdateProfileRequest,
   UpdateProjectRequest,
   User,
+  UserProfileSettings,
+  UserVerificationStatus,
   UserWallet,
 } from "../types";
 
@@ -35,7 +41,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
 class ApiClient {
   private baseURL: string;
-  private token: string | null = null;
+  private token: string | null;
+  private isRedirecting = false; // 중복 리다이렉트 방지 플래그
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
@@ -60,6 +67,30 @@ class ApiClient {
     try {
       const response = await fetch(url, config);
       const data = await response.json();
+
+      // 401 Unauthorized 에러 시 자동 로그아웃 처리
+      if (response.status === 401) {
+        // 이미 리다이렉트 중이면 중복 처리 방지
+        if (this.isRedirecting) {
+          throw new Error("세션이 만료되었습니다. 다시 로그인해주세요.");
+        }
+
+        this.isRedirecting = true;
+        console.log("🔒 401 인증 오류 - 자동 로그아웃 처리");
+        this.clearToken();
+
+        // localStorage와 현재 페이지를 정리하고 홈으로 리다이렉트
+        localStorage.removeItem("auth-storage"); // zustand persist 스토리지도 정리
+
+        // 약간의 지연 후 리다이렉트하여 상태 업데이트 시간 확보
+        setTimeout(() => {
+          if (typeof window !== "undefined") {
+            window.location.href = "/";
+          }
+        }, 100);
+
+        throw new Error("세션이 만료되었습니다. 다시 로그인해주세요.");
+      }
 
       if (!response.ok) {
         throw new Error(data.error || "API request failed");
@@ -87,36 +118,117 @@ class ApiClient {
   }
 
   // 인증 관련 API
-  async login(credentials: LoginRequest): Promise<ApiResponse<AuthResponse>> {
-    const response = await this.request<AuthResponse>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify(credentials),
-    });
-
-    if (response.success && response.data?.token) {
-      this.setToken(response.data.token);
-    }
-
-    return response;
-  }
-
-  async register(
-    userData: RegisterRequest
-  ): Promise<ApiResponse<AuthResponse>> {
-    const response = await this.request<AuthResponse>("/auth/register", {
-      method: "POST",
-      body: JSON.stringify(userData),
-    });
-
-    if (response.success && response.data?.token) {
-      this.setToken(response.data.token);
-    }
-
-    return response;
-  }
-
   async getCurrentUser(): Promise<ApiResponse<User>> {
-    return this.request<User>("/me");
+    return this.request<User>("/users/me");
+  }
+
+  // ===== Account Settings & Verification =====
+  async getMySettings(): Promise<ApiResponse<SettingsAggregateResponse>> {
+    return this.request<SettingsAggregateResponse>("/users/me/settings");
+  }
+
+  // 프로필 업데이트
+  async updateMyProfile(
+    data: UpdateProfileRequest
+  ): Promise<ApiResponse<User>> {
+    return this.request("/users/me/profile", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // 매직링크 생성
+  async createMagicLink(data: {
+    email: string;
+  }): Promise<
+    ApiResponse<{ code: string; expires_in: number; message: string }>
+  > {
+    return this.request("/auth/magic-link", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // 매직링크 인증
+  async verifyMagicLink(data: {
+    code: string;
+  }): Promise<ApiResponse<{ token: string; user: User }>> {
+    return this.request("/auth/verify-magic-link", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePreferences(
+    data: Partial<UserProfileSettings>
+  ): Promise<ApiResponse<UserProfileSettings>> {
+    return this.request<UserProfileSettings>("/users/me/preferences", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async requestVerifyEmail(): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>("/users/me/verify/email", {
+      method: "POST",
+    });
+  }
+
+  async requestVerifyPhone(): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>("/users/me/verify/phone", {
+      method: "POST",
+    });
+  }
+
+  // LinkedIn OAuth 연결 시작 (새로운 방식)
+  async connectLinkedIn(): Promise<ApiResponse<{ auth_url: string }>> {
+    return this.request<{ auth_url: string }>("/auth/linkedin/connect", {
+      method: "GET",
+    });
+  }
+
+  // 지원되는 OAuth 제공업체 목록 조회
+  async getSupportedProviders(): Promise<
+    ApiResponse<{ providers: string[]; count: number }>
+  > {
+    return this.request<{ providers: string[]; count: number }>(
+      "/auth/providers",
+      {
+        method: "GET",
+      }
+    );
+  }
+
+  // 소셜 미디어 연결 (기존 방식 - 토큰 직접 전송)
+  async connectProvider(
+    provider: string,
+    data: { access_token: string; profile_id?: string }
+  ): Promise<ApiResponse<{ success: boolean; message: string }>> {
+    return this.request(`/users/me/connect/${provider}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async verifyWorkEmail(
+    company: string
+  ): Promise<ApiResponse<UserVerificationStatus>> {
+    return this.request<UserVerificationStatus>("/users/me/verify/work-email", {
+      method: "POST",
+      body: JSON.stringify({ company }),
+    });
+  }
+
+  async submitProfessionalDoc(): Promise<ApiResponse<{ status: string }>> {
+    return this.request<{ status: string }>("/users/me/verify/professional", {
+      method: "POST",
+    });
+  }
+
+  async submitEducationDoc(): Promise<ApiResponse<{ status: string }>> {
+    return this.request<{ status: string }>("/users/me/verify/education", {
+      method: "POST",
+    });
   }
 
   // Project 관리 API (마일스톤 포함)
@@ -232,7 +344,7 @@ class ApiClient {
 
   // 토큰 제거 메서드
   clearToken(): void {
-    localStorage.removeItem("auth_token");
+    localStorage.removeItem("authToken");
     this.token = null;
   }
 
@@ -341,11 +453,49 @@ class ApiClient {
     return response.json();
   }
 
-  // ⏰ 토큰 만료 확인
+  // ✅ 토큰 만료 확인
   async checkTokenExpiry(): Promise<ApiResponse<TokenExpiryResponse>> {
     return this.request("/auth/token-expiry") as Promise<
       ApiResponse<TokenExpiryResponse>
     >;
+  }
+
+  // ================================
+  // 프로필 관련 API
+  // ================================
+
+  // 사용자 프로필 조회 (목데이터와 동일한 구조)
+  async getUserProfile(
+    username: string
+  ): Promise<ApiResponse<ProfileResponse>> {
+    return this.request(`/users/${username}/profile`);
+  }
+
+  // 사용자 활동 로그 조회
+  async getUserActivities(
+    params?: ActivityLogParams
+  ): Promise<ApiResponse<ActivityLogResponse>> {
+    const queryParams = new URLSearchParams();
+
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.offset) queryParams.append("offset", params.offset.toString());
+    if (params?.types) {
+      params.types.forEach((type) => queryParams.append("types", type));
+    }
+    if (params?.start_date) queryParams.append("start_date", params.start_date);
+    if (params?.end_date) queryParams.append("end_date", params.end_date);
+
+    const query = queryParams.toString();
+    const endpoint = query
+      ? `/users/me/activities?${query}`
+      : "/users/me/activities";
+
+    return this.request(endpoint);
+  }
+
+  // 활동 요약 조회 (대시보드용)
+  async getActivitySummary(): Promise<ApiResponse<ActivitySummaryResponse>> {
+    return this.request("/users/me/activities/summary");
   }
 
   // ================================

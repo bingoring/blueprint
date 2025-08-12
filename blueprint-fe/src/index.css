@@ -2,6 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 개선된 버튼 스타일 */
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 text-white font-medium px-4 py-2 rounded-lg
+           transition-all duration-200 ease-in-out
+           hover:bg-blue-700 hover:shadow-md
+           active:bg-blue-800 active:scale-[0.98]
+           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+           disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg
+           border border-gray-200 transition-all duration-200 ease-in-out
+           hover:bg-gray-100 hover:border-gray-300 hover:shadow-sm
+           active:bg-gray-200 active:scale-[0.98]
+           focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
+           disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:transform-none;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-gray-600 font-medium px-4 py-2 rounded-lg
+           transition-all duration-200 ease-in-out
+           hover:bg-gray-100 hover:text-gray-800
+           active:bg-gray-200 active:scale-[0.98]
+           focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+  }
+
+  .btn-google {
+    @apply bg-white text-gray-700 font-medium px-4 py-2 rounded-lg
+           border border-gray-300 transition-all duration-200 ease-in-out
+           hover:bg-gray-50 hover:shadow-md hover:border-gray-400
+           active:bg-gray-100 active:scale-[0.98]
+           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+           disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:transform-none;
+  }
+
+  /* 다크모드 대응 */
+  .dark .btn-secondary {
+    @apply bg-gray-800 text-gray-200 border-gray-600
+           hover:bg-gray-700 hover:border-gray-500 hover:shadow-sm;
+  }
+
+  .dark .btn-ghost {
+    @apply text-gray-300 hover:bg-gray-700 hover:text-gray-100;
+  }
+
+  /* 다크모드에서 Google 버튼 */
+  .dark .btn-google {
+    @apply bg-white text-gray-700 border-gray-300
+           hover:bg-gray-50 hover:border-gray-400;
+  }
+}
+
 /* Line clamp utilities */
 .line-clamp-1 {
   overflow: hidden;
