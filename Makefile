@@ -133,6 +133,21 @@ run-frontend:
 	@echo "🎨 Starting frontend server locally..."
 	cd blueprint-fe && npm run dev
 
+# Run worker locally (requires Go)
+run-worker:
+	@echo "🔄 Checking for existing backend processes..."
+	@pkill -f "go run blueprint-worker/cmd/server/main.go" 2>/dev/null || true
+	@pkill -f "./blueprint-worker/server" 2>/dev/null || true
+	@sleep 1
+	@echo "🔙 Starting worker server locally..."
+	@if [ -f blueprint-be/.env ]; then \
+		echo "📁 Loading environment from .env file..."; \
+		cd blueprint-worker && set -a && . ./.env && set +a && go run cmd/worker/main.go; \
+	else \
+		echo "❌ .env file not found in blueprint-worker/. Run 'make setup' first."; \
+		exit 1; \
+	fi
+
 # Install frontend dependencies
 install-frontend:
 	@echo "📦 Installing frontend dependencies..."
