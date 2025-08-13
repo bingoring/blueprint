@@ -125,6 +125,9 @@ func main() {
 	// 🆕 펀딩 검증 서비스 초기화
 	fundingVerificationService := services.NewFundingVerificationService(database.GetDB(), sseService)
 
+	// 🆕 멘토 자격 증명 서비스 초기화
+	mentorQualificationService := services.NewMentorQualificationService(database.GetDB(), sseService)
+
 	// 🆕 마일스톤 라이프사이클 관리 서비스 초기화 및 시작
 	lifecycleService := services.NewMilestoneLifecycleService(database.GetDB(), fundingVerificationService)
 	go func() {
@@ -135,8 +138,8 @@ func main() {
 		}
 	}()
 
-	// 고성능 매칭 엔진 초기화 및 시작 (펀딩 서비스 추가)
-	matchingEngine := services.NewMatchingEngine(database.GetDB(), sseService, fundingVerificationService)
+	// 고성능 매칭 엔진 초기화 및 시작 (펀딩 + 멘토링 서비스 추가)
+	matchingEngine := services.NewMatchingEngine(database.GetDB(), sseService, fundingVerificationService, mentorQualificationService)
 	go func() {
 		if err := matchingEngine.Start(); err != nil {
 			log.Printf("❌ CRITICAL: Failed to start matching engine: %v", err)

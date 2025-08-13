@@ -18,10 +18,11 @@ import (
 
 // MatchingEngine 고성능 매칭 엔진
 type MatchingEngine struct {
-	db             *gorm.DB
-	queuePublisher *queue.Publisher
-	sseService     *SSEService // SSE 실시간 브로드캐스트용
-	fundingService *FundingVerificationService // 🆕 펀딩 검증 서비스
+	db                     *gorm.DB
+	queuePublisher         *queue.Publisher
+	sseService             *SSEService // SSE 실시간 브로드캐스트용
+	fundingService         *FundingVerificationService // 🆕 펀딩 검증 서비스
+	mentorQualificationSvc *MentorQualificationService // 🆕 멘토 자격 증명 서비스
 
 	// 매칭 엔진 상태
 	isRunning      bool
@@ -139,15 +140,16 @@ type MatchingStats struct {
 }
 
 // NewMatchingEngine 매칭 엔진 생성자
-func NewMatchingEngine(db *gorm.DB, sseService *SSEService, fundingService *FundingVerificationService) *MatchingEngine {
+func NewMatchingEngine(db *gorm.DB, sseService *SSEService, fundingService *FundingVerificationService, mentorQualificationSvc *MentorQualificationService) *MatchingEngine {
 	return &MatchingEngine{
-		db:             db,
-		queuePublisher: queue.NewPublisher(),
-		sseService:     sseService,
-		fundingService: fundingService,
-		stopChan:       make(chan struct{}),
-		orderChan:      make(chan *OrderMatchRequest, 10000), // 고성능 버퍼
-		orderBooks:     make(map[string]*OrderBookEngine),
+		db:                     db,
+		queuePublisher:         queue.NewPublisher(),
+		sseService:             sseService,
+		fundingService:         fundingService,
+		mentorQualificationSvc: mentorQualificationSvc,
+		stopChan:               make(chan struct{}),
+		orderChan:              make(chan *OrderMatchRequest, 10000), // 고성능 버퍼
+		orderBooks:             make(map[string]*OrderBookEngine),
 		stats: MatchingStats{
 			StartTime: time.Now(),
 		},
@@ -289,6 +291,12 @@ func (me *MatchingEngine) processOrder(order *models.Order) *MatchingResult {
 	if len(trades) > 0 {
 		// 🆕 펀딩 TVL 업데이트 (동기 처리 - 중요)
 		go me.updateFundingTVL(order.MilestoneID, order.OptionID, trades)
+
+		// 🆕 멘토 자격 업데이트 (비동기 처리 - "가장 똑똑한 돈" 식별)
+		go me.updateMentorQualification(order.MilestoneID, trades)
+
+		// 🆕 멘토 풀 수수료 적립 (비동기 처리 - "The Reward Engine")
+		go me.accumulateMentorPoolFees(order.MilestoneID, trades)
 
 		// 데이터베이스에 저장 (비동기)
 		go me.persistTrades(trades)
@@ -466,6 +474,100 @@ func (me *MatchingEngine) updateFundingTVL(milestoneID uint, optionID string, tr
 	if err := me.fundingService.UpdateTVL(milestoneID, optionID, totalAmount); err != nil {
 		log.Printf("❌ Failed to update TVL for milestone %d: %v", milestoneID, err)
 	}
+}
+
+// 🆕 updateMentorQualification 멘토 자격 업데이트
+func (me *MatchingEngine) updateMentorQualification(milestoneID uint, trades []models.Trade) {
+	if me.mentorQualificationSvc == nil {
+		return
+	}
+
+	// 성공 베팅과 관련된 거래만 처리 (optionID가 "success"인 경우)
+	hasSuccessBetting := false
+	for _, trade := range trades {
+		if trade.OptionID == "success" {
+			hasSuccessBetting = true
+			break
+		}
+	}
+
+	if !hasSuccessBetting {
+		return // 실패 베팅은 멘토 자격과 관련 없음
+	}
+
+	// 멘토 자격 재처리 (베팅 순위 변동 반영)
+	if _, err := me.mentorQualificationSvc.ProcessMilestoneBetting(milestoneID); err != nil {
+		log.Printf("❌ Failed to update mentor qualification for milestone %d: %v", milestoneID, err)
+	} else {
+		log.Printf("✨ Mentor qualification updated for milestone %d after new trades", milestoneID)
+	}
+}
+
+// 🆕 accumulateMentorPoolFees 멘토 풀에 수수료 적립
+func (me *MatchingEngine) accumulateMentorPoolFees(milestoneID uint, trades []models.Trade) {
+	// 총 거래 수수료 계산
+	var totalFees int64
+	for _, trade := range trades {
+		totalFees += trade.BuyerFee + trade.SellerFee
+	}
+
+	if totalFees <= 0 {
+		return
+	}
+
+	// 멘토 풀 조회 및 수수료 적립
+	var mentorPool models.MentorPool
+	if err := me.db.Where("milestone_id = ?", milestoneID).First(&mentorPool).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			log.Printf("📋 No mentor pool found for milestone %d, skipping fee accumulation", milestoneID)
+			return
+		}
+		log.Printf("❌ Failed to query mentor pool for milestone %d: %v", milestoneID, err)
+		return
+	}
+
+	// 설정된 비율만큼 멘토 풀에 적립 (기본 50%)
+	mentorPoolFees := int64(float64(totalFees) * mentorPool.FeePercentage / 100)
+
+	// 멘토 풀 업데이트
+	mentorPool.AccumulatedFees += mentorPoolFees
+	mentorPool.TotalPoolAmount += mentorPoolFees
+
+	if err := me.db.Save(&mentorPool).Error; err != nil {
+		log.Printf("❌ Failed to update mentor pool fees for milestone %d: %v", milestoneID, err)
+		return
+	}
+
+	log.Printf("💰 Accumulated $%.2f mentor pool fees for milestone %d (%.1f%% of total fees $%.2f)",
+		float64(mentorPoolFees)/100, milestoneID, mentorPool.FeePercentage, float64(totalFees)/100)
+
+	// 실시간 멘토 풀 업데이트 알림
+	go me.broadcastMentorPoolUpdate(milestoneID, &mentorPool, mentorPoolFees)
+}
+
+// broadcastMentorPoolUpdate 멘토 풀 업데이트 브로드캐스트
+func (me *MatchingEngine) broadcastMentorPoolUpdate(milestoneID uint, pool *models.MentorPool, addedAmount int64) {
+	if me.sseService == nil {
+		return
+	}
+
+	event := MarketUpdateEvent{
+		MilestoneID: milestoneID,
+		MarketData: map[string]interface{}{
+			"event_type": "mentor_pool_update",
+			"data": map[string]interface{}{
+				"milestone_id":        milestoneID,
+				"total_pool_amount":   pool.TotalPoolAmount,
+				"accumulated_fees":    pool.AccumulatedFees,
+				"added_amount":        addedAmount,
+				"fee_percentage":      pool.FeePercentage,
+				"updated_at":          time.Now().Unix(),
+			},
+		},
+		Timestamp: time.Now().Unix(),
+	}
+
+	me.sseService.BroadcastMarketUpdate(event)
 }
 
 // Helper functions
