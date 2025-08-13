@@ -7,6 +7,7 @@ import (
 	"container/heap"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -511,6 +512,12 @@ func (me *MatchingEngine) loadExistingOrders() error {
 	}).Find(&orders).Error
 
 	if err != nil {
+		// 테이블이 존재하지 않는 경우 (깨끗한 데이터베이스) - 정상적인 상황
+		if me.isTableNotExistsError(err) {
+			log.Printf("📋 No orders table found - starting with clean state")
+			return nil
+		}
+		// 다른 오류는 여전히 critical error로 처리
 		return err
 	}
 
@@ -531,6 +538,23 @@ func (me *MatchingEngine) loadExistingOrders() error {
 
 	log.Printf("📊 Loaded %d existing orders into matching engine", len(orders))
 	return nil
+}
+
+// isTableNotExistsError 테이블이 존재하지 않는 오류인지 확인
+func (me *MatchingEngine) isTableNotExistsError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errStr := err.Error()
+	// PostgreSQL: relation "orders" does not exist
+	// MySQL: Table 'db.orders' doesn't exist
+	// SQLite: no such table: orders
+	return (errStr != "" &&
+		   (errStr == `ERROR: relation "orders" does not exist (SQLSTATE 42P01)` ||
+			strings.Contains(errStr, `relation "orders" does not exist`) ||
+			(strings.Contains(errStr, `Table`) && strings.Contains(errStr, `orders`) && strings.Contains(errStr, `doesn't exist`)) ||
+			strings.Contains(errStr, `no such table: orders`)))
 }
 
 func (me *MatchingEngine) persistTrades(trades []models.Trade) {

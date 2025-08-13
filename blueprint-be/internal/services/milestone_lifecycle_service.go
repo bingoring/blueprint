@@ -4,6 +4,7 @@ import (
 	"blueprint/internal/models"
 	"context"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -127,6 +128,12 @@ func (mls *MilestoneLifecycleService) processProposalToFunding(ctx context.Conte
 	var milestones []models.Milestone
 	if err := mls.db.WithContext(ctx).Where("status = ? AND created_at <= ?",
 		models.MilestoneStatusProposal, cutoffTime).Find(&milestones).Error; err != nil {
+
+		// 새로운 상태가 존재하지 않는 경우 (기존 데이터베이스) - 정상적인 상황
+		if mls.isStatusNotExistsError(err) {
+			log.Printf("📋 Proposal status not found - skipping proposal to funding processing")
+			return nil
+		}
 		return err
 	}
 
@@ -283,4 +290,19 @@ type LifecycleStats struct {
 	ActiveCount      int           `json:"active_count"`
 	RejectedCount    int           `json:"rejected_count"`
 	CompletedCount   int           `json:"completed_count"`
+}
+
+// isStatusNotExistsError 새로운 상태가 존재하지 않는 오류인지 확인
+func (mls *MilestoneLifecycleService) isStatusNotExistsError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errStr := err.Error()
+	// PostgreSQL enum 관련 오류 또는 컬럼 존재하지 않음
+	return (errStr != "" &&
+		   (strings.Contains(errStr, `invalid input value for enum`) ||
+			strings.Contains(errStr, `proposal`) ||
+			strings.Contains(errStr, `funding`) ||
+			strings.Contains(errStr, `column`) && strings.Contains(errStr, `does not exist`)))
 }
