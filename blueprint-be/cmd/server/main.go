@@ -122,8 +122,21 @@ func main() {
 	// SSE Service 초기화
 	sseService := services.NewSSEService()
 
-	// 고성능 매칭 엔진 초기화 및 시작 (SSE 서비스 주입)
-	matchingEngine := services.NewMatchingEngine(database.GetDB(), sseService)
+	// 🆕 펀딩 검증 서비스 초기화
+	fundingVerificationService := services.NewFundingVerificationService(database.GetDB(), sseService)
+
+	// 🆕 마일스톤 라이프사이클 관리 서비스 초기화 및 시작
+	lifecycleService := services.NewMilestoneLifecycleService(database.GetDB(), fundingVerificationService)
+	go func() {
+		if err := lifecycleService.Start(); err != nil {
+			log.Printf("❌ Failed to start milestone lifecycle service: %v", err)
+		} else {
+			log.Printf("✅ Milestone lifecycle service started")
+		}
+	}()
+
+	// 고성능 매칭 엔진 초기화 및 시작 (펀딩 서비스 추가)
+	matchingEngine := services.NewMatchingEngine(database.GetDB(), sseService, fundingVerificationService)
 	go func() {
 		if err := matchingEngine.Start(); err != nil {
 			log.Printf("❌ CRITICAL: Failed to start matching engine: %v", err)

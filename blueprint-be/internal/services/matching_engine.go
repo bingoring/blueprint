@@ -20,6 +20,7 @@ type MatchingEngine struct {
 	db             *gorm.DB
 	queuePublisher *queue.Publisher
 	sseService     *SSEService // SSE 실시간 브로드캐스트용
+	fundingService *FundingVerificationService // 🆕 펀딩 검증 서비스
 
 	// 매칭 엔진 상태
 	isRunning      bool
@@ -137,11 +138,12 @@ type MatchingStats struct {
 }
 
 // NewMatchingEngine 매칭 엔진 생성자
-func NewMatchingEngine(db *gorm.DB, sseService *SSEService) *MatchingEngine {
+func NewMatchingEngine(db *gorm.DB, sseService *SSEService, fundingService *FundingVerificationService) *MatchingEngine {
 	return &MatchingEngine{
 		db:             db,
 		queuePublisher: queue.NewPublisher(),
 		sseService:     sseService,
+		fundingService: fundingService,
 		stopChan:       make(chan struct{}),
 		orderChan:      make(chan *OrderMatchRequest, 10000), // 고성능 버퍼
 		orderBooks:     make(map[string]*OrderBookEngine),
@@ -284,6 +286,9 @@ func (me *MatchingEngine) processOrder(order *models.Order) *MatchingResult {
 
 	// 체결된 거래가 있으면 처리
 	if len(trades) > 0 {
+		// 🆕 펀딩 TVL 업데이트 (동기 처리 - 중요)
+		go me.updateFundingTVL(order.MilestoneID, order.OptionID, trades)
+
 		// 데이터베이스에 저장 (비동기)
 		go me.persistTrades(trades)
 
@@ -442,6 +447,24 @@ func (me *MatchingEngine) executeLimitOrder(orderBook *OrderBookEngine, order *m
 	}
 
 	return trades
+}
+
+// 🆕 updateFundingTVL 펀딩 TVL 업데이트
+func (me *MatchingEngine) updateFundingTVL(milestoneID uint, optionID string, trades []models.Trade) {
+	if me.fundingService == nil {
+		return
+	}
+
+	// 거래의 총 금액 계산
+	var totalAmount int64
+	for _, trade := range trades {
+		totalAmount += trade.TotalAmount
+	}
+
+	// 펀딩 서비스를 통해 TVL 업데이트
+	if err := me.fundingService.UpdateTVL(milestoneID, optionID, totalAmount); err != nil {
+		log.Printf("❌ Failed to update TVL for milestone %d: %v", milestoneID, err)
+	}
 }
 
 // Helper functions
