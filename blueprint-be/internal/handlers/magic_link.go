@@ -75,7 +75,7 @@ func (h *MagicLinkHandler) CreateMagicLink(c *gin.Context) {
 	}
 
 	// 이메일 발송 (백그라운드)
-	err = queue.PublishJob("email", map[string]interface{}{
+	err = queue.PublishJob("email_queue", map[string]interface{}{
 		"type":       "magic_link",
 		"email":      req.Email,
 		"code":       code,

@@ -135,14 +135,25 @@ func (h *ActivityHandler) createActivityLog(jobData map[string]interface{}) erro
 // StartActivityWorker 활동 로그 큐 워커 시작
 func (h *ActivityHandler) StartActivityWorker() error {
 	queueName := "activity_logs"
+	consumerGroup := "activity_workers"
+	consumerName := "worker-1"
 
 	log.Printf("📝 활동 로그 워커 시작 (큐: %s)", queueName)
 
+	// Consumer Group 생성 (이미 존재하면 무시)
+	client := redis.GetClient()
+	_, err := client.XGroupCreateMkStream(context.Background(), queueName, consumerGroup, "0").Result()
+	if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
+		log.Printf("⚠️ Consumer Group 생성 실패 (무시하고 계속): %v", err)
+	} else {
+		log.Printf("✅ Consumer Group 생성 또는 확인됨: %s", consumerGroup)
+	}
+
 	for {
 		// Redis Stream에서 메시지 읽기
-		result, err := redis.GetClient().XReadGroup(context.Background(), &redislib.XReadGroupArgs{
-			Group:    "activity_workers",
-			Consumer: "worker-1",
+		result, err := client.XReadGroup(context.Background(), &redislib.XReadGroupArgs{
+			Group:    consumerGroup,
+			Consumer: consumerName,
 			Streams:  []string{queueName, ">"},
 			Count:    1,
 			Block:    time.Second * 5,
@@ -164,7 +175,7 @@ func (h *ActivityHandler) StartActivityWorker() error {
 					log.Printf("❌ 활동 로그 메시지 처리 실패: %v", err)
 				} else {
 					// 메시지 처리 완료 확인
-					redis.GetClient().XAck(context.Background(), queueName, "activity_workers", message.ID)
+					client.XAck(context.Background(), queueName, consumerGroup, message.ID)
 				}
 			}
 		}
