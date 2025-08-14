@@ -133,7 +133,7 @@ func (h *ActivityHandler) createActivityLog(jobData map[string]interface{}) erro
 }
 
 // StartActivityWorker 활동 로그 큐 워커 시작
-func (h *ActivityHandler) StartActivityWorker() error {
+func (h *ActivityHandler) StartActivityWorker(ctx context.Context) error {
 	queueName := "activity_logs"
 	consumerGroup := "activity_workers"
 	consumerName := "worker-1"
@@ -150,8 +150,16 @@ func (h *ActivityHandler) StartActivityWorker() error {
 	}
 
 	for {
+		// Context 취소 확인
+		select {
+		case <-ctx.Done():
+			log.Printf("📝 Activity worker gracefully shutting down...")
+			return nil
+		default:
+		}
+
 		// Redis Stream에서 메시지 읽기
-		result, err := client.XReadGroup(context.Background(), &redislib.XReadGroupArgs{
+		result, err := client.XReadGroup(ctx, &redislib.XReadGroupArgs{
 			Group:    consumerGroup,
 			Consumer: consumerName,
 			Streams:  []string{queueName, ">"},
@@ -160,6 +168,11 @@ func (h *ActivityHandler) StartActivityWorker() error {
 		}).Result()
 
 		if err != nil {
+			// Context가 취소된 경우
+			if err == context.Canceled {
+				log.Printf("📝 Activity worker context cancelled, shutting down...")
+				return nil
+			}
 			if err.Error() == "redis: nil" {
 				continue // 타임아웃, 계속 대기
 			}
@@ -175,7 +188,7 @@ func (h *ActivityHandler) StartActivityWorker() error {
 					log.Printf("❌ 활동 로그 메시지 처리 실패: %v", err)
 				} else {
 					// 메시지 처리 완료 확인
-					client.XAck(context.Background(), queueName, consumerGroup, message.ID)
+					client.XAck(ctx, queueName, consumerGroup, message.ID)
 				}
 			}
 		}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -59,6 +60,10 @@ func main() {
 	verificationHandler := handlers.NewVerificationHandler(cfg)
 	activityHandler := handlers.NewActivityHandler() // 활동 로그 핸들러 추가
 
+	// Graceful shutdown을 위한 context 생성
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// 워커 시작
 	var wg sync.WaitGroup
 
@@ -67,12 +72,12 @@ func main() {
 	go func() {
 		defer wg.Done()
 		log.Println("📧 Starting Email Queue Worker...")
-		if err := emailHandler.StartEmailWorker(); err != nil {
+		if err := emailHandler.StartEmailWorker(ctx); err != nil {
 			log.Printf("Email worker error: %v", err)
 		}
 	}()
 
-	// SMS 큐 워커
+	// SMS 큐 워커 (기존 버전 유지)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -82,7 +87,7 @@ func main() {
 		}
 	}()
 
-	// 파일 처리 큐 워커
+	// 파일 처리 큐 워커 (기존 버전 유지)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -92,7 +97,7 @@ func main() {
 		}
 	}()
 
-	// 검증 큐 워커 (소셜 미디어 등)
+	// 검증 큐 워커 (기존 버전 유지)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -107,7 +112,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 		log.Println("📝 Starting Activity Log Worker...")
-		if err := activityHandler.StartActivityWorker(); err != nil {
+		if err := activityHandler.StartActivityWorker(ctx); err != nil {
 			log.Printf("Activity worker error: %v", err)
 		}
 	}()
@@ -120,6 +125,9 @@ func main() {
 
 	<-sigChan
 	log.Println("🛑 Shutting down worker server...")
+
+	// Context 취소로 모든 워커에 종료 신호 전송
+	cancel()
 
 	// 모든 워커가 종료될 때까지 대기
 	wg.Wait()

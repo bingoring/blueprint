@@ -594,3 +594,70 @@ func GetQueueLength(queueName string) (int64, error) {
 
 	return length, nil
 }
+
+// ConsumeJobsWithContext Redis Stream에서 작업을 소비 (context 지원)
+func ConsumeJobsWithContext(ctx context.Context, queueName, consumerGroup, consumerName string, handler func(map[string]interface{}) error) error {
+	client := redis.GetClient()
+	if client == nil {
+		return fmt.Errorf("redis client is not available")
+	}
+
+	// 컨슈머 그룹 생성 (이미 존재하면 무시)
+	_, err := client.XGroupCreateMkStream(ctx, queueName, consumerGroup, "0").Result()
+	if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
+		return fmt.Errorf("failed to create consumer group: %w", err)
+	}
+
+	for {
+		// Context 취소 확인
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// 새로운 메시지 읽기
+		msgs, err := client.XReadGroup(ctx, &redislib.XReadGroupArgs{
+			Group:    consumerGroup,
+			Consumer: consumerName,
+			Streams:  []string{queueName, ">"},
+			Count:    1,
+			Block:    time.Second * 5, // 5초 블록
+		}).Result()
+
+		if err != nil {
+			// Context가 취소된 경우
+			if err == context.Canceled {
+				return nil
+			}
+			if err == redislib.Nil {
+				continue // 타임아웃, 다시 시도
+			}
+			return fmt.Errorf("failed to read from stream: %w", err)
+		}
+
+		// 메시지 처리
+		for _, stream := range msgs {
+			for _, msg := range stream.Messages {
+				jobDataStr, ok := msg.Values["job_data"].(string)
+				if !ok {
+					continue
+				}
+
+				var jobData map[string]interface{}
+				if err := json.Unmarshal([]byte(jobDataStr), &jobData); err != nil {
+					continue
+				}
+
+				// 핸들러 실행
+				if err := handler(jobData); err != nil {
+					// 처리 실패 시 로그만 출력하고 계속
+					fmt.Printf("Failed to process job %s: %v\n", msg.ID, err)
+				}
+
+				// 메시지 ACK
+				client.XAck(ctx, queueName, consumerGroup, msg.ID)
+			}
+		}
+	}
+}

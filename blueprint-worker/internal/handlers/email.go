@@ -3,6 +3,7 @@ package handlers
 import (
 	"blueprint-module/pkg/queue"
 	"blueprint-worker/internal/config"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"log"
@@ -28,10 +29,10 @@ func NewEmailHandler(cfg *config.Config) *EmailHandler {
 	}
 }
 
-func (h *EmailHandler) StartEmailWorker() error {
+func (h *EmailHandler) StartEmailWorker(ctx context.Context) error {
 	log.Println("📧 Email worker started")
 
-	return queue.ConsumeJobs("email_queue", "email_workers", "email_worker_1", h.handleEmailJob)
+	return queue.ConsumeJobsWithContext(ctx, "email_queue", "email_workers", "email_worker_1", h.handleEmailJob)
 }
 
 func (h *EmailHandler) handleEmailJob(jobData map[string]interface{}) error {
