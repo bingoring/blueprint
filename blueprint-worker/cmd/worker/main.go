@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	moduleConfig "blueprint-module/pkg/config"
 	"blueprint-module/pkg/database"
@@ -129,7 +130,17 @@ func main() {
 	// Context 취소로 모든 워커에 종료 신호 전송
 	cancel()
 
-	// 모든 워커가 종료될 때까지 대기
-	wg.Wait()
-	log.Println("✅ Worker server shutdown complete")
+	// 최대 10초 동안 워커 종료 대기
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Println("✅ Worker server shutdown complete")
+	case <-time.After(10 * time.Second):
+		log.Println("⚠️  Timeout reached, forcing shutdown...")
+	}
 }
