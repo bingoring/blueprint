@@ -58,4 +58,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace blueprint-module => /Users/yw.yeom/repo/blueprint/blueprint-module
+replace blueprint-module => ../blueprint-module

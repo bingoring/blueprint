@@ -3,7 +3,7 @@ package services
 import (
 	"blueprint-module/pkg/queue"
 	"blueprint-module/pkg/redis"
-	"blueprint/internal/models"
+	"blueprint-module/pkg/models"
 	"container/heap"
 	"fmt"
 	"log"
@@ -375,6 +375,8 @@ func (me *MatchingEngine) executeLimitOrder(orderBook *OrderBookEngine, order *m
 			if bestSell.Remaining <= 0 {
 				heap.Pop(orderBook.SellOrders)
 				bestSell.Status = models.OrderStatusFilled
+				// 🔧 메모리 리크 방지: 완료된 주문은 인덱스에서 제거
+				delete(orderBook.orderIndex, bestSell.ID)
 			}
 
 			orderBook.lastPrice = bestSell.Price
@@ -432,6 +434,8 @@ func (me *MatchingEngine) executeLimitOrder(orderBook *OrderBookEngine, order *m
 			if bestBuy.Remaining <= 0 {
 				heap.Pop(orderBook.BuyOrders)
 				bestBuy.Status = models.OrderStatusFilled
+				// 🔧 메모리 리크 방지: 완료된 주문은 인덱스에서 제거
+				delete(orderBook.orderIndex, bestBuy.ID)
 			}
 
 			orderBook.lastPrice = bestBuy.Price
@@ -451,11 +455,60 @@ func (me *MatchingEngine) executeLimitOrder(orderBook *OrderBookEngine, order *m
 
 	if remaining <= 0 {
 		order.Status = models.OrderStatusFilled
+		// 🔧 메모리 리크 방지: 완전 체결된 주문도 인덱스에서 제거
+		orderBook.mutex.Lock()
+		delete(orderBook.orderIndex, order.ID)
+		orderBook.mutex.Unlock()
 	} else if order.Filled > 0 {
 		order.Status = models.OrderStatusPartial
 	}
 
 	return trades
+}
+
+// CancelOrder 주문 취소 (매칭 엔진에서 제거)
+func (me *MatchingEngine) CancelOrder(order *models.Order) {
+	key := me.getMarketKey(order.MilestoneID, order.OptionID)
+	
+	me.mutex.RLock()
+	orderBook, exists := me.orderBooks[key]
+	me.mutex.RUnlock()
+	
+	if !exists {
+		return // 주문장이 없으면 무시
+	}
+	
+	orderBook.mutex.Lock()
+	defer orderBook.mutex.Unlock()
+	
+	// 인덱스에서 주문 제거
+	delete(orderBook.orderIndex, order.ID)
+	
+	// 힙에서도 제거 (비효율적이지만 정확성 보장)
+	me.removeFromHeap(orderBook, order)
+}
+
+// removeFromHeap 힙에서 특정 주문 제거
+func (me *MatchingEngine) removeFromHeap(orderBook *OrderBookEngine, order *models.Order) {
+	if order.Side == models.OrderSideBuy {
+		for i, o := range *orderBook.BuyOrders {
+			if o.ID == order.ID {
+				(*orderBook.BuyOrders)[i] = (*orderBook.BuyOrders)[len(*orderBook.BuyOrders)-1]
+				*orderBook.BuyOrders = (*orderBook.BuyOrders)[:len(*orderBook.BuyOrders)-1]
+				heap.Init(orderBook.BuyOrders)
+				break
+			}
+		}
+	} else {
+		for i, o := range *orderBook.SellOrders {
+			if o.ID == order.ID {
+				(*orderBook.SellOrders)[i] = (*orderBook.SellOrders)[len(*orderBook.SellOrders)-1]
+				*orderBook.SellOrders = (*orderBook.SellOrders)[:len(*orderBook.SellOrders)-1]
+				heap.Init(orderBook.SellOrders)
+				break
+			}
+		}
+	}
 }
 
 // 🆕 updateFundingTVL 펀딩 TVL 업데이트

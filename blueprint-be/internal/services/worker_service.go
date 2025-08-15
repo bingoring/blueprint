@@ -2,7 +2,7 @@ package services
 
 import (
 	"blueprint/internal/database"
-	"blueprint/internal/models"
+	"blueprint-module/pkg/models"
 	"fmt"
 	"log"
 	"sync"

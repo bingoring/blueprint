@@ -2,7 +2,7 @@ package services
 
 import (
 	"blueprint-module/pkg/redis"
-	"blueprint/internal/models"
+	"blueprint-module/pkg/models"
 	"context"
 	"fmt"
 	"math"

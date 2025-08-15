@@ -13,7 +13,7 @@ import (
 
 	"blueprint/internal/database"
 	"blueprint/internal/middleware"
-	internalModels "blueprint/internal/models"
+	internalModels "blueprint-module/pkg/models"
 	"blueprint/internal/services"
 
 	"github.com/gin-gonic/gin"

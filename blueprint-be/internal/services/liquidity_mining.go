@@ -3,7 +3,7 @@ package services
 import (
 	"blueprint-module/pkg/queue"
 	"blueprint-module/pkg/redis"
-	"blueprint/internal/models"
+	"blueprint-module/pkg/models"
 	"context"
 	"fmt"
 	"log"

@@ -48,13 +48,43 @@ func AutoMigrate() error {
 
 	// 자동 마이그레이션 실행
 	err := DB.AutoMigrate(
+		// 👤 User 관련 모델
 		&models.User{},
 		&models.UserProfile{},
 		&models.UserVerification{},
+		
+		// 🏗️ Project 관련 모델
 		&models.Project{},
 		&models.Milestone{},
+		
+		// 💰 Trading 관련 모델
+		&models.Order{},
+		&models.Trade{},
+		&models.Position{},
+		&models.MarketData{},
+		&models.UserWallet{},
+		&models.PriceHistory{},
+		
+		// 🎁 Token Economy 모델
+		&models.StakingPool{},
+		&models.RevenueDistribution{},
+		&models.StakingReward{},
+		&models.GovernanceProposal{},
+		&models.GovernanceVote{},
+		&models.BlueprintReward{},
+		&models.PlatformFeeConfig{},
+		
+		// 🧭 Mentoring 관련 모델
+		&models.Mentor{},
+		&models.MentorMilestone{},
+		&models.MentoringSession{},
+		&models.MentorAction{},
+		&models.MentorPool{},
+		&models.MentorReputation{},
+		
+		// 🔗 기타 모델
 		&models.MagicLink{},
-		&models.ActivityLog{}, // 활동 로그 테이블 추가
+		&models.ActivityLog{},
 	)
 
 	if err != nil {

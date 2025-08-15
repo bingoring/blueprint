@@ -1,7 +1,7 @@
 package services
 
 import (
-	"blueprint/internal/models"
+	"blueprint-module/pkg/models"
 	"encoding/json"
 	"fmt"
 	"log"

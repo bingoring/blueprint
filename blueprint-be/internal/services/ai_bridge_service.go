@@ -2,7 +2,7 @@ package services
 
 import (
 	"blueprint/internal/config"
-	"blueprint/internal/models"
+	"blueprint-module/pkg/models"
 	"context"
 	"fmt"
 	"time"

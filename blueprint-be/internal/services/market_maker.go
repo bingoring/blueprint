@@ -2,7 +2,7 @@ package services
 
 import (
 	"blueprint-module/pkg/queue"
-	"blueprint/internal/models"
+	"blueprint-module/pkg/models"
 	"fmt"
 	"log"
 	"math"

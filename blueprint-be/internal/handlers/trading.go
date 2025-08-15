@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"blueprint/internal/middleware"
-	"blueprint/internal/models"
+	"blueprint-module/pkg/models"
 	"blueprint/internal/services"
 	"fmt"
 	"log"
@@ -51,19 +51,17 @@ func (h *TradingHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	// 💰 USDC 잔액 검증 (매수 주문만)
+	// 💰 USDC 잔액 검증 (매수 주문만) - TradingService를 통해 검증
 	if req.Side == models.OrderSideBuy {
-		var wallet models.UserWallet
-		if err := h.tradingService.GetDB().Where("user_id = ?", userID).First(&wallet).Error; err != nil {
-			middleware.InternalServerError(c, "지갑 조회 실패")
+		requiredUSDC := int64(float64(req.Quantity) * req.Price * 100) // 확률을 센트로 변환
+		hasBalance, err := h.tradingService.ValidateUserBalance(userID.(uint), requiredUSDC)
+		if err != nil {
+			middleware.InternalServerError(c, "잔액 검증 중 오류 발생")
 			return
 		}
-
-		// 필요 USDC 계산: 수량 × 가격 (센트 단위)
-		requiredUSDC := int64(float64(req.Quantity) * req.Price * 100) // 확률을 센트로 변환
-		if wallet.USDCBalance < requiredUSDC {
-			middleware.BadRequest(c, fmt.Sprintf("USDC 잔액 부족: 필요 $%.2f, 보유 $%.2f",
-				float64(requiredUSDC)/100, float64(wallet.USDCBalance)/100))
+		if !hasBalance {
+			middleware.BadRequest(c, fmt.Sprintf("USDC 잔액 부족: 필요 $%.2f",
+				float64(requiredUSDC)/100))
 			return
 		}
 	}

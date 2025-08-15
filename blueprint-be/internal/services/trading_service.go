@@ -1,7 +1,7 @@
 package services
 
 import (
-	"blueprint/internal/models"
+	"blueprint-module/pkg/models"
 	"fmt"
 	"log"
 	"time"
@@ -188,6 +188,9 @@ func (s *TradingService) CancelOrder(userID uint, orderID uint) error {
 		return fmt.Errorf("cannot cancel order with status: %s", order.Status)
 	}
 
+	// 🔧 매칭 엔진에서도 주문 제거 (메모리 리크 방지)
+	s.matchingEngine.CancelOrder(&order)
+
 	// 주문 상태 업데이트
 	order.Status = models.OrderStatusCancelled
 	return s.db.Save(&order).Error
@@ -204,7 +207,17 @@ func (s *TradingService) GetRecentTrades(milestoneID uint, optionID string, limi
 	return trades, err
 }
 
-// GetDB 데이터베이스 인스턴스 반환 (핸들러에서 직접 쿼리용)
+// ValidateUserBalance 사용자 잔액 검증 (트랜잭션 안전성 보장)
+func (s *TradingService) ValidateUserBalance(userID uint, requiredAmount int64) (bool, error) {
+	var wallet models.UserWallet
+	err := s.db.Where("user_id = ?", userID).First(&wallet).Error
+	if err != nil {
+		return false, err
+	}
+	return wallet.USDCBalance >= requiredAmount, nil
+}
+
+// GetDB 데이터베이스 인스턴스 반환 (핸들러에서 직접 쿼리용) - 사용 권장하지 않음
 func (s *TradingService) GetDB() *gorm.DB {
 	return s.db
 }

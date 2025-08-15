@@ -1,6 +1,6 @@
 package services
 
-import "blueprint/internal/models"
+import "blueprint-module/pkg/models"
 
 // AIServiceInterface AI 서비스의 공통 인터페이스
 type AIServiceInterface interface {
