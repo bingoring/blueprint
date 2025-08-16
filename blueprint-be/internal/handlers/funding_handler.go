@@ -125,10 +125,10 @@ func (h *FundingHandler) GetFundingMilestones(c *gin.Context) {
 		"success": true,
 		"message": "펀딩 중인 마일스톤 목록",
 		"data": gin.H{
-			"page":     page,
-			"limit":    limit,
-			"category": category,
-			"offset":   offset,
+			"page":       page,
+			"limit":      limit,
+			"category":   category,
+			"offset":     offset,
 			"milestones": []gin.H{}, // 실제 데이터는 추후 구현
 		},
 	})

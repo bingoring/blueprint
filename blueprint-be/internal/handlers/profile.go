@@ -24,7 +24,7 @@ type ProfileStats struct {
 	ProjectSuccessRate   float64 `json:"projectSuccessRate"`   // 프로젝트 성공률
 	MentoringSuccessRate float64 `json:"mentoringSuccessRate"` // 멘토링 성공률 (임시로 0)
 	TotalInvestment      int64   `json:"totalInvestment"`      // 총 투자액 (USDC cents)
-	SbtCount            int     `json:"sbtCount"`             // SBT 개수
+	SbtCount             int     `json:"sbtCount"`             // SBT 개수
 }
 
 // CurrentProject 현재 진행 프로젝트
@@ -56,15 +56,15 @@ type RecentActivity struct {
 
 // ProfileResponse 프로필 페이지 응답 데이터
 type ProfileResponse struct {
-	Username         string             `json:"username"`
-	DisplayName      string             `json:"displayName"`
-	Bio              string             `json:"bio"`
-	Avatar           string             `json:"avatar"`
-	JoinedDate       string             `json:"joinedDate"`
-	Stats            ProfileStats       `json:"stats"`
-	CurrentProjects  []CurrentProject   `json:"currentProjects"`
-	FeaturedProjects []FeaturedProject  `json:"featuredProjects"`
-	RecentActivities []RecentActivity   `json:"recentActivities"`
+	Username         string            `json:"username"`
+	DisplayName      string            `json:"displayName"`
+	Bio              string            `json:"bio"`
+	Avatar           string            `json:"avatar"`
+	JoinedDate       string            `json:"joinedDate"`
+	Stats            ProfileStats      `json:"stats"`
+	CurrentProjects  []CurrentProject  `json:"currentProjects"`
+	FeaturedProjects []FeaturedProject `json:"featuredProjects"`
+	RecentActivities []RecentActivity  `json:"recentActivities"`
 }
 
 // GetUserProfile 사용자 프로필 정보 조회 (목데이터와 동일한 구조)
@@ -158,7 +158,7 @@ func (h *ProfileHandler) calculateProfileStats(userID uint) ProfileStats {
 		ProjectSuccessRate:   projectSuccessRate,
 		MentoringSuccessRate: mentoringSuccessRate,
 		TotalInvestment:      totalInvestment,
-		SbtCount:            sbtCount,
+		SbtCount:             sbtCount,
 	}
 }
 
@@ -205,7 +205,7 @@ func (h *ProfileHandler) getFeaturedProjects(userID uint) []FeaturedProject {
 	for _, project := range projects {
 		// 임시 데이터 (실제로는 투자 및 성과 데이터에서 계산)
 		investment := int64((project.ID % 10) * 100000) // 임시 투자액
-		successRate := float64(80 + (project.ID%20))    // 80-99% 범위의 임시 성공률
+		successRate := float64(80 + (project.ID % 20))  // 80-99% 범위의 임시 성공률
 
 		result = append(result, FeaturedProject{
 			ID:          project.ID,

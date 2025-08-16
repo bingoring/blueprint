@@ -11,9 +11,9 @@ import (
 	"log"
 	"strconv"
 
+	internalModels "blueprint-module/pkg/models"
 	"blueprint/internal/database"
 	"blueprint/internal/middleware"
-	internalModels "blueprint-module/pkg/models"
 	"blueprint/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -241,9 +241,9 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 	result := gin.H{
 		"projects": projects,
 		"pagination": gin.H{
-			"page":       page,
-			"limit":      limit,
-			"total":      total,
+			"page":        page,
+			"limit":       limit,
+			"total":       total,
 			"total_pages": (total + int64(limit) - 1) / int64(limit),
 		},
 	}

@@ -223,9 +223,9 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	// 현재 JWT 기반이므로 클라이언트에서 토큰 삭제하도록 안내
 	// 향후 Redis 기반 블랙리스트나 세션 관리로 확장 가능
 	middleware.Success(c, gin.H{
-		"message": "로그아웃이 완료되었습니다",
-		"user_id": userID,
-		"logout_time": time.Now(),
+		"message":      "로그아웃이 완료되었습니다",
+		"user_id":      userID,
+		"logout_time":  time.Now(),
 		"instructions": "클라이언트에서 토큰을 삭제해주세요",
 	}, "로그아웃이 성공적으로 처리되었습니다")
 }
@@ -253,9 +253,9 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	}
 
 	middleware.Success(c, gin.H{
-		"token": token,
-		"user":  user,
-		"expires_in": 24 * 60 * 60, // 24시간 (초 단위)
+		"token":        token,
+		"user":         user,
+		"expires_in":   24 * 60 * 60, // 24시간 (초 단위)
 		"refresh_time": time.Now(),
 	}, "토큰이 성공적으로 갱신되었습니다")
 }
@@ -301,13 +301,13 @@ func (h *AuthHandler) CheckTokenExpiry(c *gin.Context) {
 	isExpired := utils.IsTokenExpired(tokenString, h.cfg.JWT.Secret)
 
 	middleware.Success(c, gin.H{
-		"user_id":          userID,
-		"expiration_time":  expirationTime,
+		"user_id":           userID,
+		"expiration_time":   expirationTime,
 		"remaining_seconds": int(remaining.Seconds()),
 		"remaining_minutes": int(remaining.Minutes()),
 		"remaining_hours":   int(remaining.Hours()),
-		"is_expired":       isExpired,
-		"should_refresh":   remaining.Minutes() < 30, // 30분 이하일 때 갱신 권장
-		"checked_at":       time.Now(),
+		"is_expired":        isExpired,
+		"should_refresh":    remaining.Minutes() < 30, // 30분 이하일 때 갱신 권장
+		"checked_at":        time.Now(),
 	}, "토큰 만료 정보를 성공적으로 조회했습니다")
 }

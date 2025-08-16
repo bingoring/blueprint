@@ -284,7 +284,7 @@ func (h *UserSettingsHandler) RequestVerifyEmail(c *gin.Context) {
 	}
 
 	middleware.SuccessWithStatus(c, http.StatusAccepted, gin.H{
-		"message": "Verification email sent",
+		"message":    "Verification email sent",
 		"expires_in": 900, // 15분
 	}, "Email verification requested")
 }
@@ -390,11 +390,11 @@ func (h *UserSettingsHandler) RequestVerifyPhone(c *gin.Context) {
 
 	// 워커 큐에 SMS 전송 작업 추가
 	smsJob := map[string]interface{}{
-		"type":         "send_sms",
-		"to":           req.PhoneNumber,
-		"message":      fmt.Sprintf("[Blueprint] 인증번호: %s (5분간 유효)", verificationCode),
-		"user_id":      userID,
-		"timestamp":    time.Now().Unix(),
+		"type":      "send_sms",
+		"to":        req.PhoneNumber,
+		"message":   fmt.Sprintf("[Blueprint] 인증번호: %s (5분간 유효)", verificationCode),
+		"user_id":   userID,
+		"timestamp": time.Now().Unix(),
 	}
 
 	if err := queue.PublishJob("sms_queue", smsJob); err != nil {
@@ -546,8 +546,8 @@ func (h *UserSettingsHandler) SubmitProfessionalDoc(c *gin.Context) {
 
 	// 허용된 파일 형식 확인
 	allowedTypes := map[string]bool{
-		"image/jpeg": true,
-		"image/png":  true,
+		"image/jpeg":      true,
+		"image/png":       true,
 		"application/pdf": true,
 	}
 
@@ -603,7 +603,7 @@ func (h *UserSettingsHandler) SubmitProfessionalDoc(c *gin.Context) {
 	}
 
 	middleware.SuccessWithStatus(c, http.StatusAccepted, gin.H{
-		"status": "pending",
+		"status":  "pending",
 		"message": "Professional document submitted for review",
 	}, "Professional document submitted")
 }
@@ -639,8 +639,8 @@ func (h *UserSettingsHandler) SubmitEducationDoc(c *gin.Context) {
 
 	// 허용된 파일 형식 확인
 	allowedTypes := map[string]bool{
-		"image/jpeg": true,
-		"image/png":  true,
+		"image/jpeg":      true,
+		"image/png":       true,
 		"application/pdf": true,
 	}
 
@@ -696,7 +696,7 @@ func (h *UserSettingsHandler) SubmitEducationDoc(c *gin.Context) {
 	}
 
 	middleware.SuccessWithStatus(c, http.StatusAccepted, gin.H{
-		"status": "pending",
+		"status":  "pending",
 		"message": "Education document submitted for review",
 	}, "Education document submitted")
 }

@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"blueprint/internal/middleware"
 	"blueprint-module/pkg/models"
+	"blueprint/internal/middleware"
 	"blueprint/internal/services"
 	"fmt"
 	"log"
@@ -360,8 +360,8 @@ func (h *TradingHandler) GetUserWallet(c *gin.Context) {
 			// 임시 응답 (프론트엔드에서 잠시 후 재시도 필요)
 			middleware.Success(c, gin.H{
 				"wallet_creating": true,
-				"message": "지갑을 생성하고 있습니다. 잠시 후 다시 시도해주세요.",
-				"retry_after": 3, // 3초 후 재시도 권장
+				"message":         "지갑을 생성하고 있습니다. 잠시 후 다시 시도해주세요.",
+				"retry_after":     3, // 3초 후 재시도 권장
 			}, "지갑 생성 중")
 			return
 		}
@@ -428,7 +428,7 @@ func (h *TradingHandler) GetPriceHistory(c *gin.Context) {
 		limitInt = 100
 	}
 
-		// 일반 DB에서 fallback 데이터 생성 (TimescaleDB 대신)
+	// 일반 DB에서 fallback 데이터 생성 (TimescaleDB 대신)
 	log.Printf("🔍 Generating fallback price history for milestone %d, option %s", milestoneID, optionID)
 
 	// 1. 마켓 데이터에서 현재 가격 조회
@@ -474,7 +474,7 @@ func (h *TradingHandler) GetPriceHistory(c *gin.Context) {
 			}
 
 			open := groupTrades[len(groupTrades)-1].Price // 가장 오래된 거래
-			close := groupTrades[0].Price                  // 가장 최근 거래
+			close := groupTrades[0].Price                 // 가장 최근 거래
 			high := groupTrades[0].Price
 			low := groupTrades[0].Price
 			volume := int64(0)
