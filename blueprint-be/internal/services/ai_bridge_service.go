@@ -1,8 +1,8 @@
 package services
 
 import (
-	"blueprint/internal/config"
 	"blueprint-module/pkg/models"
+	"blueprint/internal/config"
 	"context"
 	"fmt"
 	"time"
@@ -12,18 +12,18 @@ import (
 
 // BridgeAIService 브릿지 패턴을 적용한 AI 서비스
 type BridgeAIService struct {
-	aiModel   AIModelInterface
-	factory   AIModelFactory
-	provider  AIProvider
-	config    *config.Config
-	db        *gorm.DB
+	aiModel  AIModelInterface
+	factory  AIModelFactory
+	provider AIProvider
+	config   *config.Config
+	db       *gorm.DB
 }
 
 // NewBridgeAIService 새로운 브릿지 AI 서비스 생성
 func NewBridgeAIService(cfg *config.Config, db *gorm.DB) *BridgeAIService {
 	factory := NewAIModelFactory()
 
-		// 환경변수에서 설정된 AI 제공업체 사용
+	// 환경변수에서 설정된 AI 제공업체 사용
 	provider := AIProvider(cfg.AI.Provider)
 	var modelConfig map[string]string
 

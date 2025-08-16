@@ -75,10 +75,10 @@ func (fv *FundingVerificationService) StartFundingPhase(milestoneID uint) error 
 
 	// 실시간 알림 브로드캐스트
 	fv.broadcastFundingUpdate(milestoneID, "funding_started", map[string]interface{}{
-		"milestone_id":         milestoneID,
-		"min_viable_capital":   milestone.MinViableCapital,
-		"funding_end_date":     milestone.FundingEndDate,
-		"funding_duration":     milestone.FundingDuration,
+		"milestone_id":       milestoneID,
+		"min_viable_capital": milestone.MinViableCapital,
+		"funding_end_date":   milestone.FundingEndDate,
+		"funding_duration":   milestone.FundingDuration,
 	})
 
 	return nil
@@ -125,17 +125,17 @@ func (fv *FundingVerificationService) UpdateTVL(milestoneID uint, optionID strin
 	if milestone.Status == models.MilestoneStatusFunding && milestone.HasReachedMinViableCapital() {
 		log.Printf("🎉 Milestone %d has reached minimum viable capital!", milestoneID)
 		fv.broadcastFundingUpdate(milestoneID, "funding_target_reached", map[string]interface{}{
-			"milestone_id":    milestoneID,
-			"current_tvl":     milestone.CurrentTVL,
+			"milestone_id":     milestoneID,
+			"current_tvl":      milestone.CurrentTVL,
 			"funding_progress": milestone.FundingProgress,
 		})
 	}
 
 	// 실시간 진행률 업데이트
 	fv.broadcastFundingUpdate(milestoneID, "tvl_updated", map[string]interface{}{
-		"milestone_id":     milestoneID,
-		"current_tvl":      milestone.CurrentTVL,
-		"funding_progress": milestone.FundingProgress,
+		"milestone_id":      milestoneID,
+		"current_tvl":       milestone.CurrentTVL,
+		"funding_progress":  milestone.FundingProgress,
 		"additional_amount": additionalAmount,
 	})
 
@@ -311,7 +311,7 @@ func (fv *FundingVerificationService) calculateMinViableCapital(milestone *model
 	case models.PersonalProject:
 		return 100000 // $1000 - 개인은 기본 투자 가치
 	case models.LifeProject:
-		return 75000  // $750 - 라이프스타일은 가장 낮은 투자 가치
+		return 75000 // $750 - 라이프스타일은 가장 낮은 투자 가치
 	default:
 		return 100000 // 기본값
 	}
@@ -343,31 +343,31 @@ func (fv *FundingVerificationService) GetFundingStats(milestoneID uint) (*Fundin
 		// 컬럼이 존재하지 않는 경우 기본값으로 응답
 		if fv.isColumnNotExistsError(err) {
 			return &FundingStats{
-				MilestoneID:       milestoneID,
-				Status:            models.MilestoneStatusPending, // 기본 상태
-				CurrentTVL:        0,
-				MinViableCapital:  100000, // 기본값: $1000
-				FundingProgress:   0,
-				IsActive:          false,
-				IsExpired:         false,
-				HasReachedTarget:  false,
+				MilestoneID:      milestoneID,
+				Status:           models.MilestoneStatusPending, // 기본 상태
+				CurrentTVL:       0,
+				MinViableCapital: 100000, // 기본값: $1000
+				FundingProgress:  0,
+				IsActive:         false,
+				IsExpired:        false,
+				HasReachedTarget: false,
 			}, nil
 		}
 		return nil, fmt.Errorf("milestone not found: %v", err)
 	}
 
 	stats := &FundingStats{
-		MilestoneID:       milestoneID,
-		Status:            milestone.Status,
-		CurrentTVL:        milestone.CurrentTVL,
-		MinViableCapital:  milestone.MinViableCapital,
-		FundingProgress:   milestone.FundingProgress,
-		FundingStartDate:  milestone.FundingStartDate,
-		FundingEndDate:    milestone.FundingEndDate,
-		FundingDuration:   milestone.FundingDuration,
-		IsActive:          milestone.IsFundingActive(),
-		IsExpired:         milestone.IsFundingExpired(),
-		HasReachedTarget:  milestone.HasReachedMinViableCapital(),
+		MilestoneID:      milestoneID,
+		Status:           milestone.Status,
+		CurrentTVL:       milestone.CurrentTVL,
+		MinViableCapital: milestone.MinViableCapital,
+		FundingProgress:  milestone.FundingProgress,
+		FundingStartDate: milestone.FundingStartDate,
+		FundingEndDate:   milestone.FundingEndDate,
+		FundingDuration:  milestone.FundingDuration,
+		IsActive:         milestone.IsFundingActive(),
+		IsExpired:        milestone.IsFundingExpired(),
+		HasReachedTarget: milestone.HasReachedMinViableCapital(),
 	}
 
 	return stats, nil
@@ -375,17 +375,17 @@ func (fv *FundingVerificationService) GetFundingStats(milestoneID uint) (*Fundin
 
 // FundingStats 펀딩 통계 구조체
 type FundingStats struct {
-	MilestoneID       uint                `json:"milestone_id"`
-	Status            models.MilestoneStatus `json:"status"`
-	CurrentTVL        int64               `json:"current_tvl"`
-	MinViableCapital  int64               `json:"min_viable_capital"`
-	FundingProgress   float64             `json:"funding_progress"`
-	FundingStartDate  *time.Time          `json:"funding_start_date,omitempty"`
-	FundingEndDate    *time.Time          `json:"funding_end_date,omitempty"`
-	FundingDuration   int                 `json:"funding_duration"`
-	IsActive          bool                `json:"is_active"`
-	IsExpired         bool                `json:"is_expired"`
-	HasReachedTarget  bool                `json:"has_reached_target"`
+	MilestoneID      uint                   `json:"milestone_id"`
+	Status           models.MilestoneStatus `json:"status"`
+	CurrentTVL       int64                  `json:"current_tvl"`
+	MinViableCapital int64                  `json:"min_viable_capital"`
+	FundingProgress  float64                `json:"funding_progress"`
+	FundingStartDate *time.Time             `json:"funding_start_date,omitempty"`
+	FundingEndDate   *time.Time             `json:"funding_end_date,omitempty"`
+	FundingDuration  int                    `json:"funding_duration"`
+	IsActive         bool                   `json:"is_active"`
+	IsExpired        bool                   `json:"is_expired"`
+	HasReachedTarget bool                   `json:"has_reached_target"`
 }
 
 // isColumnNotExistsError 컬럼이 존재하지 않는 오류인지 확인
@@ -399,7 +399,7 @@ func (fv *FundingVerificationService) isColumnNotExistsError(err error) bool {
 	// MySQL: Unknown column 'funding_end_date' in 'where clause'
 	// SQLite: no such column: funding_end_date
 	return (errStr != "" &&
-		   (strings.Contains(errStr, `column "funding_end_date" does not exist`) ||
+		(strings.Contains(errStr, `column "funding_end_date" does not exist`) ||
 			strings.Contains(errStr, `column "funding_start_date" does not exist`) ||
 			strings.Contains(errStr, `column "min_viable_capital" does not exist`) ||
 			strings.Contains(errStr, `column "current_tvl" does not exist`) ||

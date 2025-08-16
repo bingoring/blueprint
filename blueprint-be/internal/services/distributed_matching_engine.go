@@ -20,26 +20,26 @@ import (
 // Redis Streams + Distributed Locks + Event Sourcing
 
 type DistributedMatchingEngine struct {
-	db             *gorm.DB
-	redisClient    *redisClient.Client
-	sseService     *SSEService
-	instanceID     string // 서버 인스턴스 고유 ID
-	
+	db          *gorm.DB
+	redisClient *redisClient.Client
+	sseService  *SSEService
+	instanceID  string // 서버 인스턴스 고유 ID
+
 	// 분산 락 및 상태 관리
-	lockManager    *DistributedLockManager
-	eventSourcing  *OrderEventSourcing
-	
+	lockManager   *DistributedLockManager
+	eventSourcing *OrderEventSourcing
+
 	// 실시간 처리
-	orderStreams   *RedisStreamManager
-	priceOracle    *DistributedPriceOracle
-	
+	orderStreams *RedisStreamManager
+	priceOracle  *DistributedPriceOracle
+
 	// 로컬 캐시 (성능 최적화용)
-	localCache     *LocalOrderBookCache
-	
+	localCache *LocalOrderBookCache
+
 	// 컨트롤 채널
-	ctx            context.Context
-	cancel         context.CancelFunc
-	wg             sync.WaitGroup
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 }
 
 // OrderEvent 주문 이벤트 (Event Sourcing)
@@ -86,12 +86,12 @@ func (dlm *DistributedLockManager) AcquireLock(ctx context.Context, key string, 
 		end
 		return 0
 	`
-	
+
 	result, err := dlm.redisClient.Eval(ctx, script, []string{fmt.Sprintf("lock:%s", key)}, instanceID, int(ttl.Seconds())).Result()
 	if err != nil {
 		return false, err
 	}
-	
+
 	return result.(int64) == 1, nil
 }
 
@@ -104,7 +104,7 @@ func (dlm *DistributedLockManager) ReleaseLock(ctx context.Context, key string, 
 			return 0
 		end
 	`
-	
+
 	_, err := dlm.redisClient.Eval(ctx, script, []string{fmt.Sprintf("lock:%s", key)}, instanceID).Result()
 	return err
 }
@@ -126,9 +126,9 @@ func (oes *OrderEventSourcing) AppendEvent(ctx context.Context, marketKey string
 	if err != nil {
 		return err
 	}
-	
+
 	streamKey := fmt.Sprintf("events:%s", marketKey)
-	
+
 	// Redis Streams에 이벤트 추가
 	_, err = oes.redisClient.XAdd(ctx, &redisClient.XAddArgs{
 		Stream: streamKey,
@@ -141,24 +141,24 @@ func (oes *OrderEventSourcing) AppendEvent(ctx context.Context, marketKey string
 			"server_id":  event.ServerID,
 		},
 	}).Result()
-	
+
 	return err
 }
 
 // ReadEvents 이벤트 읽기 (특정 시점부터)
 func (oes *OrderEventSourcing) ReadEvents(ctx context.Context, marketKey string, fromID string) ([]*OrderEvent, error) {
 	streamKey := fmt.Sprintf("events:%s", marketKey)
-	
+
 	result, err := oes.redisClient.XRead(ctx, &redisClient.XReadArgs{
 		Streams: []string{streamKey, fromID},
 		Count:   100,
 		Block:   0,
 	}).Result()
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var events []*OrderEvent
 	for _, stream := range result {
 		for _, message := range stream.Messages {
@@ -170,7 +170,7 @@ func (oes *OrderEventSourcing) ReadEvents(ctx context.Context, marketKey string,
 			}
 		}
 	}
-	
+
 	return events, nil
 }
 
@@ -192,10 +192,26 @@ func (rsm *RedisStreamManager) ProcessOrderStream(ctx context.Context, marketKey
 	streamKey := fmt.Sprintf("orders:%s", marketKey)
 	consumerGroup := "matching-engines"
 	consumerName := fmt.Sprintf("engine-%s", rsm.instanceID)
-	
-	// 컨슈머 그룹 생성 (이미 존재하면 무시)
-	rsm.redisClient.XGroupCreate(ctx, streamKey, consumerGroup, "0").Err()
-	
+
+	// 스트림과 컨슈머 그룹 생성 (이미 존재하면 무시)
+	// 먼저 스트림이 존재하는지 확인하고, 없으면 더미 메시지로 스트림 생성
+	exists := rsm.redisClient.Exists(ctx, streamKey).Val()
+	if exists == 0 {
+		// 더미 메시지로 스트림 생성
+		rsm.redisClient.XAdd(ctx, &redisClient.XAddArgs{
+			Stream: streamKey,
+			Values: map[string]interface{}{"init": "true"},
+		})
+		// 더미 메시지 제거 (XTRIMARGS 사용)
+		rsm.redisClient.XTrimMaxLen(ctx, streamKey, 0)
+	}
+
+	// 이제 컨슈머 그룹 생성
+	err := rsm.redisClient.XGroupCreate(ctx, streamKey, consumerGroup, "0").Err()
+	if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
+		log.Printf("⚠️ Failed to create consumer group: %v", err)
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -209,15 +225,21 @@ func (rsm *RedisStreamManager) ProcessOrderStream(ctx context.Context, marketKey
 				Count:    10,
 				Block:    time.Second,
 			}).Result()
-			
+
 			if err != nil {
 				if err == redisClient.Nil {
 					continue
 				}
+				// NOGROUP 에러는 정상적인 상황 (스트림이 아직 없음)이므로 로그 레벨 낮춤
+				if strings.Contains(err.Error(), "NOGROUP") {
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
 				log.Printf("❌ Stream read error: %v", err)
+				time.Sleep(time.Second)
 				continue
 			}
-			
+
 			// 메시지 처리
 			for _, stream := range result {
 				for _, message := range stream.Messages {
@@ -241,12 +263,12 @@ func (rsm *RedisStreamManager) processMessage(ctx context.Context, streamKey, co
 	} else {
 		return fmt.Errorf("invalid message format")
 	}
-	
+
 	// 이벤트 처리
 	if err := processor(&event); err != nil {
 		return err
 	}
-	
+
 	// 메시지 확인 (ACK)
 	return rsm.redisClient.XAck(ctx, streamKey, consumerGroup, message.ID).Err()
 }
@@ -280,7 +302,7 @@ func (dpo *DistributedPriceOracle) UpdatePrice(ctx context.Context, marketKey st
 		
 		return 1
 	`
-	
+
 	_, err := dpo.redisClient.Eval(ctx, script, []string{marketKey}, price, volume).Result()
 	return err
 }
@@ -294,17 +316,24 @@ func (dpo *DistributedPriceOracle) GetPrice(ctx context.Context, marketKey strin
 		}
 		return 0, err
 	}
-	
+
 	return strconv.ParseFloat(priceStr, 64)
 }
 
 // 🚀 분산 매칭 엔진 생성자
 func NewDistributedMatchingEngine(db *gorm.DB, sseService *SSEService) *DistributedMatchingEngine {
+	return NewDistributedMatchingEngineWithRedis(db, sseService, nil)
+}
+
+func NewDistributedMatchingEngineWithRedis(db *gorm.DB, sseService *SSEService, redisClient *redisClient.Client) *DistributedMatchingEngine {
 	ctx, cancel := context.WithCancel(context.Background())
 	instanceID := fmt.Sprintf("engine-%d", time.Now().UnixNano())
-	
-	redisClient := redis.GetClient()
-	
+
+	// Use provided Redis client or get default one
+	if redisClient == nil {
+		redisClient = redis.GetClient()
+	}
+
 	return &DistributedMatchingEngine{
 		db:            db,
 		redisClient:   redisClient,
@@ -323,13 +352,13 @@ func NewDistributedMatchingEngine(db *gorm.DB, sseService *SSEService) *Distribu
 // Start 분산 매칭 엔진 시작
 func (dme *DistributedMatchingEngine) Start() error {
 	log.Printf("🌐 Starting Distributed Matching Engine: %s", dme.instanceID)
-	
+
 	// 주요 마켓 스트림 처리 시작
 	markets, err := dme.getActiveMarkets()
 	if err != nil {
 		return err
 	}
-	
+
 	for _, marketKey := range markets {
 		dme.wg.Add(1)
 		go func(market string) {
@@ -337,14 +366,14 @@ func (dme *DistributedMatchingEngine) Start() error {
 			dme.orderStreams.ProcessOrderStream(dme.ctx, market, dme.processOrderEvent)
 		}(marketKey)
 	}
-	
+
 	// 가격 오라클 업데이터 시작
 	dme.wg.Add(1)
 	go func() {
 		defer dme.wg.Done()
 		dme.runPriceOracleUpdater()
 	}()
-	
+
 	log.Printf("✅ Distributed Matching Engine started with %d market streams", len(markets))
 	return nil
 }
@@ -361,7 +390,7 @@ func (dme *DistributedMatchingEngine) Stop() error {
 // SubmitOrder 주문 제출 (분산 환경)
 func (dme *DistributedMatchingEngine) SubmitOrder(order *models.Order) (*MatchingResult, error) {
 	marketKey := dme.getMarketKey(order.MilestoneID, order.OptionID)
-	
+
 	// 1. 분산 락 획득 (매칭 원자성 보장)
 	lockKey := fmt.Sprintf("match:%s", marketKey)
 	locked, err := dme.lockManager.AcquireLock(dme.ctx, lockKey, 5*time.Second, dme.instanceID)
@@ -372,7 +401,7 @@ func (dme *DistributedMatchingEngine) SubmitOrder(order *models.Order) (*Matchin
 		return nil, fmt.Errorf("market is locked by another instance")
 	}
 	defer dme.lockManager.ReleaseLock(dme.ctx, lockKey, dme.instanceID)
-	
+
 	// 2. 주문 이벤트 생성
 	event := &OrderEvent{
 		EventID:     fmt.Sprintf("%s-%d", dme.instanceID, time.Now().UnixNano()),
@@ -387,12 +416,12 @@ func (dme *DistributedMatchingEngine) SubmitOrder(order *models.Order) (*Matchin
 		ServerID:  dme.instanceID,
 		Version:   1,
 	}
-	
+
 	// 3. 이벤트 소싱에 기록
 	if err := dme.eventSourcing.AppendEvent(dme.ctx, marketKey, event); err != nil {
 		return nil, fmt.Errorf("failed to append event: %v", err)
 	}
-	
+
 	// 4. 매칭 실행
 	return dme.executeMatching(marketKey, order)
 }
@@ -420,15 +449,15 @@ func (dme *DistributedMatchingEngine) executeMatching(marketKey string, order *m
 			// 거래 체결
 			tradeQuantity := minInt64(remainingQuantity, askOrder.Quantity)
 			trade := models.Trade{
-				BuyOrderID:   order.ID,
-				SellOrderID:  askOrder.ID,
-				MilestoneID:  order.MilestoneID,
-				OptionID:     order.OptionID,
-				BuyerID:      order.UserID,
-				SellerID:     askOrder.UserID,
-				Quantity:     tradeQuantity,
-				Price:        askOrder.Price,
-				CreatedAt:    time.Now(),
+				BuyOrderID:  order.ID,
+				SellOrderID: askOrder.ID,
+				MilestoneID: order.MilestoneID,
+				OptionID:    order.OptionID,
+				BuyerID:     order.UserID,
+				SellerID:    askOrder.UserID,
+				Quantity:    tradeQuantity,
+				Price:       askOrder.Price,
+				CreatedAt:   time.Now(),
 			}
 
 			trades = append(trades, trade)
@@ -454,15 +483,15 @@ func (dme *DistributedMatchingEngine) executeMatching(marketKey string, order *m
 			// 거래 체결
 			tradeQuantity := minInt64(remainingQuantity, bidOrder.Quantity)
 			trade := models.Trade{
-				BuyOrderID:   bidOrder.ID,
-				SellOrderID:  order.ID,
-				MilestoneID:  order.MilestoneID,
-				OptionID:     order.OptionID,
-				BuyerID:      bidOrder.UserID,
-				SellerID:     order.UserID,
-				Quantity:     tradeQuantity,
-				Price:        bidOrder.Price,
-				CreatedAt:    time.Now(),
+				BuyOrderID:  bidOrder.ID,
+				SellOrderID: order.ID,
+				MilestoneID: order.MilestoneID,
+				OptionID:    order.OptionID,
+				BuyerID:     bidOrder.UserID,
+				SellerID:    order.UserID,
+				Quantity:    tradeQuantity,
+				Price:       bidOrder.Price,
+				CreatedAt:   time.Now(),
 			}
 
 			trades = append(trades, trade)
@@ -517,27 +546,27 @@ func (dme *DistributedMatchingEngine) processOrderEvent(event *OrderEvent) error
 	case EventOrderCreated:
 		log.Printf("🔄 Processing order created event: %s", event.EventID)
 		// 주문 생성 이벤트는 이미 executeMatching에서 처리됨
-		
+
 	case EventOrderCancelled:
 		log.Printf("❌ Processing order cancelled event: %s", event.EventID)
 		return dme.handleOrderCancellation(marketKey, event.OrderID)
-		
+
 	case EventOrderExpired:
 		log.Printf("⏰ Processing order expired event: %s", event.EventID)
 		return dme.handleOrderExpiry(marketKey, event.OrderID)
-		
+
 	case EventTradeExecuted:
 		log.Printf("💰 Processing trade executed event: %s", event.EventID)
 		// 거래 실행 이벤트는 SSE 브로드캐스팅용
-		
+
 	case EventPriceUpdated:
 		log.Printf("📊 Processing price updated event: %s", event.EventID)
 		// 가격 업데이트는 이미 priceOracle에서 처리됨
-		
+
 	default:
 		log.Printf("⚠️ Unknown event type: %s", event.EventType)
 	}
-	
+
 	return nil
 }
 
@@ -548,14 +577,14 @@ func (dme *DistributedMatchingEngine) getActiveMarkets() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active milestones: %v", err)
 	}
-	
+
 	var markets []string
 	for _, milestone := range milestones {
 		// 각 마일스톤에 대해 success/fail 마켓 생성
 		markets = append(markets, fmt.Sprintf("%d:success", milestone.ID))
 		markets = append(markets, fmt.Sprintf("%d:fail", milestone.ID))
 	}
-	
+
 	log.Printf("🎯 Found %d active markets from %d milestones", len(markets), len(milestones))
 	return markets, nil
 }
@@ -569,19 +598,19 @@ func (dme *DistributedMatchingEngine) parseMarketKey(marketKey string) (uint, st
 	if len(parts) != 2 {
 		return 0, ""
 	}
-	
+
 	milestoneID, err := strconv.ParseUint(parts[0], 10, 32)
 	if err != nil {
 		return 0, ""
 	}
-	
+
 	return uint(milestoneID), parts[1]
 }
 
 func (dme *DistributedMatchingEngine) runPriceOracleUpdater() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-dme.ctx.Done():
@@ -615,7 +644,7 @@ func NewLocalOrderBookCache() *LocalOrderBookCache {
 func (lobc *LocalOrderBookCache) Get(marketKey string) (*CachedOrderBook, bool) {
 	lobc.mutex.RLock()
 	defer lobc.mutex.RUnlock()
-	
+
 	book, exists := lobc.cache[marketKey]
 	return book, exists
 }
@@ -623,15 +652,15 @@ func (lobc *LocalOrderBookCache) Get(marketKey string) (*CachedOrderBook, bool) 
 func (lobc *LocalOrderBookCache) Set(marketKey string, book *CachedOrderBook) {
 	lobc.mutex.Lock()
 	defer lobc.mutex.Unlock()
-	
+
 	lobc.cache[marketKey] = book
 }
 
 // 📚 Redis 기반 주문장 관리
 type DistributedOrderBook struct {
 	MarketKey string          `json:"market_key"`
-	Bids      []*models.Order `json:"bids"`  // 매수 주문 (가격 높은 순)
-	Asks      []*models.Order `json:"asks"`  // 매도 주문 (가격 낮은 순)
+	Bids      []*models.Order `json:"bids"` // 매수 주문 (가격 높은 순)
+	Asks      []*models.Order `json:"asks"` // 매도 주문 (가격 낮은 순)
 	LastPrice float64         `json:"last_price"`
 	UpdatedAt time.Time       `json:"updated_at"`
 }
@@ -639,7 +668,7 @@ type DistributedOrderBook struct {
 // loadOrderBook Redis에서 주문장 로드
 func (dme *DistributedMatchingEngine) loadOrderBook(marketKey string) (*DistributedOrderBook, error) {
 	orderBookKey := fmt.Sprintf("orderbook:%s", marketKey)
-	
+
 	// Redis에서 주문장 데이터 가져오기
 	data, err := dme.redisClient.Get(dme.ctx, orderBookKey).Result()
 	if err != nil {
@@ -654,12 +683,12 @@ func (dme *DistributedMatchingEngine) loadOrderBook(marketKey string) (*Distribu
 		}
 		return nil, err
 	}
-	
+
 	var orderBook DistributedOrderBook
 	if err := json.Unmarshal([]byte(data), &orderBook); err != nil {
 		return nil, err
 	}
-	
+
 	return &orderBook, nil
 }
 
@@ -667,12 +696,12 @@ func (dme *DistributedMatchingEngine) loadOrderBook(marketKey string) (*Distribu
 func (dme *DistributedMatchingEngine) saveOrderBook(marketKey string, orderBook *DistributedOrderBook) error {
 	orderBook.UpdatedAt = time.Now()
 	orderBookKey := fmt.Sprintf("orderbook:%s", marketKey)
-	
+
 	data, err := json.Marshal(orderBook)
 	if err != nil {
 		return err
 	}
-	
+
 	// TTL 설정 (24시간)
 	return dme.redisClient.Set(dme.ctx, orderBookKey, data, 24*time.Hour).Err()
 }
@@ -722,7 +751,7 @@ func (dme *DistributedMatchingEngine) emitTradeEvent(marketKey string, trade *mo
 		ServerID:  dme.instanceID,
 		Version:   1,
 	}
-	
+
 	dme.eventSourcing.AppendEvent(dme.ctx, marketKey, event)
 }
 
@@ -731,26 +760,26 @@ func (dme *DistributedMatchingEngine) broadcastMarketUpdate(marketKey string, or
 	if dme.sseService == nil {
 		return
 	}
-	
+
 	// 주문장 상태 업데이트
 	orderBookData := map[string]interface{}{
-		"bids":       orderBook.Bids,
-		"asks":       orderBook.Asks,
-		"timestamp":  time.Now().UnixMilli(),
+		"bids":      orderBook.Bids,
+		"asks":      orderBook.Asks,
+		"timestamp": time.Now().UnixMilli(),
 	}
-	
+
 	// Extract milestone and option IDs from marketKey
 	milestoneID, optionID := dme.parseMarketKey(marketKey)
 	dme.sseService.BroadcastOrderBookUpdate(milestoneID, optionID, orderBookData)
-	
+
 	// 거래 내역 브로드캐스트
 	if len(trades) > 0 {
 		for _, trade := range trades {
 			tradeData := map[string]interface{}{
-				"trade":       trade,
-				"timestamp":   time.Now().UnixMilli(),
+				"trade":     trade,
+				"timestamp": time.Now().UnixMilli(),
 			}
-			
+
 			dme.sseService.BroadcastTradeUpdate(trade.MilestoneID, trade.OptionID, tradeData)
 		}
 	}
@@ -764,12 +793,12 @@ func (dme *DistributedMatchingEngine) handleOrderCancellation(marketKey string, 
 		return fmt.Errorf("failed to acquire cancellation lock")
 	}
 	defer dme.lockManager.ReleaseLock(dme.ctx, lockKey, dme.instanceID)
-	
+
 	orderBook, err := dme.loadOrderBook(marketKey)
 	if err != nil {
 		return err
 	}
-	
+
 	// Bids에서 주문 제거
 	for i, order := range orderBook.Bids {
 		if order.ID == orderID {
@@ -777,7 +806,7 @@ func (dme *DistributedMatchingEngine) handleOrderCancellation(marketKey string, 
 			break
 		}
 	}
-	
+
 	// Asks에서 주문 제거
 	for i, order := range orderBook.Asks {
 		if order.ID == orderID {
@@ -785,7 +814,7 @@ func (dme *DistributedMatchingEngine) handleOrderCancellation(marketKey string, 
 			break
 		}
 	}
-	
+
 	return dme.saveOrderBook(marketKey, orderBook)
 }
 
@@ -821,7 +850,7 @@ type CreateOrderCommand struct {
 	UserID      uint    `json:"user_id"`
 	MilestoneID uint    `json:"milestone_id"`
 	OptionID    string  `json:"option_id"`
-	Type        string  `json:"type"`        // buy/sell
+	Type        string  `json:"type"` // buy/sell
 	Quantity    int64   `json:"quantity"`
 	Price       float64 `json:"price"`
 }
@@ -838,7 +867,7 @@ func (tch *TradingCommandHandler) HandleCreateOrder(cmd *CreateOrderCommand) (*M
 	if err := tch.validateCreateOrderCommand(cmd); err != nil {
 		return nil, fmt.Errorf("invalid command: %v", err)
 	}
-	
+
 	// 2. Order 모델 생성
 	order := &models.Order{
 		UserID:      cmd.UserID,
@@ -850,7 +879,7 @@ func (tch *TradingCommandHandler) HandleCreateOrder(cmd *CreateOrderCommand) (*M
 		Status:      models.OrderStatusPending,
 		CreatedAt:   time.Now(),
 	}
-	
+
 	// 3. 분산 매칭 엔진으로 처리
 	return tch.matchingEngine.SubmitOrder(order)
 }
@@ -861,13 +890,13 @@ func (tch *TradingCommandHandler) HandleCancelOrder(cmd *CancelOrderCommand) err
 	if cmd.OrderID == 0 || cmd.UserID == 0 {
 		return fmt.Errorf("invalid cancel order command")
 	}
-	
+
 	// 2. 주문 취소 이벤트 생성
 	marketKey := "unknown" // 실제로는 주문 조회 후 결정
 	event := &OrderEvent{
-		EventID:     fmt.Sprintf("cancel-%s-%d", tch.matchingEngine.instanceID, time.Now().UnixNano()),
-		EventType:   EventOrderCancelled,
-		OrderID:     cmd.OrderID,
+		EventID:   fmt.Sprintf("cancel-%s-%d", tch.matchingEngine.instanceID, time.Now().UnixNano()),
+		EventType: EventOrderCancelled,
+		OrderID:   cmd.OrderID,
 		Payload: map[string]interface{}{
 			"user_id": cmd.UserID,
 		},
@@ -875,7 +904,7 @@ func (tch *TradingCommandHandler) HandleCancelOrder(cmd *CancelOrderCommand) err
 		ServerID:  tch.matchingEngine.instanceID,
 		Version:   1,
 	}
-	
+
 	// 3. 이벤트 소싱에 기록
 	return tch.matchingEngine.eventSourcing.AppendEvent(tch.matchingEngine.ctx, marketKey, event)
 }
@@ -938,32 +967,32 @@ type UserOrdersQuery struct {
 // GetMarketData 마켓 데이터 조회
 func (tqh *TradingQueryHandler) GetMarketData(query *MarketDataQuery) (*MarketDataView, error) {
 	marketKey := fmt.Sprintf("%d:%s", query.MilestoneID, query.OptionID)
-	
+
 	// Redis에서 실시간 데이터 조회
 	pipe := tqh.redisClient.Pipeline()
-	
+
 	priceCmd := pipe.Get(context.Background(), fmt.Sprintf("price:%s", marketKey))
 	volumeCmd := pipe.Get(context.Background(), fmt.Sprintf("volume:%s", marketKey))
 	historyCmd := pipe.ZRevRange(context.Background(), fmt.Sprintf("history:%s", marketKey), 0, 23) // 최근 24개
-	
+
 	_, err := pipe.Exec(context.Background())
 	if err != nil && err != redisClient.Nil {
 		return nil, err
 	}
-	
+
 	// 결과 파싱
 	price, _ := priceCmd.Float64()
 	volume, _ := volumeCmd.Int64()
 	history := historyCmd.Val()
-	
+
 	return &MarketDataView{
-		MarketKey:   marketKey,
-		MilestoneID: query.MilestoneID,
-		OptionID:    query.OptionID,
-		LastPrice:   price,
-		Volume24h:   volume,
+		MarketKey:    marketKey,
+		MilestoneID:  query.MilestoneID,
+		OptionID:     query.OptionID,
+		LastPrice:    price,
+		Volume24h:    volume,
 		PriceHistory: history,
-		UpdatedAt:   time.Now(),
+		UpdatedAt:    time.Now(),
 	}, nil
 }
 
@@ -971,7 +1000,7 @@ func (tqh *TradingQueryHandler) GetMarketData(query *MarketDataQuery) (*MarketDa
 func (tqh *TradingQueryHandler) GetOrderBook(query *OrderBookQuery) (*OrderBookView, error) {
 	marketKey := fmt.Sprintf("%d:%s", query.MilestoneID, query.OptionID)
 	orderBookKey := fmt.Sprintf("orderbook:%s", marketKey)
-	
+
 	data, err := tqh.redisClient.Get(context.Background(), orderBookKey).Result()
 	if err != nil {
 		if err == redisClient.Nil {
@@ -983,12 +1012,12 @@ func (tqh *TradingQueryHandler) GetOrderBook(query *OrderBookQuery) (*OrderBookV
 		}
 		return nil, err
 	}
-	
+
 	var orderBook DistributedOrderBook
 	if err := json.Unmarshal([]byte(data), &orderBook); err != nil {
 		return nil, err
 	}
-	
+
 	// 뷰 모델로 변환
 	view := &OrderBookView{
 		MarketKey: marketKey,
@@ -996,30 +1025,30 @@ func (tqh *TradingQueryHandler) GetOrderBook(query *OrderBookQuery) (*OrderBookV
 		Asks:      tqh.convertToOrderBookEntries(orderBook.Asks, query.Depth),
 		UpdatedAt: orderBook.UpdatedAt,
 	}
-	
+
 	return view, nil
 }
 
 // GetUserOrders 사용자 주문 내역 조회
 func (tqh *TradingQueryHandler) GetUserOrders(query *UserOrdersQuery) ([]*UserOrderView, error) {
 	dbQuery := tqh.db.Where("user_id = ?", query.UserID)
-	
+
 	if query.Status != "" {
 		dbQuery = dbQuery.Where("status = ?", query.Status)
 	}
-	
+
 	if query.Limit > 0 {
 		dbQuery = dbQuery.Limit(query.Limit)
 	} else {
 		dbQuery = dbQuery.Limit(50) // 기본 50개
 	}
-	
+
 	var orders []models.Order
 	err := dbQuery.Order("created_at DESC").Find(&orders).Error
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// 뷰 모델로 변환
 	var views []*UserOrderView
 	for _, order := range orders {
@@ -1034,18 +1063,18 @@ func (tqh *TradingQueryHandler) GetUserOrders(query *UserOrdersQuery) ([]*UserOr
 			CreatedAt:   order.CreatedAt,
 		})
 	}
-	
+
 	return views, nil
 }
 
 func (tqh *TradingQueryHandler) convertToOrderBookEntries(orders []*models.Order, depth int) []OrderBookEntry {
 	entries := []OrderBookEntry{}
-	
+
 	limit := len(orders)
 	if depth > 0 && depth < limit {
 		limit = depth
 	}
-	
+
 	for i := 0; i < limit; i++ {
 		entry := OrderBookEntry{
 			Price:    orders[i].Price,
@@ -1053,7 +1082,7 @@ func (tqh *TradingQueryHandler) convertToOrderBookEntries(orders []*models.Order
 		}
 		entries = append(entries, entry)
 	}
-	
+
 	return entries
 }
 
@@ -1069,10 +1098,10 @@ type MarketDataView struct {
 }
 
 type OrderBookView struct {
-	MarketKey string             `json:"market_key"`
-	Bids      []OrderBookEntry   `json:"bids"`
-	Asks      []OrderBookEntry   `json:"asks"`
-	UpdatedAt time.Time          `json:"updated_at"`
+	MarketKey string           `json:"market_key"`
+	Bids      []OrderBookEntry `json:"bids"`
+	Asks      []OrderBookEntry `json:"asks"`
+	UpdatedAt time.Time        `json:"updated_at"`
 }
 
 type OrderBookEntry struct {

@@ -1,9 +1,9 @@
 package services
 
 import (
+	"blueprint-module/pkg/models"
 	"blueprint-module/pkg/queue"
 	"blueprint-module/pkg/redis"
-	"blueprint-module/pkg/models"
 	"context"
 	"fmt"
 	"log"
@@ -22,112 +22,112 @@ type LiquidityMiningService struct {
 	queuePublisher *queue.Publisher
 
 	// 마이닝 상태
-	isRunning      bool
-	stopChan       chan struct{}
-	mutex          sync.RWMutex
+	isRunning bool
+	stopChan  chan struct{}
+	mutex     sync.RWMutex
 
 	// 설정
-	config         LiquidityMiningConfig
+	config LiquidityMiningConfig
 
 	// 통계
-	stats          LiquidityMiningStats
+	stats LiquidityMiningStats
 }
 
 // LiquidityMiningConfig 유동성 마이닝 설정
 type LiquidityMiningConfig struct {
 	// 리워드 설정
-	DailyRewardPool     int64   `json:"daily_reward_pool"`     // 일일 리워드 풀 (tokens)
-	MinLiquidityAmount  int64   `json:"min_liquidity_amount"`  // 최소 유동성 제공량
+	DailyRewardPool           int64         `json:"daily_reward_pool"`           // 일일 리워드 풀 (tokens)
+	MinLiquidityAmount        int64         `json:"min_liquidity_amount"`        // 최소 유동성 제공량
 	RewardCalculationInterval time.Duration `json:"reward_calculation_interval"` // 리워드 계산 주기
 
 	// 부스터 설정
-	EarlyProviderBonus  float64 `json:"early_provider_bonus"`  // 초기 유동성 제공자 보너스
-	LongTermBonus       float64 `json:"long_term_bonus"`       // 장기 제공자 보너스 (30일+)
-	VIPBonus            float64 `json:"vip_bonus"`             // VIP 사용자 보너스
+	EarlyProviderBonus float64 `json:"early_provider_bonus"` // 초기 유동성 제공자 보너스
+	LongTermBonus      float64 `json:"long_term_bonus"`      // 장기 제공자 보너스 (30일+)
+	VIPBonus           float64 `json:"vip_bonus"`            // VIP 사용자 보너스
 
 	// 마켓별 승수
-	MarketMultipliers   map[string]float64 `json:"market_multipliers"` // 특정 마켓 승수
+	MarketMultipliers map[string]float64 `json:"market_multipliers"` // 특정 마켓 승수
 
 	// 이벤트 기간 설정
-	EventMultiplier     float64 `json:"event_multiplier"`      // 이벤트 기간 승수
-	EventStartTime      time.Time `json:"event_start_time"`    // 이벤트 시작 시간
-	EventEndTime        time.Time `json:"event_end_time"`      // 이벤트 종료 시간
+	EventMultiplier float64   `json:"event_multiplier"` // 이벤트 기간 승수
+	EventStartTime  time.Time `json:"event_start_time"` // 이벤트 시작 시간
+	EventEndTime    time.Time `json:"event_end_time"`   // 이벤트 종료 시간
 }
 
 // LiquidityProvider 유동성 제공자 정보
 type LiquidityProvider struct {
-	ID             uint      `json:"id" gorm:"primaryKey"`
-	UserID         uint      `json:"user_id" gorm:"index"`
-	MilestoneID    uint      `json:"milestone_id" gorm:"index"`
-	OptionID       string    `json:"option_id" gorm:"index"`
+	ID          uint   `json:"id" gorm:"primaryKey"`
+	UserID      uint   `json:"user_id" gorm:"index"`
+	MilestoneID uint   `json:"milestone_id" gorm:"index"`
+	OptionID    string `json:"option_id" gorm:"index"`
 
 	// 유동성 정보
-	BidQuantity    int64     `json:"bid_quantity"`     // 매수 유동성
-	AskQuantity    int64     `json:"ask_quantity"`     // 매도 유동성
-	TotalLiquidity int64     `json:"total_liquidity"`  // 총 유동성
-	AvgSpread      float64   `json:"avg_spread"`       // 평균 스프레드
+	BidQuantity    int64   `json:"bid_quantity"`    // 매수 유동성
+	AskQuantity    int64   `json:"ask_quantity"`    // 매도 유동성
+	TotalLiquidity int64   `json:"total_liquidity"` // 총 유동성
+	AvgSpread      float64 `json:"avg_spread"`      // 평균 스프레드
 
 	// 시간 정보
-	StartTime      time.Time `json:"start_time"`       // 제공 시작 시간
-	LastActive     time.Time `json:"last_active"`      // 마지막 활동 시간
-	Duration       int64     `json:"duration"`         // 제공 지속 시간 (분)
+	StartTime  time.Time `json:"start_time"`  // 제공 시작 시간
+	LastActive time.Time `json:"last_active"` // 마지막 활동 시간
+	Duration   int64     `json:"duration"`    // 제공 지속 시간 (분)
 
 	// 리워드 정보
-	EarnedRewards  int64     `json:"earned_rewards"`   // 획득한 리워드
-	PendingRewards int64     `json:"pending_rewards"`  // 대기 중인 리워드
-	LastClaimTime  time.Time `json:"last_claim_time"`  // 마지막 청구 시간
+	EarnedRewards  int64     `json:"earned_rewards"`  // 획득한 리워드
+	PendingRewards int64     `json:"pending_rewards"` // 대기 중인 리워드
+	LastClaimTime  time.Time `json:"last_claim_time"` // 마지막 청구 시간
 
 	// 부스터 정보
-	EarlyBonus     float64   `json:"early_bonus"`      // 초기 제공자 보너스
-	LongTermBonus  float64   `json:"long_term_bonus"`  // 장기 제공자 보너스
-	VIPLevel       int       `json:"vip_level"`        // VIP 레벨
+	EarlyBonus    float64 `json:"early_bonus"`     // 초기 제공자 보너스
+	LongTermBonus float64 `json:"long_term_bonus"` // 장기 제공자 보너스
+	VIPLevel      int     `json:"vip_level"`       // VIP 레벨
 
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	// 관계
-	User           models.User      `json:"user,omitempty" gorm:"foreignKey:UserID"`
-	Milestone      models.Milestone `json:"milestone,omitempty" gorm:"foreignKey:MilestoneID"`
+	User      models.User      `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	Milestone models.Milestone `json:"milestone,omitempty" gorm:"foreignKey:MilestoneID"`
 }
 
 // LiquidityReward 유동성 리워드 기록
 type LiquidityReward struct {
-	ID               uint      `json:"id" gorm:"primaryKey"`
-	UserID           uint      `json:"user_id" gorm:"index"`
-	MilestoneID      uint      `json:"milestone_id"`
-	OptionID         string    `json:"option_id"`
+	ID          uint   `json:"id" gorm:"primaryKey"`
+	UserID      uint   `json:"user_id" gorm:"index"`
+	MilestoneID uint   `json:"milestone_id"`
+	OptionID    string `json:"option_id"`
 
 	// 리워드 정보
-	RewardAmount     int64     `json:"reward_amount"`     // 리워드 금액
-	LiquidityScore   float64   `json:"liquidity_score"`   // 유동성 점수
-	TimeWeight       float64   `json:"time_weight"`       // 시간 가중치
-	MarketShare      float64   `json:"market_share"`      // 시장 점유율
+	RewardAmount   int64   `json:"reward_amount"`   // 리워드 금액
+	LiquidityScore float64 `json:"liquidity_score"` // 유동성 점수
+	TimeWeight     float64 `json:"time_weight"`     // 시간 가중치
+	MarketShare    float64 `json:"market_share"`    // 시장 점유율
 
 	// 부스터 적용
-	BaseReward       int64     `json:"base_reward"`       // 기본 리워드
-	BonusReward      int64     `json:"bonus_reward"`      // 보너스 리워드
-	TotalMultiplier  float64   `json:"total_multiplier"`  // 총 승수
+	BaseReward      int64   `json:"base_reward"`      // 기본 리워드
+	BonusReward     int64   `json:"bonus_reward"`     // 보너스 리워드
+	TotalMultiplier float64 `json:"total_multiplier"` // 총 승수
 
 	// 기간 정보
-	PeriodStart      time.Time `json:"period_start"`      // 리워드 기간 시작
-	PeriodEnd        time.Time `json:"period_end"`        // 리워드 기간 종료
+	PeriodStart time.Time `json:"period_start"` // 리워드 기간 시작
+	PeriodEnd   time.Time `json:"period_end"`   // 리워드 기간 종료
 
 	// 상태
-	Status           string    `json:"status"`            // pending, claimed, expired
-	ClaimedAt        *time.Time `json:"claimed_at"`       // 청구 시간
+	Status    string     `json:"status"`     // pending, claimed, expired
+	ClaimedAt *time.Time `json:"claimed_at"` // 청구 시간
 
-	CreatedAt        time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // LiquidityMiningStats 유동성 마이닝 통계
 type LiquidityMiningStats struct {
-	TotalProviders       int     `json:"total_providers"`        // 총 제공자 수
-	TotalLiquidity       int64   `json:"total_liquidity"`        // 총 유동성
-	TotalRewardsDistributed int64 `json:"total_rewards_distributed"` // 총 배분된 리워드
-	AverageAPY           float64 `json:"average_apy"`             // 평균 연수익률
-	TopMarkets           []MarketLiquidityInfo `json:"top_markets"` // 상위 마켓들
-	ActivePools          int     `json:"active_pools"`           // 활성 풀 수
-	DailyVolume          int64   `json:"daily_volume"`           // 일일 거래량
+	TotalProviders          int                   `json:"total_providers"`           // 총 제공자 수
+	TotalLiquidity          int64                 `json:"total_liquidity"`           // 총 유동성
+	TotalRewardsDistributed int64                 `json:"total_rewards_distributed"` // 총 배분된 리워드
+	AverageAPY              float64               `json:"average_apy"`               // 평균 연수익률
+	TopMarkets              []MarketLiquidityInfo `json:"top_markets"`               // 상위 마켓들
+	ActivePools             int                   `json:"active_pools"`              // 활성 풀 수
+	DailyVolume             int64                 `json:"daily_volume"`              // 일일 거래량
 }
 
 // MarketLiquidityInfo 마켓별 유동성 정보
@@ -147,14 +147,14 @@ func NewLiquidityMiningService(db *gorm.DB) *LiquidityMiningService {
 		queuePublisher: queue.NewPublisher(),
 		stopChan:       make(chan struct{}),
 		config: LiquidityMiningConfig{
-			DailyRewardPool:           100000, // 100,000 tokens per day
-			MinLiquidityAmount:        1000,   // 최소 1,000 points
+			DailyRewardPool:           100000,        // 100,000 tokens per day
+			MinLiquidityAmount:        1000,          // 최소 1,000 points
 			RewardCalculationInterval: 1 * time.Hour, // 1시간마다 계산
-			EarlyProviderBonus:        0.5,    // 50% 보너스
-			LongTermBonus:             0.3,    // 30% 보너스
-			VIPBonus:                  0.2,    // 20% 보너스
+			EarlyProviderBonus:        0.5,           // 50% 보너스
+			LongTermBonus:             0.3,           // 30% 보너스
+			VIPBonus:                  0.2,           // 20% 보너스
 			MarketMultipliers:         make(map[string]float64),
-			EventMultiplier:           2.0,    // 이벤트 기간 2배
+			EventMultiplier:           2.0, // 이벤트 기간 2배
 		},
 		stats: LiquidityMiningStats{},
 	}
@@ -309,7 +309,7 @@ func (lms *LiquidityMiningService) CalculateRewards() error {
 
 		// 제공자의 대기 중인 리워드 업데이트
 		lms.db.Model(&provider).Update("pending_rewards",
-			provider.PendingRewards + totalReward)
+			provider.PendingRewards+totalReward)
 
 		log.Printf("💎 Reward calculated for user %d: %d tokens (%.2fx multiplier)",
 			provider.UserID, totalReward, multiplier)
@@ -402,10 +402,10 @@ func (lms *LiquidityMiningService) calculateLiquidityScore(provider *LiquidityPr
 	baseScore := float64(provider.TotalLiquidity)
 
 	// 시간 가중치 (더 오래 제공할수록 높은 점수)
-	timeWeight := math.Min(1.0 + float64(provider.Duration)/1440.0, 2.0) // 최대 2배 (24시간 기준)
+	timeWeight := math.Min(1.0+float64(provider.Duration)/1440.0, 2.0) // 최대 2배 (24시간 기준)
 
 	// 스프레드 패널티 (스프레드가 클수록 점수 감소)
-	spreadPenalty := math.Max(0.5, 1.0 - provider.AvgSpread*10) // 최소 50%
+	spreadPenalty := math.Max(0.5, 1.0-provider.AvgSpread*10) // 최소 50%
 
 	finalScore := baseScore * timeWeight * spreadPenalty
 

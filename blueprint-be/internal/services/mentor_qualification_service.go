@@ -26,22 +26,22 @@ func NewMentorQualificationService(db *gorm.DB, sseService *SSEService) *MentorQ
 
 // BettorInfo 베팅자 정보 (내부 계산용)
 type BettorInfo struct {
-	UserID          uint    `json:"user_id"`
-	TotalBetAmount  int64   `json:"total_bet_amount"`
-	SharePercentage float64 `json:"share_percentage"`
-	OrderCount      int     `json:"order_count"`
+	UserID          uint      `json:"user_id"`
+	TotalBetAmount  int64     `json:"total_bet_amount"`
+	SharePercentage float64   `json:"share_percentage"`
+	OrderCount      int       `json:"order_count"`
 	LatestBetTime   time.Time `json:"latest_bet_time"`
 }
 
 // MentorQualificationResult 멘토 자격 증명 결과
 type MentorQualificationResult struct {
-	MilestoneID      uint   `json:"milestone_id"`
-	ProjectID        uint   `json:"project_id"`
-	TotalBettors     int    `json:"total_bettors"`
-	LeadMentorsCount int    `json:"lead_mentors_count"`
-	TotalBetAmount   int64  `json:"total_bet_amount"`
-	NewMentors       []uint `json:"new_mentors"`        // 새로 생성된 멘토 ID들
-	UpdatedMentors   []uint `json:"updated_mentors"`    // 업데이트된 멘토 ID들
+	MilestoneID      uint      `json:"milestone_id"`
+	ProjectID        uint      `json:"project_id"`
+	TotalBettors     int       `json:"total_bettors"`
+	LeadMentorsCount int       `json:"lead_mentors_count"`
+	TotalBetAmount   int64     `json:"total_bet_amount"`
+	NewMentors       []uint    `json:"new_mentors"`     // 새로 생성된 멘토 ID들
+	UpdatedMentors   []uint    `json:"updated_mentors"` // 업데이트된 멘토 ID들
 	ProcessedAt      time.Time `json:"processed_at"`
 }
 
@@ -74,10 +74,10 @@ func (mqs *MentorQualificationService) ProcessMilestoneBetting(milestoneID uint)
 	if len(bettors) == 0 {
 		log.Printf("📋 No bettors found for milestone %d", milestoneID)
 		return &MentorQualificationResult{
-			MilestoneID:    milestoneID,
-			ProjectID:      milestone.ProjectID,
-			TotalBettors:   0,
-			ProcessedAt:    time.Now(),
+			MilestoneID:  milestoneID,
+			ProjectID:    milestone.ProjectID,
+			TotalBettors: 0,
+			ProcessedAt:  time.Now(),
 		}, nil
 	}
 
@@ -245,7 +245,7 @@ func (mqs *MentorQualificationService) ensureMentorProfile(tx *gorm.DB, userID u
 		Bio:                 fmt.Sprintf("Mentor qualified through betting on milestone success"),
 		IsAvailable:         true,
 		MaxActiveMentorings: 5,
-		ReputationScore:     10, // 초기 점수
+		ReputationScore:     10,  // 초기 점수
 		TrustScore:          5.0, // 초기 신뢰도
 	}
 

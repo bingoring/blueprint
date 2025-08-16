@@ -13,29 +13,29 @@ import (
 
 // 🔄 마일스톤 라이프사이클 자동 관리 서비스
 type MilestoneLifecycleService struct {
-	db                      *gorm.DB
-	fundingVerificationSvc  *FundingVerificationService
+	db                     *gorm.DB
+	fundingVerificationSvc *FundingVerificationService
 
 	// 스케줄러 관련
-	isRunning               bool
-	stopChan                chan struct{}
-	ticker                  *time.Ticker
-	mutex                   sync.RWMutex
+	isRunning bool
+	stopChan  chan struct{}
+	ticker    *time.Ticker
+	mutex     sync.RWMutex
 
 	// 설정
-	checkInterval           time.Duration    // 체크 주기 (기본: 1분)
-	autoStartFundingDelay   time.Duration    // 제안 생성 후 펀딩 시작까지 대기 시간 (기본: 1시간)
+	checkInterval         time.Duration // 체크 주기 (기본: 1분)
+	autoStartFundingDelay time.Duration // 제안 생성 후 펀딩 시작까지 대기 시간 (기본: 1시간)
 }
 
 // NewMilestoneLifecycleService 라이프사이클 서비스 생성자
 func NewMilestoneLifecycleService(db *gorm.DB, fundingVerificationSvc *FundingVerificationService) *MilestoneLifecycleService {
 	return &MilestoneLifecycleService{
-		db:                      db,
-		fundingVerificationSvc:  fundingVerificationSvc,
+		db:                     db,
+		fundingVerificationSvc: fundingVerificationSvc,
 		isRunning:              false,
 		stopChan:               make(chan struct{}),
-		checkInterval:          time.Minute,          // 1분마다 체크
-		autoStartFundingDelay:  30 * time.Minute,    // 30분 후 자동 펀딩 시작
+		checkInterval:          time.Minute,      // 1분마다 체크
+		autoStartFundingDelay:  30 * time.Minute, // 30분 후 자동 펀딩 시작
 	}
 }
 
@@ -283,13 +283,13 @@ func (mls *MilestoneLifecycleService) UpdateSettings(checkInterval time.Duration
 
 // LifecycleStats 라이프사이클 통계 구조체
 type LifecycleStats struct {
-	IsRunning        bool          `json:"is_running"`
-	CheckInterval    time.Duration `json:"check_interval"`
-	ProposalCount    int           `json:"proposal_count"`
-	FundingCount     int           `json:"funding_count"`
-	ActiveCount      int           `json:"active_count"`
-	RejectedCount    int           `json:"rejected_count"`
-	CompletedCount   int           `json:"completed_count"`
+	IsRunning      bool          `json:"is_running"`
+	CheckInterval  time.Duration `json:"check_interval"`
+	ProposalCount  int           `json:"proposal_count"`
+	FundingCount   int           `json:"funding_count"`
+	ActiveCount    int           `json:"active_count"`
+	RejectedCount  int           `json:"rejected_count"`
+	CompletedCount int           `json:"completed_count"`
 }
 
 // isStatusNotExistsError 새로운 상태가 존재하지 않는 오류인지 확인
@@ -301,7 +301,7 @@ func (mls *MilestoneLifecycleService) isStatusNotExistsError(err error) bool {
 	errStr := err.Error()
 	// PostgreSQL enum 관련 오류 또는 컬럼 존재하지 않음
 	return (errStr != "" &&
-		   (strings.Contains(errStr, `invalid input value for enum`) ||
+		(strings.Contains(errStr, `invalid input value for enum`) ||
 			strings.Contains(errStr, `proposal`) ||
 			strings.Contains(errStr, `funding`) ||
 			strings.Contains(errStr, `column`) && strings.Contains(errStr, `does not exist`)))

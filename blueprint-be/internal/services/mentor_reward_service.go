@@ -25,35 +25,35 @@ func NewMentorRewardService(db *gorm.DB, sseService *SSEService) *MentorRewardSe
 
 // MentorRewardInfo 멘토 보상 정보
 type MentorRewardInfo struct {
-	MentorID            uint    `json:"mentor_id"`
-	UserID              uint    `json:"user_id"`
-	Username            string  `json:"username"`
-	TotalBetAmount      int64   `json:"total_bet_amount"`      // 베팅 금액
-	BetSharePercentage  float64 `json:"bet_share_percentage"`  // 베팅 비중 (%)
-	MentorRating        float64 `json:"mentor_rating"`         // 멘토 평점
-	ActionsCount        int     `json:"actions_count"`         // 수행한 액션 수
-	IsActive            bool    `json:"is_active"`             // 활성 멘토링 여부
-	IsLeadMentor        bool    `json:"is_lead_mentor"`        // 리드 멘토 여부
+	MentorID           uint    `json:"mentor_id"`
+	UserID             uint    `json:"user_id"`
+	Username           string  `json:"username"`
+	TotalBetAmount     int64   `json:"total_bet_amount"`     // 베팅 금액
+	BetSharePercentage float64 `json:"bet_share_percentage"` // 베팅 비중 (%)
+	MentorRating       float64 `json:"mentor_rating"`        // 멘토 평점
+	ActionsCount       int     `json:"actions_count"`        // 수행한 액션 수
+	IsActive           bool    `json:"is_active"`            // 활성 멘토링 여부
+	IsLeadMentor       bool    `json:"is_lead_mentor"`       // 리드 멘토 여부
 
 	// 보상 계산
-	BetWeightScore      float64 `json:"bet_weight_score"`      // 베팅 가중치 점수
-	PerformanceScore    float64 `json:"performance_score"`     // 성과 점수
-	TotalScore          float64 `json:"total_score"`           // 총 점수
-	RewardAmount        int64   `json:"reward_amount"`         // 보상 금액 (센트)
-	RewardPercentage    float64 `json:"reward_percentage"`     // 보상 비중 (%)
+	BetWeightScore   float64 `json:"bet_weight_score"`  // 베팅 가중치 점수
+	PerformanceScore float64 `json:"performance_score"` // 성과 점수
+	TotalScore       float64 `json:"total_score"`       // 총 점수
+	RewardAmount     int64   `json:"reward_amount"`     // 보상 금액 (센트)
+	RewardPercentage float64 `json:"reward_percentage"` // 보상 비중 (%)
 }
 
 // RewardDistributionResult 보상 분배 결과
 type RewardDistributionResult struct {
-	MilestoneID          uint                `json:"milestone_id"`
-	ProjectID            uint                `json:"project_id"`
-	TotalPoolAmount      int64               `json:"total_pool_amount"`
-	DistributedAmount    int64               `json:"distributed_amount"`
-	EligibleMentorCount  int                 `json:"eligible_mentor_count"`
-	BettingAmountWeight  float64             `json:"betting_amount_weight"`  // 베팅액 가중치
-	MentorRatingWeight   float64             `json:"mentor_rating_weight"`   // 평점 가중치
-	MentorRewards        []MentorRewardInfo  `json:"mentor_rewards"`
-	DistributedAt        time.Time           `json:"distributed_at"`
+	MilestoneID         uint               `json:"milestone_id"`
+	ProjectID           uint               `json:"project_id"`
+	TotalPoolAmount     int64              `json:"total_pool_amount"`
+	DistributedAmount   int64              `json:"distributed_amount"`
+	EligibleMentorCount int                `json:"eligible_mentor_count"`
+	BettingAmountWeight float64            `json:"betting_amount_weight"` // 베팅액 가중치
+	MentorRatingWeight  float64            `json:"mentor_rating_weight"`  // 평점 가중치
+	MentorRewards       []MentorRewardInfo `json:"mentor_rewards"`
+	DistributedAt       time.Time          `json:"distributed_at"`
 }
 
 // DistributeMentorPoolRewards 멘토 풀 보상 분배 (마일스톤 성공 시 호출)
@@ -206,7 +206,7 @@ func (mrs *MentorRewardService) calculateMentorRewards(tx *gorm.DB, milestoneID 
 
 		// 총 점수 계산 (가중 평균)
 		score := (betWeightScore * pool.BettingAmountWeight / 100) +
-		         (performanceScore * pool.MentorRatingWeight / 100)
+			(performanceScore * pool.MentorRatingWeight / 100)
 
 		reward := MentorRewardInfo{
 			MentorID:           mm.MentorID,
@@ -265,12 +265,12 @@ func (mrs *MentorRewardService) distributeSingleReward(tx *gorm.DB, milestoneID 
 
 	// 4. 평판 기록 생성 (온체인 준비)
 	reputation := models.MentorReputation{
-		MentorID:     reward.MentorID,
-		EventType:    "mentoring_reward_earned",
-		Points:       reputationPoints,
-		Multiplier:   1.0,
-		MilestoneID:  &milestoneID,
-		Description:  fmt.Sprintf("Earned $%.2f from mentoring milestone success", float64(reward.RewardAmount)/100),
+		MentorID:    reward.MentorID,
+		EventType:   "mentoring_reward_earned",
+		Points:      reputationPoints,
+		Multiplier:  1.0,
+		MilestoneID: &milestoneID,
+		Description: fmt.Sprintf("Earned $%.2f from mentoring milestone success", float64(reward.RewardAmount)/100),
 	}
 
 	if err := tx.Create(&reputation).Error; err != nil {

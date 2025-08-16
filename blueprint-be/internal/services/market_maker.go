@@ -1,8 +1,8 @@
 package services
 
 import (
-	"blueprint-module/pkg/queue"
 	"blueprint-module/pkg/models"
+	"blueprint-module/pkg/queue"
 	"fmt"
 	"log"
 	"math"
@@ -19,16 +19,16 @@ type MarketMakerBot struct {
 	queuePublisher *queue.Publisher
 
 	// 봇 설정
-	isRunning      bool
-	stopChan       chan struct{}
-	mutex          sync.RWMutex
+	isRunning bool
+	stopChan  chan struct{}
+	mutex     sync.RWMutex
 
 	// 마켓 메이킹 설정
-	config         MarketMakerConfig
-	activeMarkets  map[string]*MarketInfo // milestone_id:option_id -> MarketInfo
+	config        MarketMakerConfig
+	activeMarkets map[string]*MarketInfo // milestone_id:option_id -> MarketInfo
 
 	// 성과 추적
-	stats          MarketMakerStats
+	stats MarketMakerStats
 }
 
 // MarketMakerConfig 마켓메이커 설정
@@ -49,36 +49,36 @@ type MarketMakerConfig struct {
 
 // MarketInfo 개별 마켓 정보
 type MarketInfo struct {
-	MilestoneID     uint                   `json:"milestone_id"`
-	OptionID        string                 `json:"option_id"`
-	CurrentPrice    float64                `json:"current_price"`
-	LastUpdate      time.Time              `json:"last_update"`
-	Volatility      float64                `json:"volatility"`
-	Volume24h       int64                  `json:"volume_24h"`
-	Spread          float64                `json:"spread"`
-	BidPrice        float64                `json:"bid_price"`
-	AskPrice        float64                `json:"ask_price"`
-	Position        int64                  `json:"position"`        // 현재 포지션 (+매수, -매도)
-	ActiveOrders    []uint                 `json:"active_orders"`   // 활성 주문 ID들
-	LastTradeTime   time.Time              `json:"last_trade_time"`
-	PriceHistory    []float64              `json:"price_history"`   // 최근 가격 히스토리 (변동성 계산용)
-	Metadata        map[string]interface{} `json:"metadata"`
+	MilestoneID   uint                   `json:"milestone_id"`
+	OptionID      string                 `json:"option_id"`
+	CurrentPrice  float64                `json:"current_price"`
+	LastUpdate    time.Time              `json:"last_update"`
+	Volatility    float64                `json:"volatility"`
+	Volume24h     int64                  `json:"volume_24h"`
+	Spread        float64                `json:"spread"`
+	BidPrice      float64                `json:"bid_price"`
+	AskPrice      float64                `json:"ask_price"`
+	Position      int64                  `json:"position"`      // 현재 포지션 (+매수, -매도)
+	ActiveOrders  []uint                 `json:"active_orders"` // 활성 주문 ID들
+	LastTradeTime time.Time              `json:"last_trade_time"`
+	PriceHistory  []float64              `json:"price_history"` // 최근 가격 히스토리 (변동성 계산용)
+	Metadata      map[string]interface{} `json:"metadata"`
 }
 
 // MarketMakerStats 마켓메이커 성과 통계
 type MarketMakerStats struct {
-	StartTime          time.Time `json:"start_time"`
-	TotalProfit        int64     `json:"total_profit"`
-	TotalVolume        int64     `json:"total_volume"`
-	TotalTrades        int64     `json:"total_trades"`
-	SuccessfulTrades   int64     `json:"successful_trades"`
-	FailedTrades       int64     `json:"failed_trades"`
-	AverageProfitPerTrade int64  `json:"avg_profit_per_trade"`
-	MaxDrawdown        int64     `json:"max_drawdown"`
-	SharpeRatio        float64   `json:"sharpe_ratio"`
-	ActiveMarkets      int       `json:"active_markets"`
-	TotalOrdersPlaced  int64     `json:"total_orders_placed"`
-	OrderCancelRate    float64   `json:"order_cancel_rate"`
+	StartTime             time.Time `json:"start_time"`
+	TotalProfit           int64     `json:"total_profit"`
+	TotalVolume           int64     `json:"total_volume"`
+	TotalTrades           int64     `json:"total_trades"`
+	SuccessfulTrades      int64     `json:"successful_trades"`
+	FailedTrades          int64     `json:"failed_trades"`
+	AverageProfitPerTrade int64     `json:"avg_profit_per_trade"`
+	MaxDrawdown           int64     `json:"max_drawdown"`
+	SharpeRatio           float64   `json:"sharpe_ratio"`
+	ActiveMarkets         int       `json:"active_markets"`
+	TotalOrdersPlaced     int64     `json:"total_orders_placed"`
+	OrderCancelRate       float64   `json:"order_cancel_rate"`
 }
 
 // NewMarketMakerBot 마켓메이커 봇 생성자
@@ -90,9 +90,9 @@ func NewMarketMakerBot(db *gorm.DB, tradingService *TradingService) *MarketMaker
 		stopChan:       make(chan struct{}),
 		activeMarkets:  make(map[string]*MarketInfo),
 		config: MarketMakerConfig{
-			UserID:           1, // 시스템 봇 계정
-			MinSpread:        0.02,  // 2%
-			MaxSpread:        0.08,  // 8%
+			UserID:           1,    // 시스템 봇 계정
+			MinSpread:        0.02, // 2%
+			MaxSpread:        0.08, // 8%
 			BaseOrderSize:    10,
 			MaxOrderSize:     100,
 			MinPrice:         0.05,
@@ -117,7 +117,7 @@ func (mm *MarketMakerBot) Start() error {
 		return fmt.Errorf("market maker bot is already running")
 	}
 
-		mm.isRunning = true
+	mm.isRunning = true
 	log.Println("🤖 Market Maker Bot started!")
 
 	// 초기 마켓 스캔 (지연 후 실행)
@@ -229,15 +229,15 @@ func (mm *MarketMakerBot) scanActiveMarkets() error {
 				currentPrice := mm.getCurrentPrice(milestone.ID, option)
 
 				mm.activeMarkets[key] = &MarketInfo{
-					MilestoneID:   milestone.ID,
-					OptionID:      option,
-					CurrentPrice:  currentPrice,
-					LastUpdate:    time.Now(),
-					Volatility:    0.05, // 기본 변동성 5%
-					Spread:        mm.config.MinSpread,
-					ActiveOrders:  make([]uint, 0),
-					PriceHistory:  make([]float64, 0),
-					Metadata:      make(map[string]interface{}),
+					MilestoneID:  milestone.ID,
+					OptionID:     option,
+					CurrentPrice: currentPrice,
+					LastUpdate:   time.Now(),
+					Volatility:   0.05, // 기본 변동성 5%
+					Spread:       mm.config.MinSpread,
+					ActiveOrders: make([]uint, 0),
+					PriceHistory: make([]float64, 0),
+					Metadata:     make(map[string]interface{}),
 				}
 
 				// 🎯 새 마켓에 초기 유동성 제공
@@ -318,7 +318,7 @@ func (mm *MarketMakerBot) manageExistingOrders() {
 			// 3. 리스크 체크 (포지션이 한도 초과)
 			if math.Abs(float64(market.Position)) > float64(mm.config.InventoryLimit) {
 				if (market.Position > 0 && order.Side == models.OrderSideBuy) ||
-				   (market.Position < 0 && order.Side == models.OrderSideSell) {
+					(market.Position < 0 && order.Side == models.OrderSideSell) {
 					shouldCancel = true
 				}
 			}
@@ -345,7 +345,7 @@ func (mm *MarketMakerBot) placeNewOrders() {
 		}
 
 		// 매수/매도 주문 생성 조건 (균형 잡힌 접근)
-		shouldPlaceBuyOrder := len(market.ActiveOrders) < 2 // 최대 2개 주문만
+		shouldPlaceBuyOrder := len(market.ActiveOrders) < 2  // 최대 2개 주문만
 		shouldPlaceSellOrder := len(market.ActiveOrders) < 2 // 최대 2개 주문만
 
 		// 현재 가격 기준으로 Bid/Ask 가격 계산
@@ -726,7 +726,7 @@ func (mm *MarketMakerBot) provideInitialLiquidity(milestoneID uint, optionID str
 		Currency:    models.CurrencyUSDC,
 	}
 
-		log.Printf("🤖 Providing initial liquidity for %s: bid=%.2f¢, ask=%.2f¢",
+	log.Printf("🤖 Providing initial liquidity for %s: bid=%.2f¢, ask=%.2f¢",
 		optionID, bidPrice*100, askPrice*100)
 
 	// 🔍 마켓메이커 봇 지갑 확인/생성
@@ -751,19 +751,19 @@ func (mm *MarketMakerBot) ensureMarketMakerWallet() {
 		// 마켓메이커 봇 지갑 생성
 		wallet = models.UserWallet{
 			UserID:                 mm.config.UserID,
-			USDCBalance:           10000000, // 100,000 USDC (센트 단위)
-			USDCLockedBalance:     0,
-			BlueprintBalance:      0,        // 봇은 BLUEPRINT 필요 없음
+			USDCBalance:            10000000, // 100,000 USDC (센트 단위)
+			USDCLockedBalance:      0,
+			BlueprintBalance:       0, // 봇은 BLUEPRINT 필요 없음
 			BlueprintLockedBalance: 0,
-			TotalUSDCDeposit:      10000000,
-			TotalUSDCWithdraw:     0,
-			TotalUSDCProfit:       0,
-			TotalUSDCLoss:         0,
-			TotalUSDCFees:         0,
-			TotalBlueprintEarned:  0,
-			TotalBlueprintSpent:   0,
-			WinRate:               0,
-			TotalTrades:           0,
+			TotalUSDCDeposit:       10000000,
+			TotalUSDCWithdraw:      0,
+			TotalUSDCProfit:        0,
+			TotalUSDCLoss:          0,
+			TotalUSDCFees:          0,
+			TotalBlueprintEarned:   0,
+			TotalBlueprintSpent:    0,
+			WinRate:                0,
+			TotalTrades:            0,
 		}
 
 		if err := mm.db.Create(&wallet).Error; err != nil {

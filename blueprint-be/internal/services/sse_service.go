@@ -15,11 +15,11 @@ import (
 
 // SSEClient represents a connected SSE client
 type SSEClient struct {
-	ID           string
-	MilestoneID  uint
-	Channel      chan []byte
-	Request      *http.Request
-	Writer       gin.ResponseWriter
+	ID          string
+	MilestoneID uint
+	Channel     chan []byte
+	Request     *http.Request
+	Writer      gin.ResponseWriter
 }
 
 // SSEMessage represents a Server-Sent Event message
@@ -226,7 +226,7 @@ func (s *SSEService) BroadcastPriceChange(milestoneID uint, option string, oldPr
 		"old_price":    oldPrice,
 		"new_price":    newPrice,
 		"change":       newPrice - oldPrice,
-		"change_pct":   func() float64 {
+		"change_pct": func() float64 {
 			if oldPrice > 0 {
 				return ((newPrice - oldPrice) / oldPrice) * 100
 			}

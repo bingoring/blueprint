@@ -7,26 +7,36 @@ import (
 	"log"
 	"time"
 
+	redisClient "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 // 🌐 분산 거래 서비스 - 기존 TradingService를 대체하는 분산 버전
 type DistributedTradingService struct {
-	db               *gorm.DB
-	matchingEngine   *DistributedMatchingEngine
-	commandHandler   *TradingCommandHandler
-	queryHandler     *TradingQueryHandler
+	db             *gorm.DB
+	matchingEngine *DistributedMatchingEngine
+	commandHandler *TradingCommandHandler
+	queryHandler   *TradingQueryHandler
 }
 
 // NewDistributedTradingService 분산 거래 서비스 생성자
 func NewDistributedTradingService(db *gorm.DB, sseService *SSEService) *DistributedTradingService {
+	return NewDistributedTradingServiceWithRedis(db, sseService, nil)
+}
+
+func NewDistributedTradingServiceWithRedis(db *gorm.DB, sseService *SSEService, redisClient *redisClient.Client) *DistributedTradingService {
 	// 분산 매칭 엔진 초기화
-	matchingEngine := NewDistributedMatchingEngine(db, sseService)
-	
+	matchingEngine := NewDistributedMatchingEngineWithRedis(db, sseService, redisClient)
+
 	// CQRS 핸들러들 초기화
 	commandHandler := NewTradingCommandHandler(matchingEngine)
-	queryHandler := NewTradingQueryHandler(redis.GetClient(), db)
-	
+
+	// Use provided Redis client or get default one
+	if redisClient == nil {
+		redisClient = redis.GetClient()
+	}
+	queryHandler := NewTradingQueryHandler(redisClient, db)
+
 	return &DistributedTradingService{
 		db:             db,
 		matchingEngine: matchingEngine,
@@ -38,12 +48,12 @@ func NewDistributedTradingService(db *gorm.DB, sseService *SSEService) *Distribu
 // Start 분산 거래 서비스 시작
 func (dts *DistributedTradingService) Start() error {
 	log.Println("🚀 Starting Distributed Trading Service...")
-	
+
 	// 분산 매칭 엔진 시작
 	if err := dts.matchingEngine.Start(); err != nil {
 		return fmt.Errorf("failed to start matching engine: %v", err)
 	}
-	
+
 	log.Println("✅ Distributed Trading Service started successfully")
 	return nil
 }
@@ -51,12 +61,12 @@ func (dts *DistributedTradingService) Start() error {
 // Stop 분산 거래 서비스 정지
 func (dts *DistributedTradingService) Stop() error {
 	log.Println("🛑 Stopping Distributed Trading Service...")
-	
+
 	// 분산 매칭 엔진 정지
 	if err := dts.matchingEngine.Stop(); err != nil {
 		return fmt.Errorf("failed to stop matching engine: %v", err)
 	}
-	
+
 	log.Println("✅ Distributed Trading Service stopped successfully")
 	return nil
 }
@@ -69,7 +79,7 @@ func (dts *DistributedTradingService) CreateOrder(userID uint, milestoneID uint,
 	if err := dts.ValidateUserBalance(userID, orderType, quantity, price); err != nil {
 		return nil, err
 	}
-	
+
 	// 2. 주문 생성 명령 실행
 	cmd := &CreateOrderCommand{
 		UserID:      userID,
@@ -79,7 +89,7 @@ func (dts *DistributedTradingService) CreateOrder(userID uint, milestoneID uint,
 		Quantity:    quantity,
 		Price:       price,
 	}
-	
+
 	return dts.commandHandler.HandleCreateOrder(cmd)
 }
 
@@ -94,13 +104,13 @@ func (dts *DistributedTradingService) CancelOrder(userID uint, orderID uint) err
 		}
 		return err
 	}
-	
+
 	// 2. 주문 취소 명령 실행
 	cmd := &CancelOrderCommand{
 		UserID:  userID,
 		OrderID: orderID,
 	}
-	
+
 	return dts.commandHandler.HandleCancelOrder(cmd)
 }
 
@@ -116,17 +126,17 @@ func (dts *DistributedTradingService) ValidateUserBalance(userID uint, orderType
 	}
 
 	requiredAmount := int64(float64(quantity) * price * 100) // Convert to cents
-	
+
 	if orderType == "buy" {
 		if wallet.USDCBalance < requiredAmount {
-			return fmt.Errorf("insufficient USDC balance: required %d cents, available %d cents", 
+			return fmt.Errorf("insufficient USDC balance: required %d cents, available %d cents",
 				requiredAmount, wallet.USDCBalance)
 		}
 	} else {
 		// sell 주문의 경우, 보유 토큰 수량 확인
 		// TODO: 실제 구현에서는 Position 테이블에서 보유량 확인
 	}
-	
+
 	return nil
 }
 
@@ -138,7 +148,7 @@ func (dts *DistributedTradingService) GetMarketData(milestoneID uint, optionID s
 		MilestoneID: milestoneID,
 		OptionID:    optionID,
 	}
-	
+
 	return dts.queryHandler.GetMarketData(query)
 }
 
@@ -149,7 +159,7 @@ func (dts *DistributedTradingService) GetOrderBook(milestoneID uint, optionID st
 		OptionID:    optionID,
 		Depth:       depth,
 	}
-	
+
 	return dts.queryHandler.GetOrderBook(query)
 }
 
@@ -160,7 +170,7 @@ func (dts *DistributedTradingService) GetUserOrders(userID uint, status string, 
 		Status: status,
 		Limit:  limit,
 	}
-	
+
 	return dts.queryHandler.GetUserOrders(query)
 }
 
@@ -172,12 +182,12 @@ func (dts *DistributedTradingService) GetMarketSummary(milestoneID uint, optionI
 	if err != nil {
 		return nil, err
 	}
-	
+
 	orderBook, err := dts.GetOrderBook(milestoneID, optionID, 5)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	summary := map[string]interface{}{
 		"market_key":    marketData.MarketKey,
 		"last_price":    marketData.LastPrice,
@@ -187,7 +197,7 @@ func (dts *DistributedTradingService) GetMarketSummary(milestoneID uint, optionI
 		"best_ask":      getBestPrice(orderBook.Asks, "ask"),
 		"updated_at":    time.Now(),
 	}
-	
+
 	return summary, nil
 }
 
@@ -215,12 +225,12 @@ func (dts *DistributedTradingService) HealthCheck() map[string]interface{} {
 func (dts *DistributedTradingService) GetSystemMetrics() map[string]interface{} {
 	// Redis 연결 상태, 활성 마켓 수, 처리 중인 주문 수 등
 	activeMarkets, _ := dts.matchingEngine.getActiveMarkets()
-	
+
 	return map[string]interface{}{
 		"active_markets":     len(activeMarkets),
 		"instance_id":        dts.matchingEngine.instanceID,
-		"uptime":            time.Since(time.Now()), // 실제로는 서비스 시작 시간부터 계산
-		"redis_connected":    true, // 실제 Redis 연결 상태 확인
-		"database_connected": true, // 실제 DB 연결 상태 확인
+		"uptime":             time.Since(time.Now()), // 실제로는 서비스 시작 시간부터 계산
+		"redis_connected":    true,                   // 실제 Redis 연결 상태 확인
+		"database_connected": true,                   // 실제 DB 연결 상태 확인
 	}
 }

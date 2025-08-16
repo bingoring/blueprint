@@ -1,8 +1,8 @@
 package services
 
 import (
-	"blueprint-module/pkg/redis"
 	"blueprint-module/pkg/models"
+	"blueprint-module/pkg/redis"
 	"context"
 	"fmt"
 	"math"
@@ -31,7 +31,7 @@ type FeeConfig struct {
 	VolumeDiscounts []VolumeDiscount `json:"volume_discounts"`
 
 	// 시장 조건 기반 조정
-	LiquidityMultiplier float64 `json:"liquidity_multiplier"` // 유동성 부족시 할증
+	LiquidityMultiplier  float64 `json:"liquidity_multiplier"`  // 유동성 부족시 할증
 	VolatilityMultiplier float64 `json:"volatility_multiplier"` // 변동성 높을 때 할증
 
 	// 최소/최대 수수료
@@ -41,11 +41,11 @@ type FeeConfig struct {
 
 // VIPTier VIP 등급별 혜택
 type VIPTier struct {
-	Level           int     `json:"level"`           // 1-10
-	MinVolume30D    int64   `json:"min_volume_30d"`  // 30일 거래량 조건
-	MinTrades30D    int     `json:"min_trades_30d"`  // 30일 거래 횟수 조건
-	MakerDiscount   float64 `json:"maker_discount"`  // 매이커 할인율
-	TakerDiscount   float64 `json:"taker_discount"`  // 테이커 할인율
+	Level           int     `json:"level"`            // 1-10
+	MinVolume30D    int64   `json:"min_volume_30d"`   // 30일 거래량 조건
+	MinTrades30D    int     `json:"min_trades_30d"`   // 30일 거래 횟수 조건
+	MakerDiscount   float64 `json:"maker_discount"`   // 매이커 할인율
+	TakerDiscount   float64 `json:"taker_discount"`   // 테이커 할인율
 	SpecialBenefits string  `json:"special_benefits"` // 특별 혜택
 }
 
@@ -58,37 +58,37 @@ type VolumeDiscount struct {
 // FeeCalculation 수수료 계산 결과
 type FeeCalculation struct {
 	// 거래 정보
-	TradeAmount   int64   `json:"trade_amount"`   // 거래 금액
-	IsMaker       bool    `json:"is_maker"`       // 매이커 여부
+	TradeAmount int64 `json:"trade_amount"` // 거래 금액
+	IsMaker     bool  `json:"is_maker"`     // 매이커 여부
 
 	// 수수료 구성
-	BaseFeeRate   float64 `json:"base_fee_rate"`   // 기본 수수료율
-	VIPDiscount   float64 `json:"vip_discount"`    // VIP 할인
+	BaseFeeRate    float64 `json:"base_fee_rate"`   // 기본 수수료율
+	VIPDiscount    float64 `json:"vip_discount"`    // VIP 할인
 	VolumeDiscount float64 `json:"volume_discount"` // 거래량 할인
-	LiquidityFee  float64 `json:"liquidity_fee"`   // 유동성 수수료
-	VolatilityFee float64 `json:"volatility_fee"`  // 변동성 수수료
+	LiquidityFee   float64 `json:"liquidity_fee"`   // 유동성 수수료
+	VolatilityFee  float64 `json:"volatility_fee"`  // 변동성 수수료
 
 	// 최종 결과
-	FinalFeeRate  float64 `json:"final_fee_rate"`  // 최종 수수료율
-	FeeAmount     int64   `json:"fee_amount"`      // 수수료 금액 (points)
+	FinalFeeRate float64 `json:"final_fee_rate"` // 최종 수수료율
+	FeeAmount    int64   `json:"fee_amount"`     // 수수료 금액 (points)
 
 	// 메타데이터
-	UserVIPLevel  int     `json:"user_vip_level"`  // 사용자 VIP 등급
+	UserVIPLevel    int     `json:"user_vip_level"`   // 사용자 VIP 등급
 	MarketLiquidity float64 `json:"market_liquidity"` // 시장 유동성
-	Explanation   string  `json:"explanation"`     // 수수료 설명
+	Explanation     string  `json:"explanation"`      // 수수료 설명
 }
 
 // UserTradingStats 사용자 거래 통계
 type UserTradingStats struct {
-	UserID          uint    `json:"user_id"`
-	Volume24H       int64   `json:"volume_24h"`       // 24시간 거래량
-	Volume30D       int64   `json:"volume_30d"`       // 30일 거래량
-	Trades24H       int     `json:"trades_24h"`       // 24시간 거래 횟수
-	Trades30D       int     `json:"trades_30d"`       // 30일 거래 횟수
-	MakerRatio      float64 `json:"maker_ratio"`      // 매이커 비율
-	AvgTradeSize    float64 `json:"avg_trade_size"`   // 평균 거래 크기
-	VIPLevel        int     `json:"vip_level"`        // VIP 등급
-	LastCalculated  time.Time `json:"last_calculated"` // 마지막 계산 시간
+	UserID         uint      `json:"user_id"`
+	Volume24H      int64     `json:"volume_24h"`      // 24시간 거래량
+	Volume30D      int64     `json:"volume_30d"`      // 30일 거래량
+	Trades24H      int       `json:"trades_24h"`      // 24시간 거래 횟수
+	Trades30D      int       `json:"trades_30d"`      // 30일 거래 횟수
+	MakerRatio     float64   `json:"maker_ratio"`     // 매이커 비율
+	AvgTradeSize   float64   `json:"avg_trade_size"`  // 평균 거래 크기
+	VIPLevel       int       `json:"vip_level"`       // VIP 등급
+	LastCalculated time.Time `json:"last_calculated"` // 마지막 계산 시간
 }
 
 // NewFeeService 수수료 서비스 생성자
@@ -113,13 +113,13 @@ func (fs *FeeService) GetDefaultConfig() FeeConfig {
 		},
 
 		VolumeDiscounts: []VolumeDiscount{
-			{MinVolume24H: 1000, Discount: 0.01},   // 1% 할인
-			{MinVolume24H: 5000, Discount: 0.02},   // 2% 할인
-			{MinVolume24H: 10000, Discount: 0.03},  // 3% 할인
-			{MinVolume24H: 50000, Discount: 0.05},  // 5% 할인
+			{MinVolume24H: 1000, Discount: 0.01},  // 1% 할인
+			{MinVolume24H: 5000, Discount: 0.02},  // 2% 할인
+			{MinVolume24H: 10000, Discount: 0.03}, // 3% 할인
+			{MinVolume24H: 50000, Discount: 0.05}, // 5% 할인
 		},
 
-		LiquidityMultiplier: 1.5,  // 유동성 부족시 1.5배
+		LiquidityMultiplier:  1.5, // 유동성 부족시 1.5배
 		VolatilityMultiplier: 1.3, // 변동성 높을 때 1.3배
 
 		MinFee: 0.0005, // 0.05%
@@ -176,10 +176,10 @@ func (fs *FeeService) CalculateFee(userID uint, milestoneID uint, optionID strin
 
 	// 7. 최종 수수료율 계산
 	finalFeeRate := baseFeeRate
-	finalFeeRate *= (1.0 - vipDiscount)      // VIP 할인 적용
-	finalFeeRate *= (1.0 - volumeDiscount)   // 거래량 할인 적용
-	finalFeeRate += liquidityFee             // 유동성 수수료 추가
-	finalFeeRate += volatilityFee            // 변동성 수수료 추가
+	finalFeeRate *= (1.0 - vipDiscount)    // VIP 할인 적용
+	finalFeeRate *= (1.0 - volumeDiscount) // 거래량 할인 적용
+	finalFeeRate += liquidityFee           // 유동성 수수료 추가
+	finalFeeRate += volatilityFee          // 변동성 수수료 추가
 
 	// 최소/최대 제한 적용
 	if finalFeeRate < config.MinFee {

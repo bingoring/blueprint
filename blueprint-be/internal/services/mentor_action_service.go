@@ -26,20 +26,20 @@ func NewMentorActionService(db *gorm.DB, sseService *SSEService) *MentorActionSe
 
 // TaskProposalData 과제 제안 데이터
 type TaskProposalData struct {
-	Goals       []string `json:"goals"`        // 목표들
-	Resources   []string `json:"resources"`    // 필요 리소스
-	Deliverable string   `json:"deliverable"`  // 산출물
-	CheckPoints []string `json:"checkpoints"`  // 체크포인트들
+	Goals       []string `json:"goals"`       // 목표들
+	Resources   []string `json:"resources"`   // 필요 리소스
+	Deliverable string   `json:"deliverable"` // 산출물
+	CheckPoints []string `json:"checkpoints"` // 체크포인트들
 }
 
 // FeedbackData 피드백 데이터
 type FeedbackData struct {
-	Rating      float64           `json:"rating"`       // 평점 (1-10)
-	Strengths   []string          `json:"strengths"`    // 강점들
-	Improvements []string         `json:"improvements"` // 개선점들
-	Suggestions []string          `json:"suggestions"`  // 제안사항들
-	NextSteps   []string          `json:"next_steps"`   // 다음 단계
-	Categories  map[string]float64 `json:"categories"`  // 카테고리별 평점
+	Rating       float64            `json:"rating"`       // 평점 (1-10)
+	Strengths    []string           `json:"strengths"`    // 강점들
+	Improvements []string           `json:"improvements"` // 개선점들
+	Suggestions  []string           `json:"suggestions"`  // 제안사항들
+	NextSteps    []string           `json:"next_steps"`   // 다음 단계
+	Categories   map[string]float64 `json:"categories"`   // 카테고리별 평점
 }
 
 // ResourceShareData 리소스 공유 데이터
@@ -54,28 +54,28 @@ type ResourceShareData struct {
 
 // MeetingRequestData 미팅 요청 데이터
 type MeetingRequestData struct {
-	Type           string    `json:"type"`            // "video", "phone", "in_person"
-	Duration       int       `json:"duration"`        // 예상 시간 (분)
-	ProposedTimes  []string  `json:"proposed_times"`  // 제안 시간들 (ISO format)
-	Agenda         []string  `json:"agenda"`          // 아젠다
+	Type             string   `json:"type"`              // "video", "phone", "in_person"
+	Duration         int      `json:"duration"`          // 예상 시간 (분)
+	ProposedTimes    []string `json:"proposed_times"`    // 제안 시간들 (ISO format)
+	Agenda           []string `json:"agenda"`            // 아젠다
 	PreparationNeeds []string `json:"preparation_needs"` // 사전 준비사항
-	Platform       string    `json:"platform"`        // 플랫폼 (Zoom, Google Meet 등)
+	Platform         string   `json:"platform"`          // 플랫폼 (Zoom, Google Meet 등)
 }
 
 // ProgressCheckData 진행상황 점검 데이터
 type ProgressCheckData struct {
-	CheckItems    []CheckItem `json:"check_items"`     // 점검 항목들
-	OverallStatus string      `json:"overall_status"`  // 전반적 상태
-	Blockers      []string    `json:"blockers"`        // 장애요인들
-	Achievements  []string    `json:"achievements"`    // 성취한 것들
-	NextMilestone string      `json:"next_milestone"`  // 다음 목표
+	CheckItems    []CheckItem `json:"check_items"`    // 점검 항목들
+	OverallStatus string      `json:"overall_status"` // 전반적 상태
+	Blockers      []string    `json:"blockers"`       // 장애요인들
+	Achievements  []string    `json:"achievements"`   // 성취한 것들
+	NextMilestone string      `json:"next_milestone"` // 다음 목표
 }
 
 type CheckItem struct {
-	Item       string  `json:"item"`       // 점검 항목
-	Status     string  `json:"status"`     // "completed", "in_progress", "pending", "blocked"
-	Progress   float64 `json:"progress"`   // 진행률 (0-100)
-	Comment    string  `json:"comment"`    // 코멘트
+	Item     string  `json:"item"`     // 점검 항목
+	Status   string  `json:"status"`   // "completed", "in_progress", "pending", "blocked"
+	Progress float64 `json:"progress"` // 진행률 (0-100)
+	Comment  string  `json:"comment"`  // 코멘트
 }
 
 // CreateTaskProposal 핵심 과제 제안

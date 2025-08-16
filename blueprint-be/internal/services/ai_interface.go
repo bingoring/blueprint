@@ -8,10 +8,10 @@ import (
 type AIProvider string
 
 const (
-	ProviderOpenAI  AIProvider = "openai"
-	ProviderClaude  AIProvider = "claude"
-	ProviderGemini  AIProvider = "gemini"
-	ProviderMock    AIProvider = "mock"    // 개발/테스트용
+	ProviderOpenAI AIProvider = "openai"
+	ProviderClaude AIProvider = "claude"
+	ProviderGemini AIProvider = "gemini"
+	ProviderMock   AIProvider = "mock" // 개발/테스트용
 )
 
 // AIModelInterface 모든 AI 모델이 구현해야 하는 인터페이스
@@ -48,12 +48,12 @@ type AIResponse struct {
 
 // AIMetadata AI 응답에 대한 메타데이터
 type AIMetadata struct {
-	Provider      AIProvider `json:"provider"`
-	Model         string     `json:"model"`
-	ResponseTime  int64      `json:"response_time_ms"`
-	TokensUsed    int        `json:"tokens_used,omitempty"`
-	RequestID     string     `json:"request_id,omitempty"`
-	GeneratedAt   string     `json:"generated_at"`
+	Provider     AIProvider `json:"provider"`
+	Model        string     `json:"model"`
+	ResponseTime int64      `json:"response_time_ms"`
+	TokensUsed   int        `json:"tokens_used,omitempty"`
+	RequestID    string     `json:"request_id,omitempty"`
+	GeneratedAt  string     `json:"generated_at"`
 }
 
 // AIProviderInfo AI 제공업체 정보
@@ -68,7 +68,7 @@ type AIProviderInfo struct {
 
 // AILimits AI 모델의 제한사항
 type AILimits struct {
-	MaxTokens       int `json:"max_tokens"`
+	MaxTokens            int `json:"max_tokens"`
 	MaxRequestsPerMinute int `json:"max_requests_per_minute"`
 	MaxRequestsPerDay    int `json:"max_requests_per_day,omitempty"`
 }

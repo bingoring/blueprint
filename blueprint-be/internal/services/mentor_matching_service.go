@@ -25,53 +25,53 @@ func NewMentorMatchingService(db *gorm.DB, sseService *SSEService) *MentorMatchi
 
 // MentorCandidateInfo 멘토 후보 정보
 type MentorCandidateInfo struct {
-	Mentor           models.Mentor         `json:"mentor"`
+	Mentor           models.Mentor          `json:"mentor"`
 	MentorMilestone  models.MentorMilestone `json:"mentor_milestone"`
-	User             models.User           `json:"user"`
-	TotalBetAmount   int64                 `json:"total_bet_amount"`
-	BetSharePercent  float64               `json:"bet_share_percent"`
-	IsLeadMentor     bool                  `json:"is_lead_mentor"`
-	LeadMentorRank   int                   `json:"lead_mentor_rank"`
-	SuccessRate      float64               `json:"success_rate"`
-	ReputationScore  int                   `json:"reputation_score"`
-	IsAvailable      bool                  `json:"is_available"`
-	ActiveMentorings int                   `json:"active_mentorings"`
+	User             models.User            `json:"user"`
+	TotalBetAmount   int64                  `json:"total_bet_amount"`
+	BetSharePercent  float64                `json:"bet_share_percent"`
+	IsLeadMentor     bool                   `json:"is_lead_mentor"`
+	LeadMentorRank   int                    `json:"lead_mentor_rank"`
+	SuccessRate      float64                `json:"success_rate"`
+	ReputationScore  int                    `json:"reputation_score"`
+	IsAvailable      bool                   `json:"is_available"`
+	ActiveMentorings int                    `json:"active_mentorings"`
 }
 
 // MentorProjectInfo 멘토가 베팅한 프로젝트 정보
 type MentorProjectInfo struct {
-	Project          models.Project        `json:"project"`
-	Milestone        models.Milestone      `json:"milestone"`
-	MentorMilestone  models.MentorMilestone `json:"mentor_milestone"`
-	ProjectOwner     models.User           `json:"project_owner"`
-	TotalBetAmount   int64                 `json:"total_bet_amount"`
-	BetSharePercent  float64               `json:"bet_share_percent"`
-	IsLeadMentor     bool                  `json:"is_lead_mentor"`
-	MentoringStatus  string                `json:"mentoring_status"` // "available", "requested", "active"
+	Project         models.Project         `json:"project"`
+	Milestone       models.Milestone       `json:"milestone"`
+	MentorMilestone models.MentorMilestone `json:"mentor_milestone"`
+	ProjectOwner    models.User            `json:"project_owner"`
+	TotalBetAmount  int64                  `json:"total_bet_amount"`
+	BetSharePercent float64                `json:"bet_share_percent"`
+	IsLeadMentor    bool                   `json:"is_lead_mentor"`
+	MentoringStatus string                 `json:"mentoring_status"` // "available", "requested", "active"
 }
 
 // MentoringRequest 멘토링 요청
 type MentoringRequest struct {
-	ID          uint   `json:"id" gorm:"primaryKey"`
-	MentorID    uint   `json:"mentor_id" gorm:"not null;index"`
-	MenteeID    uint   `json:"mentee_id" gorm:"not null;index"`
-	MilestoneID uint   `json:"milestone_id" gorm:"not null;index"`
-	ProjectID   uint   `json:"project_id" gorm:"not null;index"`
+	ID          uint `json:"id" gorm:"primaryKey"`
+	MentorID    uint `json:"mentor_id" gorm:"not null;index"`
+	MenteeID    uint `json:"mentee_id" gorm:"not null;index"`
+	MilestoneID uint `json:"milestone_id" gorm:"not null;index"`
+	ProjectID   uint `json:"project_id" gorm:"not null;index"`
 
 	// 요청 정보
-	RequestType   string `json:"request_type"` // "mentor_initiated", "mentee_initiated"
-	Status        string `json:"status" gorm:"default:'pending'"`  // "pending", "accepted", "rejected", "expired"
-	Message       string `json:"message" gorm:"type:text"`
+	RequestType string `json:"request_type"`                    // "mentor_initiated", "mentee_initiated"
+	Status      string `json:"status" gorm:"default:'pending'"` // "pending", "accepted", "rejected", "expired"
+	Message     string `json:"message" gorm:"type:text"`
 
 	// 제안 조건 (멘토가 제시)
-	ProposedDuration int     `json:"proposed_duration"`  // 예상 멘토링 기간 (주)
-	ProposedMeetings int     `json:"proposed_meetings"`  // 예상 미팅 횟수
-	ExpectedTime     int     `json:"expected_time"`      // 예상 소요 시간 (시간/주)
+	ProposedDuration int `json:"proposed_duration"` // 예상 멘토링 기간 (주)
+	ProposedMeetings int `json:"proposed_meetings"` // 예상 미팅 횟수
+	ExpectedTime     int `json:"expected_time"`     // 예상 소요 시간 (시간/주)
 
 	// 응답 정보
-	ResponseMessage  string     `json:"response_message" gorm:"type:text"`
-	ResponsedAt      *time.Time `json:"responsed_at,omitempty"`
-	ExpiresAt        time.Time  `json:"expires_at"`  // 요청 만료일
+	ResponseMessage string     `json:"response_message" gorm:"type:text"`
+	ResponsedAt     *time.Time `json:"responsed_at,omitempty"`
+	ExpiresAt       time.Time  `json:"expires_at"` // 요청 만료일
 
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
@@ -303,7 +303,7 @@ func (mms *MentorMatchingService) AcceptMentoringRequest(requestID uint, userID 
 
 	// 권한 확인 (요청 받은 사람만 수락 가능)
 	if (request.RequestType == "mentee_initiated" && request.MentorID != userID) ||
-	   (request.RequestType == "mentor_initiated" && request.MenteeID != userID) {
+		(request.RequestType == "mentor_initiated" && request.MenteeID != userID) {
 		return nil, fmt.Errorf("unauthorized to accept this request")
 	}
 
@@ -382,7 +382,7 @@ func (mms *MentorMatchingService) RejectMentoringRequest(requestID uint, userID 
 
 	// 권한 확인
 	if (request.RequestType == "mentee_initiated" && request.MentorID != userID) ||
-	   (request.RequestType == "mentor_initiated" && request.MenteeID != userID) {
+		(request.RequestType == "mentor_initiated" && request.MenteeID != userID) {
 		return fmt.Errorf("unauthorized to reject this request")
 	}
 

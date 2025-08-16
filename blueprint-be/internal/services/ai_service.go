@@ -1,8 +1,8 @@
 package services
 
 import (
-	"blueprint/internal/config"
 	"blueprint-module/pkg/models"
+	"blueprint/internal/config"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -30,17 +30,17 @@ func NewAIService(cfg *config.Config, db *gorm.DB) *AIService {
 // AI가 제안하는 마일스톤 구조
 type AIMilestoneResponse struct {
 	Milestones []AIMilestone `json:"milestones"`
-	Tips       []string      `json:"tips"`       // 추가 팁
-	Warnings   []string      `json:"warnings"`   // 주의사항
+	Tips       []string      `json:"tips"`     // 추가 팁
+	Warnings   []string      `json:"warnings"` // 주의사항
 }
 
 type AIMilestone struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Order       int    `json:"order"`
-	Duration    string `json:"duration"`    // 예상 소요 기간 (예: "2-3개월")
-	Difficulty  string `json:"difficulty"`  // 난이도 (쉬움/보통/어려움)
-	Category    string `json:"category"`    // 카테고리 (준비/실행/완성 등)
+	Duration    string `json:"duration"`   // 예상 소요 기간 (예: "2-3개월")
+	Difficulty  string `json:"difficulty"` // 난이도 (쉬움/보통/어려움)
+	Category    string `json:"category"`   // 카테고리 (준비/실행/완성 등)
 }
 
 // GenerateMilestones AI를 사용해서 마일스톤을 생성합니다 🤖

@@ -15,40 +15,40 @@ import (
 
 // RiskManagementService 리스크 관리 서비스
 type RiskManagementService struct {
-	db             *gorm.DB
-	feeService     *FeeService
+	db         *gorm.DB
+	feeService *FeeService
 
 	// 리스크 모니터링
-	isRunning      bool
-	stopChan       chan struct{}
-	mutex          sync.RWMutex
+	isRunning bool
+	stopChan  chan struct{}
+	mutex     sync.RWMutex
 
 	// 설정
-	config         RiskConfig
+	config RiskConfig
 
 	// 실시간 모니터링
-	userRiskScores map[uint]float64 // userID -> risk score
+	userRiskScores map[uint]float64   // userID -> risk score
 	marketRisks    map[string]float64 // market -> risk level
 }
 
 // RiskConfig 리스크 관리 설정
 type RiskConfig struct {
 	// 사용자 한도
-	MaxDailyVolume        int64   `json:"max_daily_volume"`        // 일일 최대 거래량
-	MaxPositionSize       int64   `json:"max_position_size"`       // 최대 포지션 크기
-	MaxOpenOrders         int     `json:"max_open_orders"`         // 최대 오픈 주문 수
-	MaxLossPerDay         int64   `json:"max_loss_per_day"`        // 일일 최대 손실
+	MaxDailyVolume  int64 `json:"max_daily_volume"`  // 일일 최대 거래량
+	MaxPositionSize int64 `json:"max_position_size"` // 최대 포지션 크기
+	MaxOpenOrders   int   `json:"max_open_orders"`   // 최대 오픈 주문 수
+	MaxLossPerDay   int64 `json:"max_loss_per_day"`  // 일일 최대 손실
 
 	// VIP별 한도 승수
-	VIPLimitMultipliers   map[int]float64 `json:"vip_limit_multipliers"` // VIP level -> multiplier
+	VIPLimitMultipliers map[int]float64 `json:"vip_limit_multipliers"` // VIP level -> multiplier
 
 	// 시장 리스크 임계값
-	VolatilityThreshold   float64 `json:"volatility_threshold"`   // 변동성 임계값
-	LiquidityThreshold    float64 `json:"liquidity_threshold"`    // 유동성 임계값
-	ConcentrationLimit    float64 `json:"concentration_limit"`    // 집중도 한계
+	VolatilityThreshold float64 `json:"volatility_threshold"` // 변동성 임계값
+	LiquidityThreshold  float64 `json:"liquidity_threshold"`  // 유동성 임계값
+	ConcentrationLimit  float64 `json:"concentration_limit"`  // 집중도 한계
 
 	// 포지션 리스크
-	MaxCorrelatedPositions int    `json:"max_correlated_positions"` // 상관관계 포지션 한계
+	MaxCorrelatedPositions  int     `json:"max_correlated_positions"`   // 상관관계 포지션 한계
 	MaxSingleMarketExposure float64 `json:"max_single_market_exposure"` // 단일 시장 노출 한계
 
 	// 시스템 리스크
@@ -58,44 +58,44 @@ type RiskConfig struct {
 
 // UserRiskProfile 사용자 리스크 프로필
 type UserRiskProfile struct {
-	ID               uint      `json:"id" gorm:"primaryKey"`
-	UserID           uint      `json:"user_id" gorm:"uniqueIndex"`
+	ID     uint `json:"id" gorm:"primaryKey"`
+	UserID uint `json:"user_id" gorm:"uniqueIndex"`
 
 	// 리스크 점수
-	RiskScore        float64   `json:"risk_score"`        // 0.0 - 1.0
-	RiskLevel        string    `json:"risk_level"`        // LOW, MEDIUM, HIGH, CRITICAL
+	RiskScore float64 `json:"risk_score"` // 0.0 - 1.0
+	RiskLevel string  `json:"risk_level"` // LOW, MEDIUM, HIGH, CRITICAL
 
 	// 거래 행동 분석
-	AvgHoldingPeriod int64     `json:"avg_holding_period"` // 평균 보유 기간 (분)
-	WinRate          float64   `json:"win_rate"`          // 승률
-	MaxDrawdown      float64   `json:"max_drawdown"`      // 최대 손실
-	Sharpe           float64   `json:"sharpe"`            // 샤프 비율
+	AvgHoldingPeriod int64   `json:"avg_holding_period"` // 평균 보유 기간 (분)
+	WinRate          float64 `json:"win_rate"`           // 승률
+	MaxDrawdown      float64 `json:"max_drawdown"`       // 최대 손실
+	Sharpe           float64 `json:"sharpe"`             // 샤프 비율
 
 	// 포지션 집중도
 	PortfolioConcentration float64 `json:"portfolio_concentration"` // 포트폴리오 집중도
 	MarketDiversification  float64 `json:"market_diversification"`  // 시장 다변화
 
 	// 한도 설정
-	DailyVolumeLimit int64     `json:"daily_volume_limit"` // 일일 거래량 한도
-	PositionLimit    int64     `json:"position_limit"`     // 포지션 한도
-	LossLimit        int64     `json:"loss_limit"`         // 손실 한도
+	DailyVolumeLimit int64 `json:"daily_volume_limit"` // 일일 거래량 한도
+	PositionLimit    int64 `json:"position_limit"`     // 포지션 한도
+	LossLimit        int64 `json:"loss_limit"`         // 손실 한도
 
 	// 상태
-	IsRestricted     bool      `json:"is_restricted"`      // 제한 여부
-	LastAssessment   time.Time `json:"last_assessment"`    // 마지막 평가 시간
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	IsRestricted   bool      `json:"is_restricted"`   // 제한 여부
+	LastAssessment time.Time `json:"last_assessment"` // 마지막 평가 시간
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 
 	// 관계
-	User             models.User `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	User models.User `json:"user,omitempty" gorm:"foreignKey:UserID"`
 }
 
 // RiskAlert 리스크 알림
 type RiskAlert struct {
 	ID          uint      `json:"id" gorm:"primaryKey"`
 	UserID      uint      `json:"user_id" gorm:"index"`
-	AlertType   string    `json:"alert_type"`   // POSITION_LIMIT, LOSS_LIMIT, VOLATILITY, LIQUIDITY
-	Severity    string    `json:"severity"`     // INFO, WARNING, CRITICAL
+	AlertType   string    `json:"alert_type"` // POSITION_LIMIT, LOSS_LIMIT, VOLATILITY, LIQUIDITY
+	Severity    string    `json:"severity"`   // INFO, WARNING, CRITICAL
 	Message     string    `json:"message"`
 	MetricValue float64   `json:"metric_value"`
 	Threshold   float64   `json:"threshold"`
@@ -107,21 +107,21 @@ type RiskAlert struct {
 type MarketRiskMetrics struct {
 	MilestoneID    uint      `json:"milestone_id"`
 	OptionID       string    `json:"option_id"`
-	Volatility     float64   `json:"volatility"`     // 변동성
-	Liquidity      float64   `json:"liquidity"`      // 유동성
-	Concentration  float64   `json:"concentration"`  // 집중도
+	Volatility     float64   `json:"volatility"`      // 변동성
+	Liquidity      float64   `json:"liquidity"`       // 유동성
+	Concentration  float64   `json:"concentration"`   // 집중도
 	OrderImbalance float64   `json:"order_imbalance"` // 주문 불균형
-	RiskLevel      string    `json:"risk_level"`     // LOW, MEDIUM, HIGH
+	RiskLevel      string    `json:"risk_level"`      // LOW, MEDIUM, HIGH
 	LastUpdate     time.Time `json:"last_update"`
 }
 
 // RiskCheckResult 리스크 체크 결과
 type RiskCheckResult struct {
-	Allowed       bool     `json:"allowed"`
-	Reason        string   `json:"reason,omitempty"`
-	RiskScore     float64  `json:"risk_score"`
-	Warnings      []string `json:"warnings,omitempty"`
-	MaxAmount     int64    `json:"max_amount,omitempty"`
+	Allowed       bool       `json:"allowed"`
+	Reason        string     `json:"reason,omitempty"`
+	RiskScore     float64    `json:"risk_score"`
+	Warnings      []string   `json:"warnings,omitempty"`
+	MaxAmount     int64      `json:"max_amount,omitempty"`
 	CooldownUntil *time.Time `json:"cooldown_until,omitempty"`
 }
 
@@ -135,14 +135,14 @@ func NewRiskManagementService(db *gorm.DB, feeService *FeeService) *RiskManageme
 			MaxDailyVolume:          1000000, // 1M points per day
 			MaxPositionSize:         100000,  // 100K points per position
 			MaxOpenOrders:           50,
-			MaxLossPerDay:           50000,   // 50K points per day
-			VolatilityThreshold:     0.2,     // 20% volatility
-			LiquidityThreshold:      0.1,     // 10% liquidity
-			ConcentrationLimit:      0.3,     // 30% concentration
+			MaxLossPerDay:           50000, // 50K points per day
+			VolatilityThreshold:     0.2,   // 20% volatility
+			LiquidityThreshold:      0.1,   // 10% liquidity
+			ConcentrationLimit:      0.3,   // 30% concentration
 			MaxCorrelatedPositions:  5,
-			MaxSingleMarketExposure: 0.25,    // 25% of portfolio
-			CircuitBreakerThreshold: 0.15,    // 15% market move
-			EmergencyStopTrigger:    0.25,    // 25% system loss
+			MaxSingleMarketExposure: 0.25, // 25% of portfolio
+			CircuitBreakerThreshold: 0.15, // 15% market move
+			EmergencyStopTrigger:    0.25, // 25% system loss
 			VIPLimitMultipliers: map[int]float64{
 				1: 1.2,
 				2: 1.5,
@@ -206,7 +206,7 @@ func (rms *RiskManagementService) CheckOrderRisk(userID uint, req *models.Create
 	var warnings []string
 
 	// 6. 일일 거래량 체크
-	if usage.DailyVolume + orderAmount > limits.DailyVolumeLimit {
+	if usage.DailyVolume+orderAmount > limits.DailyVolumeLimit {
 		return &RiskCheckResult{
 			Allowed:   false,
 			Reason:    "일일 거래량 한도 초과",
@@ -260,13 +260,13 @@ func (rms *RiskManagementService) GetUserRiskProfile(userID uint) (*UserRiskProf
 	if err == gorm.ErrRecordNotFound {
 		// 새 프로필 생성
 		profile = UserRiskProfile{
-			UserID:          userID,
-			RiskScore:       0.5, // 중간 리스크로 시작
-			RiskLevel:       "MEDIUM",
+			UserID:           userID,
+			RiskScore:        0.5, // 중간 리스크로 시작
+			RiskLevel:        "MEDIUM",
 			DailyVolumeLimit: rms.config.MaxDailyVolume,
-			PositionLimit:   rms.config.MaxPositionSize,
-			LossLimit:       rms.config.MaxLossPerDay,
-			LastAssessment:  time.Now(),
+			PositionLimit:    rms.config.MaxPositionSize,
+			LossLimit:        rms.config.MaxLossPerDay,
+			LastAssessment:   time.Now(),
 		}
 
 		if err := rms.db.Create(&profile).Error; err != nil {
@@ -390,7 +390,7 @@ func (rms *RiskManagementService) calculateRiskScore(userID uint, trades []model
 	}
 
 	// 거래 빈도 (높을수록 위험)
-	frequency := float64(len(trades)) / 30.0 // 일일 평균 거래 수
+	frequency := float64(len(trades)) / 30.0        // 일일 평균 거래 수
 	frequencyScore := math.Min(frequency/10.0, 1.0) // 일일 10회 이상이면 1.0
 
 	// 거래 크기 변동성 (높을수록 위험)

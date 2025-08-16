@@ -25,43 +25,43 @@ func NewMentorReputationService(db *gorm.DB, sseService *SSEService) *MentorRepu
 
 // ReputationEventType 평판 이벤트 타입
 const (
-	EventSuccessfulMentoring = "successful_mentoring"  // 성공적인 멘토링 완료
-	EventMilestoneSuccess    = "milestone_success"     // 마일스톤 성공 기여
-	EventHighRating          = "high_rating"           // 높은 평점 획득
+	EventSuccessfulMentoring = "successful_mentoring"    // 성공적인 멘토링 완료
+	EventMilestoneSuccess    = "milestone_success"       // 마일스톤 성공 기여
+	EventHighRating          = "high_rating"             // 높은 평점 획득
 	EventRewardEarned        = "mentoring_reward_earned" // 멘토링 보상 획득
-	EventFirstMentoring      = "first_mentoring"       // 첫 멘토링 완료
-	EventLeadMentor          = "lead_mentor_achieved"   // 리드 멘토 달성
-	EventTierUpgrade         = "tier_upgrade"          // 등급 승급
-	EventLongTermCommitment  = "long_term_commitment"  // 장기 헌신 (6개월+ 멘토링)
-	EventExceptionalFeedback = "exceptional_feedback"  // 탁월한 피드백 (평점 9.5+)
+	EventFirstMentoring      = "first_mentoring"         // 첫 멘토링 완료
+	EventLeadMentor          = "lead_mentor_achieved"    // 리드 멘토 달성
+	EventTierUpgrade         = "tier_upgrade"            // 등급 승급
+	EventLongTermCommitment  = "long_term_commitment"    // 장기 헌신 (6개월+ 멘토링)
+	EventExceptionalFeedback = "exceptional_feedback"    // 탁월한 피드백 (평점 9.5+)
 )
 
 // MentorAchievement 멘토 성취
 type MentorAchievement struct {
-	ID          uint                     `json:"id"`
-	Type        string                   `json:"type"`
-	Title       string                   `json:"title"`
-	Description string                   `json:"description"`
-	Points      int                      `json:"points"`
-	Multiplier  float64                  `json:"multiplier"`
-	IconURL     string                   `json:"icon_url"`
-	Rarity      string                   `json:"rarity"` // "common", "rare", "epic", "legendary"
-	UnlockedAt  time.Time                `json:"unlocked_at"`
+	ID          uint      `json:"id"`
+	Type        string    `json:"type"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Points      int       `json:"points"`
+	Multiplier  float64   `json:"multiplier"`
+	IconURL     string    `json:"icon_url"`
+	Rarity      string    `json:"rarity"` // "common", "rare", "epic", "legendary"
+	UnlockedAt  time.Time `json:"unlocked_at"`
 }
 
 // MentorLeaderboard 멘토 리더보드 정보
 type MentorLeaderboard struct {
-	Rank                 int                     `json:"rank"`
-	MentorID             uint                    `json:"mentor_id"`
-	UserID               uint                    `json:"user_id"`
-	Username             string                  `json:"username"`
-	Tier                 models.MentorTier       `json:"tier"`
-	ReputationScore      int                     `json:"reputation_score"`
-	SuccessRate          float64                 `json:"success_rate"`
-	TotalMentorings      int                     `json:"total_mentorings"`
-	TotalEarned          int64                   `json:"total_earned"`
-	RecentAchievements   []MentorAchievement     `json:"recent_achievements"`
-	BadgeCount           map[string]int          `json:"badge_count"` // 배지 종류별 개수
+	Rank               int                 `json:"rank"`
+	MentorID           uint                `json:"mentor_id"`
+	UserID             uint                `json:"user_id"`
+	Username           string              `json:"username"`
+	Tier               models.MentorTier   `json:"tier"`
+	ReputationScore    int                 `json:"reputation_score"`
+	SuccessRate        float64             `json:"success_rate"`
+	TotalMentorings    int                 `json:"total_mentorings"`
+	TotalEarned        int64               `json:"total_earned"`
+	RecentAchievements []MentorAchievement `json:"recent_achievements"`
+	BadgeCount         map[string]int      `json:"badge_count"` // 배지 종류별 개수
 }
 
 // RecordReputationEvent 평판 이벤트 기록
@@ -382,8 +382,8 @@ func (mrs *MentorReputationService) calculateBadgeCount(mentorID uint) map[strin
 // Helper 메서드들
 func (mrs *MentorReputationService) getAchievementTitle(eventType string) string {
 	titles := map[string]string{
-		EventSuccessfulMentoring:  "Mentoring Master",
-		EventMilestoneSuccess:     "Success Contributor",
+		EventSuccessfulMentoring: "Mentoring Master",
+		EventMilestoneSuccess:    "Success Contributor",
 		EventHighRating:          "Highly Rated",
 		EventRewardEarned:        "Reward Earner",
 		EventFirstMentoring:      "First Steps",
@@ -405,8 +405,8 @@ func (mrs *MentorReputationService) getAchievementIcon(eventType string) string 
 
 func (mrs *MentorReputationService) getAchievementRarity(eventType string) string {
 	rarities := map[string]string{
-		EventSuccessfulMentoring:  "common",
-		EventMilestoneSuccess:     "common",
+		EventSuccessfulMentoring: "common",
+		EventMilestoneSuccess:    "common",
 		EventHighRating:          "rare",
 		EventRewardEarned:        "common",
 		EventFirstMentoring:      "rare",

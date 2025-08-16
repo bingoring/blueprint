@@ -1,8 +1,8 @@
 package services
 
 import (
-	"blueprint/internal/database"
 	"blueprint-module/pkg/models"
+	"blueprint/internal/database"
 	"fmt"
 	"log"
 	"sync"
@@ -15,12 +15,12 @@ import (
 
 // WorkerService 백그라운드 작업 처리 서비스
 type WorkerService struct {
-	db         *gorm.DB
-	consumers  map[string]*queue.Consumer
-	isRunning  bool
-	stopChan   chan struct{}
-	wg         sync.WaitGroup
-	mutex      sync.RWMutex
+	db        *gorm.DB
+	consumers map[string]*queue.Consumer
+	isRunning bool
+	stopChan  chan struct{}
+	wg        sync.WaitGroup
+	mutex     sync.RWMutex
 }
 
 // NewWorkerService 워커 서비스 생성
@@ -185,16 +185,16 @@ func (w *WorkerService) processWalletCreate(event queue.QueueEvent) error {
 	// 새 지갑 생성 (하이브리드 시스템)
 	wallet := models.UserWallet{
 		UserID:                 userID,
-		USDCBalance:           initialAmount,  // 초기 USDC 지급
-		USDCLockedBalance:     0,
-		BlueprintBalance:      1000,          // 초기 BLUEPRINT 토큰 지급
+		USDCBalance:            initialAmount, // 초기 USDC 지급
+		USDCLockedBalance:      0,
+		BlueprintBalance:       1000, // 초기 BLUEPRINT 토큰 지급
 		BlueprintLockedBalance: 0,
-		TotalUSDCDeposit:      initialAmount,
-		TotalBlueprintEarned:  1000,          // 회원가입 보상
-		WinRate:               0,
-		TotalTrades:           0,
-		CreatedAt:             time.Now(),
-		UpdatedAt:             time.Now(),
+		TotalUSDCDeposit:       initialAmount,
+		TotalBlueprintEarned:   1000, // 회원가입 보상
+		WinRate:                0,
+		TotalTrades:            0,
+		CreatedAt:              time.Now(),
+		UpdatedAt:              time.Now(),
 	}
 
 	if err := w.db.Create(&wallet).Error; err != nil {
@@ -226,7 +226,7 @@ func (w *WorkerService) processMarketInit(event queue.QueueEvent) error {
 		return fmt.Errorf("market must have at least 2 options")
 	}
 
-		// 🎯 각 옵션의 초기 확률은 1/N (균등 분배)
+	// 🎯 각 옵션의 초기 확률은 1/N (균등 분배)
 	// 예: 2개 옵션 = 50¢씩, 5개 옵션 = 20¢씩
 	initialPrice := 1.0 / float64(optionCount)
 
@@ -237,7 +237,7 @@ func (w *WorkerService) processMarketInit(event queue.QueueEvent) error {
 		initialPrice = 0.99
 	}
 
-		log.Printf("🎯 Initializing market with %d options at %.2f%% (%.0f¢) each",
+	log.Printf("🎯 Initializing market with %d options at %.2f%% (%.0f¢) each",
 		optionCount, initialPrice*100, initialPrice*100)
 
 	// 각 옵션별로 MarketData 생성

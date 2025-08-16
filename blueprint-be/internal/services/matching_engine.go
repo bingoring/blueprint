@@ -1,9 +1,9 @@
 package services
 
 import (
+	"blueprint-module/pkg/models"
 	"blueprint-module/pkg/queue"
 	"blueprint-module/pkg/redis"
-	"blueprint-module/pkg/models"
 	"container/heap"
 	"fmt"
 	"log"
@@ -20,21 +20,21 @@ import (
 type MatchingEngine struct {
 	db                     *gorm.DB
 	queuePublisher         *queue.Publisher
-	sseService             *SSEService // SSE 실시간 브로드캐스트용
+	sseService             *SSEService                 // SSE 실시간 브로드캐스트용
 	fundingService         *FundingVerificationService // 🆕 펀딩 검증 서비스
 	mentorQualificationSvc *MentorQualificationService // 🆕 멘토 자격 증명 서비스
 
 	// 매칭 엔진 상태
-	isRunning      bool
-	stopChan       chan struct{}
-	orderChan      chan *OrderMatchRequest
-	mutex          sync.RWMutex
+	isRunning bool
+	stopChan  chan struct{}
+	orderChan chan *OrderMatchRequest
+	mutex     sync.RWMutex
 
 	// 시장별 주문장 (인메모리 고속 처리)
-	orderBooks     map[string]*OrderBookEngine // milestoneID:optionID -> OrderBook
+	orderBooks map[string]*OrderBookEngine // milestoneID:optionID -> OrderBook
 
 	// 성능 통계
-	stats          MatchingStats
+	stats MatchingStats
 }
 
 // OrderMatchRequest 매칭 요청
@@ -60,7 +60,7 @@ type OrderBookEngine struct {
 	SellOrders *SellOrderHeap // 낮은 가격부터 (매도)
 
 	// 성능 최적화를 위한 인덱스
-	orderIndex map[uint]*models.Order // orderID -> order
+	orderIndex map[uint]*models.Order      // orderID -> order
 	priceIndex map[float64][]*models.Order // price -> orders
 
 	// 통계
@@ -129,14 +129,14 @@ func (h *SellOrderHeap) Pop() interface{} {
 
 // MatchingStats 매칭 엔진 통계
 type MatchingStats struct {
-	TotalMatches       int64     `json:"total_matches"`
-	TotalVolume        int64     `json:"total_volume"`
-	AvgMatchTime       float64   `json:"avg_match_time_ms"`
-	OrdersProcessed    int64     `json:"orders_processed"`
-	ActiveOrderBooks   int       `json:"active_order_books"`
-	CacheHitRate       float64   `json:"cache_hit_rate"`
-	LastMatchTime      time.Time `json:"last_match_time"`
-	StartTime          time.Time `json:"start_time"`
+	TotalMatches     int64     `json:"total_matches"`
+	TotalVolume      int64     `json:"total_volume"`
+	AvgMatchTime     float64   `json:"avg_match_time_ms"`
+	OrdersProcessed  int64     `json:"orders_processed"`
+	ActiveOrderBooks int       `json:"active_order_books"`
+	CacheHitRate     float64   `json:"cache_hit_rate"`
+	LastMatchTime    time.Time `json:"last_match_time"`
+	StartTime        time.Time `json:"start_time"`
 }
 
 // NewMatchingEngine 매칭 엔진 생성자
@@ -262,14 +262,14 @@ func (me *MatchingEngine) matchingWorker(workerID int) {
 				log.Printf("⚠️ Slow order processing: Worker %d, Order %d, Time %v", workerID, request.Order.ID, processingTime)
 			}
 
-					// 응답 전송 (논블로킹)
-		select {
-		case request.Response <- result:
-			// 성공적으로 응답 전송
-		default:
-			// 응답 채널이 이미 닫혔거나 수신자가 없음 (타임아웃 발생)
-			log.Printf("⚠️ Response channel unavailable for order %d (likely timeout)", request.Order.ID)
-		}
+			// 응답 전송 (논블로킹)
+			select {
+			case request.Response <- result:
+				// 성공적으로 응답 전송
+			default:
+				// 응답 채널이 이미 닫혔거나 수신자가 없음 (타임아웃 발생)
+				log.Printf("⚠️ Response channel unavailable for order %d (likely timeout)", request.Order.ID)
+			}
 		}
 	}
 }
@@ -324,7 +324,6 @@ func (me *MatchingEngine) processOrder(order *models.Order) *MatchingResult {
 	}
 }
 
-
 // executeLimitOrder 지정가 주문 체결
 func (me *MatchingEngine) executeLimitOrder(orderBook *OrderBookEngine, order *models.Order) []models.Trade {
 	var trades []models.Trade
@@ -347,23 +346,23 @@ func (me *MatchingEngine) executeLimitOrder(orderBook *OrderBookEngine, order *m
 			matchQuantity := min(remaining, bestSell.Remaining)
 
 			totalAmount := int64(float64(matchQuantity) * bestSell.Price * 100) // 센트 단위로 변환
-			buyerFee := totalAmount * 25 / 10000   // 0.25% 수수료
-			sellerFee := totalAmount * 25 / 10000  // 0.25% 수수료
+			buyerFee := totalAmount * 25 / 10000                                // 0.25% 수수료
+			sellerFee := totalAmount * 25 / 10000                               // 0.25% 수수료
 
 			trade := models.Trade{
-				ProjectID:    order.ProjectID,
-				MilestoneID:  order.MilestoneID,
-				OptionID:     order.OptionID,
-				BuyOrderID:   order.ID,
-				SellOrderID:  bestSell.ID,
-				BuyerID:      order.UserID,
-				SellerID:     bestSell.UserID,
-				Quantity:     matchQuantity,
-				Price:        bestSell.Price,
-				TotalAmount:  totalAmount,
-				BuyerFee:     buyerFee,
-				SellerFee:    sellerFee,
-				CreatedAt:    time.Now(),
+				ProjectID:   order.ProjectID,
+				MilestoneID: order.MilestoneID,
+				OptionID:    order.OptionID,
+				BuyOrderID:  order.ID,
+				SellOrderID: bestSell.ID,
+				BuyerID:     order.UserID,
+				SellerID:    bestSell.UserID,
+				Quantity:    matchQuantity,
+				Price:       bestSell.Price,
+				TotalAmount: totalAmount,
+				BuyerFee:    buyerFee,
+				SellerFee:   sellerFee,
+				CreatedAt:   time.Now(),
 			}
 
 			trades = append(trades, trade)
@@ -406,23 +405,23 @@ func (me *MatchingEngine) executeLimitOrder(orderBook *OrderBookEngine, order *m
 			matchQuantity := min(remaining, bestBuy.Remaining)
 
 			totalAmount := int64(float64(matchQuantity) * bestBuy.Price * 100) // 센트 단위로 변환
-			buyerFee := totalAmount * 25 / 10000   // 0.25% 수수료
-			sellerFee := totalAmount * 25 / 10000  // 0.25% 수수료
+			buyerFee := totalAmount * 25 / 10000                               // 0.25% 수수료
+			sellerFee := totalAmount * 25 / 10000                              // 0.25% 수수료
 
 			trade := models.Trade{
-				ProjectID:    order.ProjectID,
-				MilestoneID:  order.MilestoneID,
-				OptionID:     order.OptionID,
-				BuyOrderID:   bestBuy.ID,
-				SellOrderID:  order.ID,
-				BuyerID:      bestBuy.UserID,
-				SellerID:     order.UserID,
-				Quantity:     matchQuantity,
-				Price:        bestBuy.Price,
-				TotalAmount:  totalAmount,
-				BuyerFee:     buyerFee,
-				SellerFee:    sellerFee,
-				CreatedAt:    time.Now(),
+				ProjectID:   order.ProjectID,
+				MilestoneID: order.MilestoneID,
+				OptionID:    order.OptionID,
+				BuyOrderID:  bestBuy.ID,
+				SellOrderID: order.ID,
+				BuyerID:     bestBuy.UserID,
+				SellerID:    order.UserID,
+				Quantity:    matchQuantity,
+				Price:       bestBuy.Price,
+				TotalAmount: totalAmount,
+				BuyerFee:    buyerFee,
+				SellerFee:   sellerFee,
+				CreatedAt:   time.Now(),
 			}
 
 			trades = append(trades, trade)
@@ -469,21 +468,21 @@ func (me *MatchingEngine) executeLimitOrder(orderBook *OrderBookEngine, order *m
 // CancelOrder 주문 취소 (매칭 엔진에서 제거)
 func (me *MatchingEngine) CancelOrder(order *models.Order) {
 	key := me.getMarketKey(order.MilestoneID, order.OptionID)
-	
+
 	me.mutex.RLock()
 	orderBook, exists := me.orderBooks[key]
 	me.mutex.RUnlock()
-	
+
 	if !exists {
 		return // 주문장이 없으면 무시
 	}
-	
+
 	orderBook.mutex.Lock()
 	defer orderBook.mutex.Unlock()
-	
+
 	// 인덱스에서 주문 제거
 	delete(orderBook.orderIndex, order.ID)
-	
+
 	// 힙에서도 제거 (비효율적이지만 정확성 보장)
 	me.removeFromHeap(orderBook, order)
 }
@@ -609,12 +608,12 @@ func (me *MatchingEngine) broadcastMentorPoolUpdate(milestoneID uint, pool *mode
 		MarketData: map[string]interface{}{
 			"event_type": "mentor_pool_update",
 			"data": map[string]interface{}{
-				"milestone_id":        milestoneID,
-				"total_pool_amount":   pool.TotalPoolAmount,
-				"accumulated_fees":    pool.AccumulatedFees,
-				"added_amount":        addedAmount,
-				"fee_percentage":      pool.FeePercentage,
-				"updated_at":          time.Now().Unix(),
+				"milestone_id":      milestoneID,
+				"total_pool_amount": pool.TotalPoolAmount,
+				"accumulated_fees":  pool.AccumulatedFees,
+				"added_amount":      addedAmount,
+				"fee_percentage":    pool.FeePercentage,
+				"updated_at":        time.Now().Unix(),
 			},
 		},
 		Timestamp: time.Now().Unix(),
@@ -706,7 +705,7 @@ func (me *MatchingEngine) isTableNotExistsError(err error) bool {
 	// MySQL: Table 'db.orders' doesn't exist
 	// SQLite: no such table: orders
 	return (errStr != "" &&
-		   (errStr == `ERROR: relation "orders" does not exist (SQLSTATE 42P01)` ||
+		(errStr == `ERROR: relation "orders" does not exist (SQLSTATE 42P01)` ||
 			strings.Contains(errStr, `relation "orders" does not exist`) ||
 			(strings.Contains(errStr, `Table`) && strings.Contains(errStr, `orders`) && strings.Contains(errStr, `doesn't exist`)) ||
 			strings.Contains(errStr, `no such table: orders`)))
@@ -914,7 +913,7 @@ func (me *MatchingEngine) updateMarketData(milestoneID uint, optionID string, tr
 		err = me.db.Save(&marketData).Error
 	}
 
-		if err != nil {
+	if err != nil {
 		log.Printf("❌ Failed to update market data for %d:%s: %v", milestoneID, optionID, err)
 	} else {
 		log.Printf("📊 Updated market data for %d:%s: price %.4f, volume %d",
@@ -1107,7 +1106,7 @@ func (me *MatchingEngine) updateBuyerWallet(buyerID uint, totalAmount, fee int64
 		return
 	}
 
-		// 잠긴 잔액에서 거래금액 차감, 수수료는 일반 잔액에서 차감
+	// 잠긴 잔액에서 거래금액 차감, 수수료는 일반 잔액에서 차감
 	if wallet.USDCLockedBalance >= totalAmount {
 		wallet.USDCLockedBalance -= totalAmount
 		wallet.USDCBalance -= fee // 수수료는 일반 잔액에서 차감
@@ -1172,7 +1171,7 @@ func (me *MatchingEngine) updateStats(processingTime time.Duration) {
 	me.stats.LastMatchTime = time.Now()
 
 	// 이동 평균으로 평균 매칭 시간 계산
-	me.stats.AvgMatchTime = (me.stats.AvgMatchTime*0.95) + (processingTime.Seconds()*1000*0.05)
+	me.stats.AvgMatchTime = (me.stats.AvgMatchTime * 0.95) + (processingTime.Seconds() * 1000 * 0.05)
 }
 
 func (me *MatchingEngine) statsWorker() {
