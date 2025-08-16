@@ -132,7 +132,7 @@ class ApiClient {
     data: UpdateProfileRequest
   ): Promise<ApiResponse<User>> {
     return this.request("/users/me/profile", {
-      method: "POST",
+      method: "PUT",
       body: JSON.stringify(data),
     });
   }
