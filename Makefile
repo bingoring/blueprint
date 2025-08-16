@@ -166,6 +166,146 @@ build-frontend:
 	cd blueprint-fe && npm run build
 	@echo "✅ Frontend built!"
 
+# 🧪 Testing Commands
+.PHONY: test test-unit test-integration test-load test-e2e test-all test-coverage test-verbose test-clean test-watch test-quick test-bench test-simple test-setup test-lint test-fmt
+
+# Run all tests
+test:
+	@echo "🧪 Running all tests..."
+	cd blueprint-be && ./scripts/test.sh all
+
+# Run unit tests only
+test-unit:
+	@echo "🧪 Running unit tests..."
+	cd blueprint-be && ./scripts/test.sh unit
+
+# Run integration tests only
+test-integration:
+	@echo "🧪 Running integration tests..."
+	cd blueprint-be && ./scripts/test.sh integration
+
+# Run load/performance tests
+test-load:
+	@echo "🧪 Running load tests..."
+	cd blueprint-be && ./scripts/test.sh load
+
+# Run end-to-end scenario tests
+test-e2e:
+	@echo "🧪 Running E2E tests..."
+	cd blueprint-be && ./scripts/test.sh all
+
+# Run all tests with coverage
+test-coverage:
+	@echo "📊 Running tests with coverage report..."
+	cd blueprint-be && go test -v -race -coverprofile=coverage.out ./tests/...
+	@echo "📋 Generating HTML coverage report..."
+	cd blueprint-be && go tool cover -html=coverage.out -o coverage.html
+	@echo "✅ Coverage report generated: blueprint-be/coverage.html"
+
+# Run all tests (including load tests)
+test-all:
+	@echo "🧪 Running comprehensive test suite..."
+	cd blueprint-be && go test -v -race ./tests/unit/...
+	cd blueprint-be && go test -v -race ./tests/integration/...
+	cd blueprint-be && go test -v -race ./tests/e2e/...
+	cd blueprint-be && go test -v ./tests/load/...
+
+# Run tests with verbose output
+test-verbose:
+	@echo "🧪 Running tests with verbose output..."
+	cd blueprint-be && go test -v -race ./tests/...
+
+# Run quick tests (skip load tests)
+test-quick:
+	@echo "⚡ Running quick tests (unit + integration + e2e)..."
+	cd blueprint-be && go test -short -race ./tests/unit/... ./tests/integration/... ./tests/e2e/...
+
+# Run benchmarks
+test-bench:
+	@echo "⏱️  Running benchmark tests..."
+	cd blueprint-be && go test -bench=. -benchmem ./tests/load/...
+
+# Clean test cache and artifacts
+test-clean:
+	@echo "🧹 Cleaning test cache and artifacts..."
+	cd blueprint-be && go clean -testcache
+	cd blueprint-be && rm -f coverage.out coverage.html
+	@echo "✅ Test artifacts cleaned"
+
+# Watch tests (requires entr - install with: brew install entr)
+test-watch:
+	@echo "👀 Watching for file changes and running tests..."
+	@echo "💡 Install entr first: brew install entr (macOS) or apt-get install entr (Ubuntu)"
+	cd blueprint-be && find . -name "*.go" | entr -c go test -short ./tests/unit/... ./tests/integration/...
+
+# Lint tests
+test-lint:
+	@echo "🔍 Linting test files..."
+	cd blueprint-be && go vet ./tests/...
+	cd blueprint-be && gofmt -l ./tests/ | (! grep .) || (echo "❌ Files need formatting" && exit 1)
+	@echo "✅ Test files pass linting"
+
+# Format test files
+test-fmt:
+	@echo "🎨 Formatting test files..."
+	cd blueprint-be && gofmt -w ./tests/
+	@echo "✅ Test files formatted"
+
+# ======================== Test Account Management ========================
+
+# Create test accounts for development/testing
+create-test-accounts:
+	@echo "👥 Creating test accounts..."
+	cd blueprint-be && go run scripts/create_test_accounts.go
+
+# Create test accounts with custom settings
+create-test-accounts-custom:
+	@echo "👥 Creating test accounts with custom settings..."
+	@echo "💡 Set environment variables: NUM_USERS, USDC_BALANCE, DB_TYPE, DATABASE_URL"
+	cd blueprint-be && go run scripts/create_test_accounts.go
+
+# Clean existing test accounts and create new ones
+recreate-test-accounts:
+	@echo "🔄 Recreating test accounts (cleaning existing first)..."
+	cd blueprint-be && CLEAN_EXISTING=true go run scripts/create_test_accounts.go
+
+# Create test accounts for load testing (1000 users)
+create-load-test-accounts:
+	@echo "⚡ Creating 1000 test accounts for load testing..."
+	cd blueprint-be && NUM_USERS=1000 USDC_BALANCE=1000000000 go run scripts/create_test_accounts.go
+
+# Create test accounts with PostgreSQL (using .env file)
+create-test-accounts-postgres:
+	@echo "🐘 Creating test accounts in PostgreSQL..."
+	cd blueprint-be && DB_TYPE=postgres go run scripts/create_test_accounts.go
+
+# Create test accounts with PostgreSQL and recreate existing ones  
+recreate-test-accounts-postgres:
+	@echo "🔄 Recreating test accounts in PostgreSQL (cleaning existing first)..."
+	cd blueprint-be && DB_TYPE=postgres CLEAN_EXISTING=true go run scripts/create_test_accounts.go
+
+# Create load test accounts in PostgreSQL (1000 users)
+create-load-test-accounts-postgres:
+	@echo "⚡ Creating 1000 test accounts for load testing in PostgreSQL..."
+	cd blueprint-be && DB_TYPE=postgres NUM_USERS=1000 USDC_BALANCE=1000000000 go run scripts/create_test_accounts.go
+
+# Simple test runner (bypasses script)
+test-simple:
+	@echo "🧪 Running simple test suite..."
+	cd blueprint-be && go test -v ./tests/unit/cqrs_test.go
+	@echo "✅ CQRS tests completed"
+
+# Check test setup
+test-setup:
+	@echo "🔧 Checking test setup..."
+	@echo "📁 Test directories:"
+	@ls -la blueprint-be/tests/
+	@echo ""
+	@echo "📋 Test files:"
+	@find blueprint-be/tests/ -name "*.go" -type f
+	@echo ""
+	@echo "✅ Test setup check completed"
+
 # 🔍 Utility Commands
 .PHONY: status db-logs redis-logs redis-cli redis-info timescale-shell timescale-logs timescale-status timescale-tables timescale-info db-shell db-connect db-admin db-reset db-backup db-import db-info
 
@@ -370,6 +510,32 @@ help:
 	@echo "  make build-backend    - Build backend binary"
 	@echo "  make build-frontend   - Build frontend for production"
 	@echo ""
+	@echo "🧪 Testing:"
+	@echo "  make test             - Run all tests (unit + integration + e2e)"
+	@echo "  make test-unit        - Run unit tests only"
+	@echo "  make test-integration - Run integration tests only"
+	@echo "  make test-load        - Run load/performance tests"
+	@echo "  make test-e2e         - Run end-to-end scenario tests"
+	@echo "  make test-all         - Run comprehensive test suite"
+	@echo "  make test-coverage    - Generate test coverage report"
+	@echo "  make test-verbose     - Run tests with verbose output"
+	@echo "  make test-quick       - Run quick tests (skip load tests)"
+	@echo "  make test-bench       - Run benchmark tests"
+	@echo "  make test-watch       - Watch files and auto-run tests"
+	@echo "  make test-lint        - Lint test files"
+	@echo "  make test-fmt         - Format test files"
+	@echo "  make test-clean       - Clean test cache and artifacts"
+	@echo "  make test-simple      - Run simple test suite (CQRS only)"
+	@echo "  make test-setup       - Check test infrastructure setup"
+	@echo ""
+	@echo "👥 Test Account Management:"
+	@echo "  make create-test-accounts           - Create test accounts (SQLite)"
+	@echo "  make create-test-accounts-postgres  - Create test accounts (PostgreSQL)"
+	@echo "  make create-load-test-accounts      - Create 1000 test accounts (SQLite)"
+	@echo "  make create-load-test-accounts-postgres - Create 1000 test accounts (PostgreSQL)"
+	@echo "  make recreate-test-accounts         - Recreate test accounts (SQLite)"
+	@echo "  make recreate-test-accounts-postgres - Recreate test accounts (PostgreSQL)"
+	@echo ""
 	@echo "🔍 Monitoring:"
 	@echo "  make status         - Show container status"
 	@echo "  make db-logs        - Show database logs"
@@ -398,9 +564,17 @@ help:
 	@echo "  make nuke-all       - 💀 DESTROY EVERYTHING (all containers + volumes)"
 	@echo "  make fresh-start    - 🔄 Complete reset + rebuild from scratch"
 	@echo ""
-	@echo "🆘 Example workflow:"
+	@echo "🆘 Example workflows:"
+	@echo ""
+	@echo "🚀 Development Workflow:"
 	@echo "  1. make setup            # Setup environment"
 	@echo "  2. make install-frontend # Install frontend dependencies"
 	@echo "  3. make dev-db           # Start database"
 	@echo "  4. make run-backend      # Start backend in another terminal"
 	@echo "  5. make run-frontend     # Start frontend in another terminal"
+	@echo ""
+	@echo "🧪 Testing Workflow:"
+	@echo "  1. make dev-db           # Start test databases"
+	@echo "  2. make test-quick       # Run quick tests"
+	@echo "  3. make test-coverage    # Generate coverage report"
+	@echo "  4. make test-all         # Run full test suite (including load tests)"
