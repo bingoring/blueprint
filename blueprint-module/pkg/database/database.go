@@ -57,6 +57,26 @@ func AutoMigrate() error {
 		&models.Project{},
 		&models.Milestone{},
 		
+		// 🔍 마일스톤 증명 및 검증 시스템 모델
+		&models.MilestoneProof{},
+		&models.ProofValidator{},
+		&models.ProofDispute{},
+		&models.MilestoneVerification{},
+		&models.ValidatorQualification{},
+		&models.VerificationReward{},
+		
+		// 🏛️ 탈중앙화된 분쟁 해결 시스템 모델
+		&models.ArbitrationCase{},
+		&models.ArbitrationVote{},
+		&models.JurorQualification{},
+		&models.ArbitrationReward{},
+		
+		// 💎 멘토 스테이킹 및 슬래싱 시스템 모델
+		&models.MentorStake{},
+		&models.MentorSlashEvent{},
+		&models.MentorPerformanceMetric{},
+		&models.MentorStakeReward{},
+		
 		// 💰 Trading 관련 모델
 		&models.Order{},
 		&models.Trade{},
