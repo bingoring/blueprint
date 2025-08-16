@@ -5,20 +5,27 @@ go 1.23.0
 toolchain go1.24.5
 
 require (
+	github.com/alicebob/miniredis/v2 v2.35.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/joho/godotenv v1.5.1
+	github.com/redis/go-redis/v9 v9.3.0
 	github.com/sashabaranov/go-openai v1.40.5
+	github.com/stretchr/testify v1.10.0
 	golang.org/x/oauth2 v0.30.0
-	gorm.io/gorm v1.25.10
+	gorm.io/driver/postgres v1.6.0
+	gorm.io/driver/sqlite v1.6.0
+	gorm.io/gorm v1.30.0
 )
 
 require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/redis/go-redis/v9 v9.3.0 // indirect
+	github.com/mattn/go-sqlite3 v1.14.22 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	gorm.io/driver/postgres v1.6.0 // indirect
 )
 
 require (
