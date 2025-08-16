@@ -7,6 +7,7 @@ import {
   PlusOutlined,
   ProjectOutlined,
   RobotOutlined,
+  SafetyOutlined,
   SettingOutlined,
   TagsOutlined,
 } from "@ant-design/icons";
@@ -15,6 +16,7 @@ import {
   Alert,
   Button,
   Card,
+  Checkbox,
   Col,
   DatePicker,
   Divider,
@@ -24,6 +26,7 @@ import {
   Radio,
   Row,
   Select,
+  Slider,
   Space,
   Steps,
   Switch,
@@ -52,6 +55,7 @@ import type {
   AIUsageInfo,
   CreateProjectWithMilestonesRequest,
   ProjectMilestone,
+  ProofType,
 } from "../types";
 import { FormFieldWithValidation } from "./common/FormFieldWithValidation";
 
@@ -369,6 +373,12 @@ const CreateProjectPage: React.FC = () => {
         order: milestones.length + 1,
         betting_type: "simple" as const,
         betting_options: [], // 기본값 제거 - 빈 배열로 시작
+        // 🔍 인증 관련 기본값 추가
+        requires_proof: true,
+        proof_types: ["file", "url"] as ProofType[], // 기본적으로 파일과 URL 허용
+        min_validators: 3,
+        min_approval_rate: 0.6,
+        verification_deadline_days: 3,
       },
     ];
 
@@ -539,6 +549,12 @@ const CreateProjectPage: React.FC = () => {
         order: index + 1,
         betting_type: "simple" as const,
         betting_options: [],
+        // 🔍 인증 관련 기본값 추가
+        requires_proof: true,
+        proof_types: ["file", "url"] as ProofType[], // 기본적으로 파일과 URL 허용
+        min_validators: 3,
+        min_approval_rate: 0.6,
+        verification_deadline_days: 3,
       })
     );
 
@@ -1222,6 +1238,172 @@ const CreateProjectPage: React.FC = () => {
                           />
                         )}
                       </div>
+
+                      {/* 🔍 인증 방법 설정 */}
+                      <Divider
+                        className="!my-4"
+                        style={{ borderTopColor: "var(--border-color)" }}
+                      />
+                      <div className="space-y-4">
+                        <div>
+                          <Typography.Text strong>
+                            <SafetyOutlined className="mr-2" />
+                            🔍 인증 방법 설정
+                          </Typography.Text>
+                          <Typography.Text
+                            type="secondary"
+                            className="block text-sm mt-1"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            마일스톤 달성 시 어떤 방식으로 증명할지 설정하세요
+                          </Typography.Text>
+                        </div>
+
+                        {/* 증거 제출 필요 여부 */}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Typography.Text>증거 제출 필요</Typography.Text>
+                            <Typography.Text
+                              type="secondary"
+                              className="block text-xs"
+                              style={{ color: "var(--text-secondary)" }}
+                            >
+                              완료 시 증명 자료를 제출하도록 요구
+                            </Typography.Text>
+                          </div>
+                          <Switch
+                            checked={milestone.requires_proof !== false}
+                            onChange={(checked) =>
+                              updateMilestone(index, "requires_proof", checked)
+                            }
+                            checkedChildren="필요"
+                            unCheckedChildren="불필요"
+                          />
+                        </div>
+
+                        {milestone.requires_proof !== false && (
+                          <>
+                            {/* 허용되는 증거 타입 */}
+                            <div>
+                              <Typography.Text className="block mb-2">
+                                허용되는 증거 타입
+                              </Typography.Text>
+                              <Checkbox.Group
+                                value={milestone.proof_types || ["file", "url"]}
+                                onChange={(values) =>
+                                  updateMilestone(index, "proof_types", values as ProofType[])
+                                }
+                                className="w-full"
+                              >
+                                <Row gutter={[8, 8]}>
+                                  <Col span={12}>
+                                    <Checkbox value="file">📁 파일 업로드</Checkbox>
+                                  </Col>
+                                  <Col span={12}>
+                                    <Checkbox value="url">🔗 웹 링크</Checkbox>
+                                  </Col>
+                                  <Col span={12}>
+                                    <Checkbox value="screenshot">📸 스크린샷</Checkbox>
+                                  </Col>
+                                  <Col span={12}>
+                                    <Checkbox value="video">🎥 영상</Checkbox>
+                                  </Col>
+                                  <Col span={12}>
+                                    <Checkbox value="text">📝 텍스트 설명</Checkbox>
+                                  </Col>
+                                  <Col span={12}>
+                                    <Checkbox value="certificate">🏆 인증서</Checkbox>
+                                  </Col>
+                                  <Col span={12}>
+                                    <Checkbox value="api">🔌 API 연동</Checkbox>
+                                  </Col>
+                                </Row>
+                              </Checkbox.Group>
+                            </div>
+
+                            {/* 검증 설정 */}
+                            <div>
+                              <Typography.Text className="block mb-3">
+                                검증 조건 설정
+                              </Typography.Text>
+                              
+                              <div className="space-y-3">
+                                {/* 최소 검증인 수 */}
+                                <div>
+                                  <div className="flex justify-between items-center mb-2">
+                                    <Typography.Text className="text-sm">
+                                      최소 검증인 수: {milestone.min_validators || 3}명
+                                    </Typography.Text>
+                                  </div>
+                                  <Slider
+                                    min={1}
+                                    max={10}
+                                    value={milestone.min_validators || 3}
+                                    onChange={(value) =>
+                                      updateMilestone(index, "min_validators", value)
+                                    }
+                                    marks={{
+                                      1: '1명',
+                                      3: '3명',
+                                      5: '5명',
+                                      10: '10명',
+                                    }}
+                                  />
+                                </div>
+
+                                {/* 최소 승인률 */}
+                                <div>
+                                  <div className="flex justify-between items-center mb-2">
+                                    <Typography.Text className="text-sm">
+                                      최소 승인률: {Math.round((milestone.min_approval_rate || 0.6) * 100)}%
+                                    </Typography.Text>
+                                  </div>
+                                  <Slider
+                                    min={0.5}
+                                    max={1.0}
+                                    step={0.1}
+                                    value={milestone.min_approval_rate || 0.6}
+                                    onChange={(value) =>
+                                      updateMilestone(index, "min_approval_rate", value)
+                                    }
+                                    marks={{
+                                      0.5: '50%',
+                                      0.6: '60%',
+                                      0.8: '80%',
+                                      1.0: '100%',
+                                    }}
+                                  />
+                                </div>
+
+                                {/* 검증 기간 */}
+                                <div>
+                                  <Typography.Text className="block mb-2 text-sm">
+                                    검증 기간 (일)
+                                  </Typography.Text>
+                                  <InputNumber
+                                    min={1}
+                                    max={14}
+                                    value={milestone.verification_deadline_days || 3}
+                                    onChange={(value) =>
+                                      updateMilestone(index, "verification_deadline_days", value || 3)
+                                    }
+                                    addonAfter="일"
+                                    className="w-full"
+                                    placeholder="3"
+                                  />
+                                  <Typography.Text
+                                    type="secondary"
+                                    className="text-xs block mt-1"
+                                    style={{ color: "var(--text-secondary)" }}
+                                  >
+                                    증거 제출 후 검증인들이 검토할 수 있는 기간
+                                  </Typography.Text>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </Card>
                   ))}
 
@@ -1455,6 +1637,24 @@ const CreateProjectPage: React.FC = () => {
                                   : `🎯 사용자 정의 (${
                                       milestone.betting_options?.length || 0
                                     }개 옵션)`}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: "12px",
+                                  color: "var(--text-secondary)",
+                                  marginTop: "4px",
+                                }}
+                              >
+                                🔍 인증 방법:{" "}
+                                {milestone.requires_proof === false
+                                  ? "증거 제출 불필요"
+                                  : `증거 필요 (${milestone.proof_types?.length || 2}개 타입)`}
+                                {milestone.requires_proof !== false && (
+                                  <span className="ml-2">
+                                    · 검증인 {milestone.min_validators || 3}명 이상
+                                    · 승인률 {Math.round((milestone.min_approval_rate || 0.6) * 100)}% 이상
+                                  </span>
+                                )}
                               </div>
                               {milestone.betting_type === "custom" &&
                                 (milestone.betting_options || []).length >

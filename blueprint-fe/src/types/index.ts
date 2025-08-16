@@ -286,9 +286,26 @@ export interface Milestone {
   // 투자 관련 새 필드들
   betting_type?: "simple" | "custom";
   betting_options?: string[]; // 베팅 옵션 배열
+
+  // 🔍 증명 및 검증 관련 필드들
+  requires_proof?: boolean; // 증거 제출 필요 여부 (기본값: true)
+  proof_types?: ProofType[]; // 허용되는 증거 타입들
+  min_validators?: number; // 최소 검증인 수 (기본값: 3)
+  min_approval_rate?: number; // 최소 승인률 (기본값: 0.6)
+  verification_deadline_days?: number; // 검증 마감일 (일수, 기본값: 3)
 }
 
 export type MilestoneStatus = "pending" | "completed" | "failed" | "cancelled";
+
+// 🔍 증거 타입 정의
+export type ProofType = 
+  | "file"        // 파일 업로드 (이미지, PDF, 문서 등)
+  | "url"         // 웹 링크 (GitHub, 블로그, 포트폴리오 등)
+  | "api"         // API 연동 데이터 (GitHub, 헬스앱 등)
+  | "text"        // 텍스트 설명
+  | "video"       // 영상 업로드/링크
+  | "screenshot"  // 스크린샷
+  | "certificate"; // 인증서/성적표
 
 // 기존 Phase 타입도 호환성을 위해 유지
 export type Phase = Milestone;
