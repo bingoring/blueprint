@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"gorm.io/gorm"
@@ -70,11 +71,14 @@ type Milestone struct {
 	Notes       string         `json:"notes" gorm:"type:text"`
 
 	// 🔍 증명 및 검증 관련 필드
-	RequiresProof         bool      `json:"requires_proof" gorm:"default:true"`          // 증거 제출 필요 여부
-	ProofDeadline         *time.Time `json:"proof_deadline,omitempty"`                   // 증거 제출 마감일
-	VerificationDeadline  *time.Time `json:"verification_deadline,omitempty"`            // 검증 완료 마감일
-	MinValidators         int       `json:"min_validators" gorm:"default:3"`             // 최소 검증인 수
-	MinApprovalRate       float64   `json:"min_approval_rate" gorm:"default:0.6"`        // 최소 승인률 (60%)
+	RequiresProof            bool      `json:"requires_proof" gorm:"default:true"`            // 증거 제출 필요 여부
+	ProofTypes               string    `json:"-" gorm:"type:text"`                            // 허용되는 증거 타입들 (JSON 배열)
+	ProofTypesArray          []string  `json:"proof_types" gorm:"-"`                          // API 응답용 배열
+	ProofDeadline            *time.Time `json:"proof_deadline,omitempty"`                     // 증거 제출 마감일
+	VerificationDeadline     *time.Time `json:"verification_deadline,omitempty"`              // 검증 완료 마감일
+	VerificationDeadlineDays int       `json:"verification_deadline_days" gorm:"default:3"`   // 검증 마감일 (일수)
+	MinValidators            int       `json:"min_validators" gorm:"default:3"`               // 최소 검증인 수
+	MinApprovalRate          float64   `json:"min_approval_rate" gorm:"default:0.6"`          // 최소 승인률 (60%)
 	
 	// 검증 통계
 	TotalValidators       int       `json:"total_validators" gorm:"default:0"`           // 총 검증인 수
@@ -215,6 +219,35 @@ func (m *Milestone) SetProofDeadline(days int) {
 		deadline := time.Now().AddDate(0, 0, days)
 		m.ProofDeadline = &deadline
 	}
+}
+
+// AfterFind 데이터베이스에서 조회한 후 ProofTypes JSON을 파싱
+func (m *Milestone) AfterFind(tx *gorm.DB) error {
+	if m.ProofTypes != "" {
+		if err := json.Unmarshal([]byte(m.ProofTypes), &m.ProofTypesArray); err != nil {
+			// JSON 파싱 실패 시 기본값으로 설정
+			m.ProofTypesArray = []string{"file", "url"}
+		}
+	} else {
+		m.ProofTypesArray = []string{"file", "url"}
+	}
+	return nil
+}
+
+// BeforeSave 저장하기 전에 ProofTypesArray를 JSON으로 변환
+func (m *Milestone) BeforeSave(tx *gorm.DB) error {
+	// ProofTypesArray가 설정되어 있고 ProofTypes가 비어있으면 변환
+	if len(m.ProofTypesArray) > 0 {
+		if proofTypesBytes, err := json.Marshal(m.ProofTypesArray); err == nil {
+			m.ProofTypes = string(proofTypesBytes)
+		}
+	} else if m.ProofTypes == "" {
+		// 기본값 설정
+		if proofTypesBytes, err := json.Marshal([]string{"file", "url"}); err == nil {
+			m.ProofTypes = string(proofTypesBytes)
+		}
+	}
+	return nil
 }
 
 // TableName GORM 테이블명 설정

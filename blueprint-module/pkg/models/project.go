@@ -127,6 +127,13 @@ type CreateProjectMilestoneRequest struct {
 	// 베팅 관련 필드 추가
 	BettingType    string   `json:"betting_type"`    // simple, custom
 	BettingOptions []string `json:"betting_options"` // 커스텀 베팅 옵션들
+
+	// 🔍 증명 및 검증 관련 필드들
+	RequiresProof             *bool    `json:"requires_proof,omitempty"`               // 증거 제출 필요 여부
+	ProofTypes                []string `json:"proof_types,omitempty"`                  // 허용되는 증거 타입들 (string array)
+	MinValidators             *int     `json:"min_validators,omitempty"`               // 최소 검증인 수
+	MinApprovalRate           *float64 `json:"min_approval_rate,omitempty"`            // 최소 승인률
+	VerificationDeadlineDays  *int     `json:"verification_deadline_days,omitempty"`  // 검증 마감일 (일수)
 }
 
 // 마일스톤 업데이트 요청
@@ -141,6 +148,13 @@ type UpdateMilestoneRequest struct {
 	// 베팅 관련 필드 추가
 	BettingType    string   `json:"betting_type"`    // simple, custom
 	BettingOptions []string `json:"betting_options"` // 커스텀 베팅 옵션들
+
+	// 🔍 증명 및 검증 관련 필드들
+	RequiresProof             *bool    `json:"requires_proof,omitempty"`               // 증거 제출 필요 여부
+	ProofTypes                []string `json:"proof_types,omitempty"`                  // 허용되는 증거 타입들 (string array)
+	MinValidators             *int     `json:"min_validators,omitempty"`               // 최소 검증인 수
+	MinApprovalRate           *float64 `json:"min_approval_rate,omitempty"`            // 최소 승인률
+	VerificationDeadlineDays  *int     `json:"verification_deadline_days,omitempty"`  // 검증 마감일 (일수)
 }
 
 // Goal 관련 호환성 코드 제거 완료

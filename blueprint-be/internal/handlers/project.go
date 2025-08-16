@@ -102,6 +102,34 @@ func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 			bettingOptions = []string{"success", "fail"}
 		}
 
+		// 🔍 인증 관련 필드 기본값 설정
+		requiresProof := true
+		if milestoneReq.RequiresProof != nil {
+			requiresProof = *milestoneReq.RequiresProof
+		}
+
+		minValidators := 3
+		if milestoneReq.MinValidators != nil {
+			minValidators = *milestoneReq.MinValidators
+		}
+
+		minApprovalRate := 0.6
+		if milestoneReq.MinApprovalRate != nil {
+			minApprovalRate = *milestoneReq.MinApprovalRate
+		}
+
+		verificationDeadlineDays := 3
+		if milestoneReq.VerificationDeadlineDays != nil {
+			verificationDeadlineDays = *milestoneReq.VerificationDeadlineDays
+		}
+
+		// ProofTypes는 string array로 받아서 저장
+		// 기본값: ["file", "url"]
+		proofTypes := milestoneReq.ProofTypes
+		if len(proofTypes) == 0 {
+			proofTypes = []string{"file", "url"}
+		}
+
 		milestone := models.Milestone{
 			ProjectID:      project.ID,
 			Title:          milestoneReq.Title,
@@ -111,6 +139,13 @@ func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 			Status:         models.MilestoneStatusPending,
 			BettingType:    milestoneReq.BettingType,
 			BettingOptions: bettingOptions, // 올바른 옵션 할당
+			
+			// 🔍 인증 관련 필드들 설정
+			RequiresProof:            requiresProof,
+			ProofTypesArray:          proofTypes, // BeforeSave에서 JSON으로 변환됨
+			MinValidators:            minValidators,
+			MinApprovalRate:          minApprovalRate,
+			VerificationDeadlineDays: verificationDeadlineDays,
 		}
 
 		if err := tx.Create(&milestone).Error; err != nil {
