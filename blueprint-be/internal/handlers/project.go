@@ -402,6 +402,243 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	middleware.Success(c, project, "Project updated successfully")
 }
 
+// UpdateProjectWithMilestones 프로젝트와 마일스톤을 함께 수정 ✨
+func (h *ProjectHandler) UpdateProjectWithMilestones(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		middleware.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	projectID := c.Param("id")
+	if projectID == "" {
+		middleware.BadRequest(c, "Project ID is required")
+		return
+	}
+
+	var req models.UpdateProjectWithMilestonesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		middleware.BadRequest(c, err.Error())
+		return
+	}
+
+	// 트랜잭션으로 처리
+	tx := database.GetDB().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 기존 프로젝트 조회
+	var project models.Project
+	err := tx.Where("id = ? AND user_id = ?", projectID, userID).First(&project).Error
+	if err != nil {
+		tx.Rollback()
+		if err == gorm.ErrRecordNotFound {
+			middleware.NotFound(c, "Project not found")
+			return
+		}
+		middleware.InternalServerError(c, "Failed to fetch project")
+		return
+	}
+
+	// 프로젝트 정보 업데이트
+	updates := map[string]interface{}{}
+	if req.Title != "" {
+		updates["title"] = req.Title
+	}
+	if req.Description != "" {
+		updates["description"] = req.Description
+	}
+	if req.Category != "" {
+		updates["category"] = req.Category
+	}
+	if req.Status != "" {
+		updates["status"] = req.Status
+	}
+	if req.TargetDate != nil {
+		updates["target_date"] = req.TargetDate
+	}
+	if req.Budget > 0 {
+		updates["budget"] = req.Budget
+	}
+	if req.Priority > 0 {
+		updates["priority"] = req.Priority
+	}
+	updates["is_public"] = req.IsPublic
+
+	// Tags 처리
+	if len(req.Tags) > 0 {
+		if tagsBytes, err := json.Marshal(req.Tags); err == nil {
+			updates["tags"] = string(tagsBytes)
+		}
+	}
+
+	if req.Metrics != "" {
+		updates["metrics"] = req.Metrics
+	}
+
+	// 프로젝트 업데이트 실행
+	if err := tx.Model(&project).Updates(updates).Error; err != nil {
+		tx.Rollback()
+		middleware.InternalServerError(c, "Failed to update project")
+		return
+	}
+
+	// 마일스톤들 업데이트
+	for _, milestoneReq := range req.Milestones {
+		if milestoneReq.ID != nil {
+			// 기존 마일스톤 업데이트
+			var milestone models.Milestone
+			err := tx.Where("id = ? AND project_id = ?", *milestoneReq.ID, project.ID).First(&milestone).Error
+			if err != nil {
+				tx.Rollback()
+				middleware.InternalServerError(c, "Failed to find milestone")
+				return
+			}
+
+			// 마일스톤 업데이트 필드들
+			milestoneUpdates := map[string]interface{}{}
+			if milestoneReq.Title != "" {
+				milestoneUpdates["title"] = milestoneReq.Title
+			}
+			if milestoneReq.Description != "" {
+				milestoneUpdates["description"] = milestoneReq.Description
+			}
+			if milestoneReq.Status != "" {
+				milestoneUpdates["status"] = milestoneReq.Status
+			}
+			if milestoneReq.Order > 0 {
+				milestoneUpdates["order"] = milestoneReq.Order
+			}
+			if milestoneReq.TargetDate != nil {
+				milestoneUpdates["target_date"] = milestoneReq.TargetDate
+			}
+			if milestoneReq.Evidence != "" {
+				milestoneUpdates["evidence"] = milestoneReq.Evidence
+			}
+			if milestoneReq.Notes != "" {
+				milestoneUpdates["notes"] = milestoneReq.Notes
+			}
+			if milestoneReq.BettingType != "" {
+				milestoneUpdates["betting_type"] = milestoneReq.BettingType
+			}
+			if len(milestoneReq.BettingOptions) > 0 {
+				milestoneUpdates["betting_options"] = milestoneReq.BettingOptions
+			}
+
+			// 🔍 인증 관련 필드 업데이트
+			if milestoneReq.RequiresProof != nil {
+				milestoneUpdates["requires_proof"] = *milestoneReq.RequiresProof
+			}
+			if milestoneReq.MinValidators != nil {
+				milestoneUpdates["min_validators"] = *milestoneReq.MinValidators
+			}
+			if milestoneReq.MinApprovalRate != nil {
+				milestoneUpdates["min_approval_rate"] = *milestoneReq.MinApprovalRate
+			}
+			if milestoneReq.VerificationDeadlineDays != nil {
+				milestoneUpdates["verification_deadline_days"] = *milestoneReq.VerificationDeadlineDays
+			}
+
+			// ProofTypes 업데이트 (BeforeSave 훅에서 JSON 변환됨)
+			if len(milestoneReq.ProofTypes) > 0 {
+				milestone.ProofTypesArray = milestoneReq.ProofTypes
+			}
+
+			// 마일스톤 업데이트 실행
+			if err := tx.Model(&milestone).Updates(milestoneUpdates).Error; err != nil {
+				tx.Rollback()
+				middleware.InternalServerError(c, "Failed to update milestone")
+				return
+			}
+
+			// ProofTypes 별도 저장 (GORM 훅 호출)
+			if len(milestoneReq.ProofTypes) > 0 {
+				if err := tx.Save(&milestone).Error; err != nil {
+					tx.Rollback()
+					middleware.InternalServerError(c, "Failed to save milestone proof types")
+					return
+				}
+			}
+		} else {
+			// 새 마일스톤 생성 (ID가 없는 경우)
+			// betting_options 설정
+			bettingOptions := milestoneReq.BettingOptions
+			if milestoneReq.BettingType == "simple" {
+				bettingOptions = []string{"success", "fail"}
+			} else if milestoneReq.BettingType == "custom" && len(milestoneReq.BettingOptions) == 0 {
+				bettingOptions = []string{"success", "fail"}
+			}
+
+			// 🔍 인증 관련 필드 기본값 설정
+			requiresProof := true
+			if milestoneReq.RequiresProof != nil {
+				requiresProof = *milestoneReq.RequiresProof
+			}
+
+			minValidators := 3
+			if milestoneReq.MinValidators != nil {
+				minValidators = *milestoneReq.MinValidators
+			}
+
+			minApprovalRate := 0.6
+			if milestoneReq.MinApprovalRate != nil {
+				minApprovalRate = *milestoneReq.MinApprovalRate
+			}
+
+			verificationDeadlineDays := 3
+			if milestoneReq.VerificationDeadlineDays != nil {
+				verificationDeadlineDays = *milestoneReq.VerificationDeadlineDays
+			}
+
+			// ProofTypes 기본값 설정
+			proofTypes := milestoneReq.ProofTypes
+			if len(proofTypes) == 0 {
+				proofTypes = []string{"file", "url"}
+			}
+
+			milestone := models.Milestone{
+				ProjectID:      project.ID,
+				Title:          milestoneReq.Title,
+				Description:    milestoneReq.Description,
+				Order:          milestoneReq.Order,
+				TargetDate:     milestoneReq.TargetDate,
+				Status:         models.MilestoneStatusPending,
+				BettingType:    milestoneReq.BettingType,
+				BettingOptions: bettingOptions,
+				Evidence:       milestoneReq.Evidence,
+				Notes:          milestoneReq.Notes,
+				
+				// 🔍 인증 관련 필드들 설정
+				RequiresProof:            requiresProof,
+				ProofTypesArray:          proofTypes,
+				MinValidators:            minValidators,
+				MinApprovalRate:          minApprovalRate,
+				VerificationDeadlineDays: verificationDeadlineDays,
+			}
+
+			if err := tx.Create(&milestone).Error; err != nil {
+				tx.Rollback()
+				middleware.InternalServerError(c, "Failed to create milestone")
+				return
+			}
+		}
+	}
+
+	// 트랜잭션 커밋
+	if err := tx.Commit().Error; err != nil {
+		middleware.InternalServerError(c, "Failed to save changes")
+		return
+	}
+
+	// 업데이트된 프로젝트와 마일스톤들을 함께 반환
+	database.GetDB().Where("id = ?", projectID).Preload("Milestones").First(&project)
+
+	middleware.Success(c, project, "Project and milestones updated successfully")
+}
+
 // DeleteProject 목표 삭제 (소프트 삭제)
 func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 	userID, exists := c.Get("user_id")

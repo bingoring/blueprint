@@ -110,6 +110,13 @@ type UpdateProjectRequest struct {
 	Metrics     string          `json:"metrics"`
 }
 
+// 프로젝트와 마일스톤을 함께 업데이트하는 요청
+type UpdateProjectWithMilestonesRequest struct {
+	UpdateProjectRequest
+	// 마일스톤 정보
+	Milestones []UpdateMilestoneRequest `json:"milestones" binding:"max=5"`
+}
+
 // 프로젝트와 함께 마일스톤을 생성하는 요청 (평면화)
 type CreateProjectWithMilestonesRequest struct {
 	CreateProjectRequest
@@ -138,9 +145,11 @@ type CreateProjectMilestoneRequest struct {
 
 // 마일스톤 업데이트 요청
 type UpdateMilestoneRequest struct {
+	ID          *uint      `json:"id,omitempty"`                       // 마일스톤 ID (기존 마일스톤 업데이트용)
 	Title       string     `json:"title" binding:"min=3,max=200"`
 	Description string     `json:"description"`
 	Status      string     `json:"status"`
+	Order       int        `json:"order" binding:"required,min=1,max=5"`
 	TargetDate  *time.Time `json:"target_date"`
 	Evidence    string     `json:"evidence"`
 	Notes       string     `json:"notes"`
