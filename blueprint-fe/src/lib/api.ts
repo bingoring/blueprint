@@ -290,6 +290,16 @@ class ApiClient {
     });
   }
 
+  async updateProjectWithMilestones(
+    id: number,
+    projectData: CreateProjectWithMilestonesRequest
+  ): Promise<ApiResponse<Project>> {
+    return this.request(`/projects/${id}/with-milestones`, {
+      method: "PUT",
+      body: JSON.stringify(projectData),
+    });
+  }
+
   async deleteProject(id: number): Promise<ApiResponse<null>> {
     return this.request(`/projects/${id}`, {
       method: "DELETE",
