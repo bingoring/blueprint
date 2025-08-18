@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"blueprint-module/pkg/models"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -16,7 +17,7 @@ func main() {
 	// 환경변수에서 설정 읽기
 	dbType := getEnv("DB_TYPE", "sqlite")
 	dbURL := getEnv("DATABASE_URL", "test.db")
-	
+
 	// PostgreSQL 연결을 위한 개별 환경변수 읽기
 	dbHost := getEnv("DB_HOST", "localhost")
 	dbPort := getEnv("DB_PORT", "5432")
@@ -65,15 +66,55 @@ func main() {
 
 	// 테이블 마이그레이션
 	err = db.AutoMigrate(
+		// 사용자 관련
 		&models.User{},
+		&models.UserProfile{},
+		&models.UserVerification{},
 		&models.UserWallet{},
+		&models.MagicLink{},
+
+		// 프로젝트 & 마일스톤
 		&models.Project{},
 		&models.Milestone{},
+
+		// 거래 관련
 		&models.Order{},
 		&models.Trade{},
 		&models.Position{},
 		&models.MarketData{},
 		&models.PriceHistory{},
+		&models.PlatformFeeConfig{},
+
+		// 활동 로그
+		&models.ActivityLog{},
+
+		// 멘토링 시스템
+		&models.Mentor{},
+		&models.MentorMilestone{},
+		&models.MentoringSession{},
+		&models.MentorAction{},
+		&models.MentorPool{},
+		&models.MentorReputation{},
+
+		// 검증 시스템
+		&models.MilestoneProof{},
+		&models.ProofValidator{},
+		&models.ProofDispute{},
+		&models.MilestoneVerification{},
+		&models.ValidatorQualification{},
+		&models.VerificationReward{},
+
+		// 중재 시스템
+		&models.ArbitrationCase{},
+		&models.ArbitrationVote{},
+		&models.JurorQualification{},
+		&models.ArbitrationReward{},
+
+		// 멘토 스테이킹
+		&models.MentorStake{},
+		&models.MentorSlashEvent{},
+		&models.MentorPerformanceMetric{},
+		&models.MentorStakeReward{},
 	)
 	if err != nil {
 		log.Fatalf("❌ 테이블 마이그레이션 실패: %v", err)
@@ -121,8 +162,24 @@ func main() {
 		err := db.Unscoped().Where("username = ?", username).First(&existingUser).Error
 
 		if err == nil {
-			// 사용자가 이미 존재함 - 지갑만 확인/생성
-			fmt.Printf("   사용자 %d 이미 존재 (ID: %d), 지갑 확인 중...\n", i, existingUser.ID)
+			// 사용자가 이미 존재함 - 프로필과 지갑 확인/생성
+			fmt.Printf("   사용자 %d 이미 존재 (ID: %d), 프로필&지갑 확인 중...\n", i, existingUser.ID)
+
+			// 프로필 확인 및 생성
+			var existingProfile models.UserProfile
+			profileErr := db.Where("user_id = ?", existingUser.ID).First(&existingProfile).Error
+			if profileErr != nil {
+				// 프로필이 없으면 생성
+				profile := models.UserProfile{
+					UserID:      existingUser.ID,
+					DisplayName: existingUser.Username, // 기본값으로 username 사용
+				}
+				if profileCreateErr := db.Create(&profile).Error; profileCreateErr == nil {
+					fmt.Printf("   ✅ 사용자 %d 프로필 생성 완료\n", i)
+				} else {
+					fmt.Printf("   ⚠️  사용자 %d 프로필 생성 실패: %v\n", i, profileCreateErr)
+				}
+			}
 
 			var existingWallet models.UserWallet
 			walletErr := db.Where("user_id = ?", existingUser.ID).First(&existingWallet).Error
@@ -157,6 +214,13 @@ func main() {
 			continue
 		}
 		createdUsers++
+
+		// 기본 프로필 생성
+		profile := models.UserProfile{
+			UserID:      user.ID,
+			DisplayName: user.Username, // 기본값으로 username 사용
+		}
+		db.Create(&profile)
 
 		// 지갑 생성
 		wallet := models.UserWallet{

@@ -84,6 +84,11 @@ func (h *UserSettingsHandler) GetMySettings(c *gin.Context) {
 	}
 
 	middleware.Success(c, gin.H{
+		"user": gin.H{
+			"id":       user.ID,
+			"email":    user.Email,
+			"username": user.Username,
+		},
 		"profile":      user.Profile,
 		"verification": user.Verification,
 	}, "User settings fetched")
