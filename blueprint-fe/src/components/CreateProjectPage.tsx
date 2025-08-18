@@ -403,7 +403,7 @@ const CreateProjectPage: React.FC = () => {
   const updateMilestone = (
     index: number,
     field: keyof ProjectMilestone,
-    value: string | string[]
+    value: string | string[] | boolean | number
   ) => {
     const newMilestones = [...milestones];
     newMilestones[index] = { ...newMilestones[index], [field]: value };
@@ -1291,28 +1291,40 @@ const CreateProjectPage: React.FC = () => {
                               <Checkbox.Group
                                 value={milestone.proof_types || ["file", "url"]}
                                 onChange={(values) =>
-                                  updateMilestone(index, "proof_types", values as ProofType[])
+                                  updateMilestone(
+                                    index,
+                                    "proof_types",
+                                    values as ProofType[]
+                                  )
                                 }
                                 className="w-full"
                               >
                                 <Row gutter={[8, 8]}>
                                   <Col span={12}>
-                                    <Checkbox value="file">📁 파일 업로드</Checkbox>
+                                    <Checkbox value="file">
+                                      📁 파일 업로드
+                                    </Checkbox>
                                   </Col>
                                   <Col span={12}>
                                     <Checkbox value="url">🔗 웹 링크</Checkbox>
                                   </Col>
                                   <Col span={12}>
-                                    <Checkbox value="screenshot">📸 스크린샷</Checkbox>
+                                    <Checkbox value="screenshot">
+                                      📸 스크린샷
+                                    </Checkbox>
                                   </Col>
                                   <Col span={12}>
                                     <Checkbox value="video">🎥 영상</Checkbox>
                                   </Col>
                                   <Col span={12}>
-                                    <Checkbox value="text">📝 텍스트 설명</Checkbox>
+                                    <Checkbox value="text">
+                                      📝 텍스트 설명
+                                    </Checkbox>
                                   </Col>
                                   <Col span={12}>
-                                    <Checkbox value="certificate">🏆 인증서</Checkbox>
+                                    <Checkbox value="certificate">
+                                      🏆 인증서
+                                    </Checkbox>
                                   </Col>
                                   <Col span={12}>
                                     <Checkbox value="api">🔌 API 연동</Checkbox>
@@ -1326,13 +1338,14 @@ const CreateProjectPage: React.FC = () => {
                               <Typography.Text className="block mb-3">
                                 검증 조건 설정
                               </Typography.Text>
-                              
+
                               <div className="space-y-3">
                                 {/* 최소 검증인 수 */}
                                 <div>
                                   <div className="flex justify-between items-center mb-2">
                                     <Typography.Text className="text-sm">
-                                      최소 검증인 수: {milestone.min_validators || 3}명
+                                      최소 검증인 수:{" "}
+                                      {milestone.min_validators || 3}명
                                     </Typography.Text>
                                   </div>
                                   <Slider
@@ -1340,13 +1353,17 @@ const CreateProjectPage: React.FC = () => {
                                     max={10}
                                     value={milestone.min_validators || 3}
                                     onChange={(value) =>
-                                      updateMilestone(index, "min_validators", value)
+                                      updateMilestone(
+                                        index,
+                                        "min_validators",
+                                        value
+                                      )
                                     }
                                     marks={{
-                                      1: '1명',
-                                      3: '3명',
-                                      5: '5명',
-                                      10: '10명',
+                                      1: "1명",
+                                      3: "3명",
+                                      5: "5명",
+                                      10: "10명",
                                     }}
                                   />
                                 </div>
@@ -1355,7 +1372,12 @@ const CreateProjectPage: React.FC = () => {
                                 <div>
                                   <div className="flex justify-between items-center mb-2">
                                     <Typography.Text className="text-sm">
-                                      최소 승인률: {Math.round((milestone.min_approval_rate || 0.6) * 100)}%
+                                      최소 승인률:{" "}
+                                      {Math.round(
+                                        (milestone.min_approval_rate || 0.6) *
+                                          100
+                                      )}
+                                      %
                                     </Typography.Text>
                                   </div>
                                   <Slider
@@ -1364,13 +1386,17 @@ const CreateProjectPage: React.FC = () => {
                                     step={0.1}
                                     value={milestone.min_approval_rate || 0.6}
                                     onChange={(value) =>
-                                      updateMilestone(index, "min_approval_rate", value)
+                                      updateMilestone(
+                                        index,
+                                        "min_approval_rate",
+                                        value
+                                      )
                                     }
                                     marks={{
-                                      0.5: '50%',
-                                      0.6: '60%',
-                                      0.8: '80%',
-                                      1.0: '100%',
+                                      0.5: "50%",
+                                      0.6: "60%",
+                                      0.8: "80%",
+                                      1.0: "100%",
                                     }}
                                   />
                                 </div>
@@ -1383,9 +1409,15 @@ const CreateProjectPage: React.FC = () => {
                                   <InputNumber
                                     min={1}
                                     max={14}
-                                    value={milestone.verification_deadline_days || 3}
+                                    value={
+                                      milestone.verification_deadline_days || 3
+                                    }
                                     onChange={(value) =>
-                                      updateMilestone(index, "verification_deadline_days", value || 3)
+                                      updateMilestone(
+                                        index,
+                                        "verification_deadline_days",
+                                        value || 3
+                                      )
                                     }
                                     addonAfter="일"
                                     className="w-full"
@@ -1648,11 +1680,17 @@ const CreateProjectPage: React.FC = () => {
                                 🔍 인증 방법:{" "}
                                 {milestone.requires_proof === false
                                   ? "증거 제출 불필요"
-                                  : `증거 필요 (${milestone.proof_types?.length || 2}개 타입)`}
+                                  : `증거 필요 (${
+                                      milestone.proof_types?.length || 2
+                                    }개 타입)`}
                                 {milestone.requires_proof !== false && (
                                   <span className="ml-2">
-                                    · 검증인 {milestone.min_validators || 3}명 이상
-                                    · 승인률 {Math.round((milestone.min_approval_rate || 0.6) * 100)}% 이상
+                                    · 검증인 {milestone.min_validators || 3}명
+                                    이상 · 승인률{" "}
+                                    {Math.round(
+                                      (milestone.min_approval_rate || 0.6) * 100
+                                    )}
+                                    % 이상
                                   </span>
                                 )}
                               </div>

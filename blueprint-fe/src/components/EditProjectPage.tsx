@@ -27,33 +27,27 @@ import {
   Select,
   Slider,
   Space,
+  Spin,
   Steps,
   Switch,
   Tag,
   Tooltip,
   Typography,
-  Spin,
 } from "antd";
 import dayjs from "dayjs";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { MessageHelpers, VALIDATION_MESSAGES } from "../constants/messages";
+import { VALIDATION_MESSAGES } from "../constants/messages";
 import { useNotification } from "../hooks/useNotification";
 import type { ValidationRule } from "../hooks/useValidation";
 import { ValidationRules } from "../hooks/useValidation";
 import { apiClient } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import type {
+  CreateProjectWithMilestonesRequest,
   Project,
   ProjectMilestone,
   ProofType,
-  UpdateProjectRequest,
 } from "../types";
 import { FormFieldWithValidation } from "./common/FormFieldWithValidation";
 
@@ -198,7 +192,7 @@ const EditProjectPage: React.FC = () => {
       navigate("/");
       return;
     }
-    
+
     if (!id) {
       showError("프로젝트 ID가 필요합니다");
       navigate("/dashboard");
@@ -215,34 +209,39 @@ const EditProjectPage: React.FC = () => {
     try {
       setInitialLoading(true);
       const response = await apiClient.getProject(parseInt(id));
-      
+
       if (response.success && response.data) {
         const projectData = response.data;
         setProject(projectData);
-        
+
         // 폼 데이터 설정
         form.setFieldsValue({
           title: projectData.title,
           description: projectData.description,
           category: projectData.category,
-          target_date: projectData.target_date ? dayjs(projectData.target_date) : null,
+          target_date: projectData.target_date
+            ? dayjs(projectData.target_date)
+            : null,
           budget: projectData.budget || 0,
         });
 
         // 마일스톤 데이터 설정
         if (projectData.milestones) {
-          const formattedMilestones = projectData.milestones.map((milestone) => ({
-            ...milestone,
-            target_date: milestone.target_date
-              ? dayjs(milestone.target_date).format("YYYY-MM-DD")
-              : "",
-            // 인증 관련 필드들 기본값 설정
-            requires_proof: milestone.requires_proof ?? true,
-            proof_types: milestone.proof_types || (milestone as any).proof_types || ["file", "url"],
-            min_validators: milestone.min_validators ?? 3,
-            min_approval_rate: milestone.min_approval_rate ?? 0.6,
-            verification_deadline_days: milestone.verification_deadline_days ?? 3,
-          }));
+          const formattedMilestones = projectData.milestones.map(
+            (milestone) => ({
+              ...milestone,
+              target_date: milestone.target_date
+                ? dayjs(milestone.target_date).format("YYYY-MM-DD")
+                : "",
+              // 인증 관련 필드들 기본값 설정
+              requires_proof: milestone.requires_proof ?? true,
+              proof_types: milestone.proof_types || ["file", "url"],
+              min_validators: milestone.min_validators ?? 3,
+              min_approval_rate: milestone.min_approval_rate ?? 0.6,
+              verification_deadline_days:
+                milestone.verification_deadline_days ?? 3,
+            })
+          );
           setMilestones(formattedMilestones);
         }
 
@@ -412,7 +411,9 @@ const EditProjectPage: React.FC = () => {
         title: milestone.title,
         description: milestone.description,
         order: index + 1,
-        target_date: milestone.target_date ? formatTargetDate(milestone.target_date) : undefined,
+        target_date: milestone.target_date
+          ? formatTargetDate(milestone.target_date)
+          : undefined,
         betting_type: milestone.betting_type || "simple",
         betting_options: milestone.betting_options || ["success", "fail"],
         // 인증 관련 필드들
@@ -436,7 +437,10 @@ const EditProjectPage: React.FC = () => {
         milestones: milestonesData,
       };
 
-      const response = await apiClient.updateProjectWithMilestones(project.id, projectData);
+      const response = await apiClient.updateProjectWithMilestones(
+        project.id,
+        projectData
+      );
 
       if (response.success) {
         showSuccess("프로젝트가 성공적으로 수정되었습니다! 🎉");
@@ -510,7 +514,8 @@ const EditProjectPage: React.FC = () => {
 
           <div className="text-center">
             <Title level={2} style={{ color: "var(--text-primary)" }}>
-              <ProjectOutlined className="mr-3" />프로젝트 수정하기
+              <ProjectOutlined className="mr-3" />
+              프로젝트 수정하기
             </Title>
             <Paragraph style={{ color: "var(--text-secondary)" }}>
               프로젝트 정보와 마일스톤을 수정할 수 있습니다.
@@ -958,28 +963,40 @@ const EditProjectPage: React.FC = () => {
                               <Checkbox.Group
                                 value={milestone.proof_types || ["file", "url"]}
                                 onChange={(values) =>
-                                  updateMilestone(index, "proof_types", values as ProofType[])
+                                  updateMilestone(
+                                    index,
+                                    "proof_types",
+                                    values as ProofType[]
+                                  )
                                 }
                                 className="w-full"
                               >
                                 <Row gutter={[8, 8]}>
                                   <Col span={12}>
-                                    <Checkbox value="file">📁 파일 업로드</Checkbox>
+                                    <Checkbox value="file">
+                                      📁 파일 업로드
+                                    </Checkbox>
                                   </Col>
                                   <Col span={12}>
                                     <Checkbox value="url">🔗 웹 링크</Checkbox>
                                   </Col>
                                   <Col span={12}>
-                                    <Checkbox value="screenshot">📸 스크린샷</Checkbox>
+                                    <Checkbox value="screenshot">
+                                      📸 스크린샷
+                                    </Checkbox>
                                   </Col>
                                   <Col span={12}>
                                     <Checkbox value="video">🎥 영상</Checkbox>
                                   </Col>
                                   <Col span={12}>
-                                    <Checkbox value="text">📝 텍스트 설명</Checkbox>
+                                    <Checkbox value="text">
+                                      📝 텍스트 설명
+                                    </Checkbox>
                                   </Col>
                                   <Col span={12}>
-                                    <Checkbox value="certificate">🏆 인증서</Checkbox>
+                                    <Checkbox value="certificate">
+                                      🏆 인증서
+                                    </Checkbox>
                                   </Col>
                                   <Col span={12}>
                                     <Checkbox value="api">🔌 API 연동</Checkbox>
@@ -993,13 +1010,14 @@ const EditProjectPage: React.FC = () => {
                               <Typography.Text className="block mb-3">
                                 검증 조건 설정
                               </Typography.Text>
-                              
+
                               <div className="space-y-3">
                                 {/* 최소 검증인 수 */}
                                 <div>
                                   <div className="flex justify-between items-center mb-2">
                                     <Typography.Text className="text-sm">
-                                      최소 검증인 수: {milestone.min_validators || 3}명
+                                      최소 검증인 수:{" "}
+                                      {milestone.min_validators || 3}명
                                     </Typography.Text>
                                   </div>
                                   <Slider
@@ -1007,13 +1025,17 @@ const EditProjectPage: React.FC = () => {
                                     max={10}
                                     value={milestone.min_validators || 3}
                                     onChange={(value) =>
-                                      updateMilestone(index, "min_validators", value)
+                                      updateMilestone(
+                                        index,
+                                        "min_validators",
+                                        value
+                                      )
                                     }
                                     marks={{
-                                      1: '1명',
-                                      3: '3명',
-                                      5: '5명',
-                                      10: '10명',
+                                      1: "1명",
+                                      3: "3명",
+                                      5: "5명",
+                                      10: "10명",
                                     }}
                                   />
                                 </div>
@@ -1022,7 +1044,12 @@ const EditProjectPage: React.FC = () => {
                                 <div>
                                   <div className="flex justify-between items-center mb-2">
                                     <Typography.Text className="text-sm">
-                                      최소 승인률: {Math.round((milestone.min_approval_rate || 0.6) * 100)}%
+                                      최소 승인률:{" "}
+                                      {Math.round(
+                                        (milestone.min_approval_rate || 0.6) *
+                                          100
+                                      )}
+                                      %
                                     </Typography.Text>
                                   </div>
                                   <Slider
@@ -1031,13 +1058,17 @@ const EditProjectPage: React.FC = () => {
                                     step={0.1}
                                     value={milestone.min_approval_rate || 0.6}
                                     onChange={(value) =>
-                                      updateMilestone(index, "min_approval_rate", value)
+                                      updateMilestone(
+                                        index,
+                                        "min_approval_rate",
+                                        value
+                                      )
                                     }
                                     marks={{
-                                      0.5: '50%',
-                                      0.6: '60%',
-                                      0.8: '80%',
-                                      1.0: '100%',
+                                      0.5: "50%",
+                                      0.6: "60%",
+                                      0.8: "80%",
+                                      1.0: "100%",
                                     }}
                                   />
                                 </div>
@@ -1050,9 +1081,15 @@ const EditProjectPage: React.FC = () => {
                                   <InputNumber
                                     min={1}
                                     max={14}
-                                    value={milestone.verification_deadline_days || 3}
+                                    value={
+                                      milestone.verification_deadline_days || 3
+                                    }
                                     onChange={(value) =>
-                                      updateMilestone(index, "verification_deadline_days", value || 3)
+                                      updateMilestone(
+                                        index,
+                                        "verification_deadline_days",
+                                        value || 3
+                                      )
                                     }
                                     addonAfter="일"
                                     className="w-full"
@@ -1295,11 +1332,17 @@ const EditProjectPage: React.FC = () => {
                                 🔍 인증 방법:{" "}
                                 {milestone.requires_proof === false
                                   ? "증거 제출 불필요"
-                                  : `증거 필요 (${milestone.proof_types?.length || 2}개 타입)`}
+                                  : `증거 필요 (${
+                                      milestone.proof_types?.length || 2
+                                    }개 타입)`}
                                 {milestone.requires_proof !== false && (
                                   <span className="ml-2">
-                                    · 검증인 {milestone.min_validators || 3}명 이상
-                                    · 승인률 {Math.round((milestone.min_approval_rate || 0.6) * 100)}% 이상
+                                    · 검증인 {milestone.min_validators || 3}명
+                                    이상 · 승인률{" "}
+                                    {Math.round(
+                                      (milestone.min_approval_rate || 0.6) * 100
+                                    )}
+                                    % 이상
                                   </span>
                                 )}
                               </div>

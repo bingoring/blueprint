@@ -87,6 +87,11 @@ export interface UserVerificationStatus {
 }
 
 export interface SettingsAggregateResponse {
+  user: {
+    id: number;
+    email: string;
+    username: string;
+  };
   profile: UserProfileSettings | null;
   verification: UserVerificationStatus | null;
 }
@@ -298,13 +303,13 @@ export interface Milestone {
 export type MilestoneStatus = "pending" | "completed" | "failed" | "cancelled";
 
 // 🔍 증거 타입 정의
-export type ProofType = 
-  | "file"        // 파일 업로드 (이미지, PDF, 문서 등)
-  | "url"         // 웹 링크 (GitHub, 블로그, 포트폴리오 등)
-  | "api"         // API 연동 데이터 (GitHub, 헬스앱 등)
-  | "text"        // 텍스트 설명
-  | "video"       // 영상 업로드/링크
-  | "screenshot"  // 스크린샷
+export type ProofType =
+  | "file" // 파일 업로드 (이미지, PDF, 문서 등)
+  | "url" // 웹 링크 (GitHub, 블로그, 포트폴리오 등)
+  | "api" // API 연동 데이터 (GitHub, 헬스앱 등)
+  | "text" // 텍스트 설명
+  | "video" // 영상 업로드/링크
+  | "screenshot" // 스크린샷
   | "certificate"; // 인증서/성적표
 
 // 기존 Phase 타입도 호환성을 위해 유지

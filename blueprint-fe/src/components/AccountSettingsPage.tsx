@@ -123,10 +123,14 @@ const AccountSettingsPage: React.FC = () => {
         const res = await apiClient.getMySettings();
         if (res.success && res.data) {
           const data = res.data as SettingsAggregateResponse;
+          console.log("📧 Settings API response:", data);
+          console.log("📧 User email from API:", data.user?.email);
+          console.log("📧 User email from store:", user?.email);
+
           // 프로필 폼 초기화
           form.setFieldsValue({
             displayName: data.profile?.display_name || user?.displayName || "",
-            email: user?.email || "",
+            email: data.user?.email || user?.email || "",
             bio: data.profile?.bio || "",
           });
 
