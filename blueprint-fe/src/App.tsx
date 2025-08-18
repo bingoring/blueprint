@@ -12,22 +12,22 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { apiClient } from "./lib/api";
 import { useAuthStore } from "./stores/useAuthStore";
 
-// Components
+// New Blueprint Components
 import AccountSettingsPage from "./components/AccountSettingsPage";
 import CreateProjectPage from "./components/CreateProjectPage";
 import EditProjectPage from "./components/EditProjectPage";
-import NewDashboard from "./components/NewDashboard";
-import NewHomePage from "./components/NewHomePage"; // 실제로는 ProjectExplorePage
+import ExplorePage from "./components/ExplorePage";
+import NewDashboardPage from "./components/NewDashboardPage";
 import ProfilePage from "./components/ProfilePage";
 import ProjectDetailPage from "./components/ProjectDetailPage";
+
+// Legacy Components (for compatibility)
+import NewHomePage from "./components/NewHomePage"; // Landing page for non-authenticated users
 import PolymarketTradingPage from "./pages/PolymarketTradingPage";
 
 // CSS imports
 import "./index.css";
 import "./styles/polymarket.css";
-
-// HomePage alias
-const HomePage = NewHomePage;
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,6 +36,35 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Placeholder components for future implementation
+const ActivityPage = () => (
+  <div style={{ padding: "100px", textAlign: "center" }}>
+    <h2>내 활동 페이지</h2>
+    <p>곧 출시 예정입니다!</p>
+  </div>
+);
+
+const MentoringPage = () => (
+  <div style={{ padding: "100px", textAlign: "center" }}>
+    <h2>멘토링 페이지</h2>
+    <p>곧 출시 예정입니다!</p>
+  </div>
+);
+
+const HallOfFamePage = () => (
+  <div style={{ padding: "100px", textAlign: "center" }}>
+    <h2>명예의 전당</h2>
+    <p>곧 출시 예정입니다!</p>
+  </div>
+);
+
+const NotificationsPage = () => (
+  <div style={{ padding: "100px", textAlign: "center" }}>
+    <h2>알림</h2>
+    <p>곧 출시 예정입니다!</p>
+  </div>
+);
 
 function App() {
   const { isAuthenticated, getCurrentUser, user } = useAuthStore();
@@ -74,27 +103,68 @@ function App() {
         <ThemeProvider>
           <Router>
             <Routes>
+              {/* 홈 라우트 - 인증 상태에 따라 분기 */}
               <Route
                 path="/"
                 element={
                   isAuthenticated && user ? (
-                    <Navigate to="/dashboard" replace />
+                    <NewDashboardPage />
                   ) : (
-                    <HomePage />
+                    <NewHomePage />
                   )
                 }
               />
-              <Route path="/explore" element={<HomePage />} />
-              <Route path="/create-project" element={<CreateProjectPage />} />
-              <Route path="/edit-project/:id" element={<EditProjectPage />} />
+
+              {/* Blueprint 메인 네비게이션 페이지들 */}
+              <Route path="/dashboard" element={<NewDashboardPage />} />
+              <Route path="/explore" element={<ExplorePage />} />
+              <Route path="/activity" element={<ActivityPage />} />
+              <Route path="/mentoring" element={<MentoringPage />} />
+              <Route path="/hall-of-fame" element={<HallOfFamePage />} />
+
+              {/* 프로젝트 관련 라우트 */}
+              <Route path="/projects/new" element={<CreateProjectPage />} />
               <Route path="/project/:id" element={<ProjectDetailPage />} />
+              <Route path="/project/:id/edit" element={<EditProjectPage />} />
+              <Route
+                path="/project/:id/update"
+                element={<div>진행 상황 업데이트 (준비중)</div>}
+              />
+
+              {/* 거래 페이지 */}
               <Route
                 path="/trade/:projectId/:milestoneId"
                 element={<PolymarketTradingPage />}
               />
-              <Route path="/dashboard" element={<NewDashboard />} />
+
+              {/* 사용자 관련 라우트 */}
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/profile/:username" element={<ProfilePage />} />
               <Route path="/settings" element={<AccountSettingsPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+
+              {/* 레거시 라우트 (호환성을 위해 유지) */}
+              <Route
+                path="/create-project"
+                element={<Navigate to="/projects/new" replace />}
+              />
+              <Route
+                path="/edit-project/:id"
+                element={<Navigate to="/project/:id/edit" replace />}
+              />
+
+              {/* 404 처리 */}
+              <Route
+                path="*"
+                element={
+                  <div style={{ padding: "100px", textAlign: "center" }}>
+                    <h2>페이지를 찾을 수 없습니다</h2>
+                    <p>
+                      <a href="/">홈으로 돌아가기</a>
+                    </p>
+                  </div>
+                }
+              />
             </Routes>
           </Router>
         </ThemeProvider>
