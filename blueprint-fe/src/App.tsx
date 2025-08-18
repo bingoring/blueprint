@@ -37,27 +37,12 @@ const queryClient = new QueryClient({
   },
 });
 
-// Placeholder components for future implementation
-const ActivityPage = () => (
-  <div style={{ padding: "100px", textAlign: "center" }}>
-    <h2>내 활동 페이지</h2>
-    <p>곧 출시 예정입니다!</p>
-  </div>
-);
+// Import ActivityPage
+import ActivityPage from "./components/ActivityPage";
 
-const MentoringPage = () => (
-  <div style={{ padding: "100px", textAlign: "center" }}>
-    <h2>멘토링 페이지</h2>
-    <p>곧 출시 예정입니다!</p>
-  </div>
-);
+import MentoringPage from "./components/MentoringPage";
 
-const HallOfFamePage = () => (
-  <div style={{ padding: "100px", textAlign: "center" }}>
-    <h2>명예의 전당</h2>
-    <p>곧 출시 예정입니다!</p>
-  </div>
-);
+import HallOfFamePage from "./components/HallOfFamePage";
 
 const NotificationsPage = () => (
   <div style={{ padding: "100px", textAlign: "center" }}>
