@@ -149,6 +149,13 @@ func (h *UserSettingsHandler) UpdateProfile(c *gin.Context) {
 	// Bio는 빈 문자열도 허용 (삭제 가능)
 	profile.Bio = req.Bio
 
+	// 추가 필드들 업데이트
+	profile.Location = req.Location
+	profile.Website = req.Website
+	profile.GithubLink = req.GithubLink
+	profile.LinkedinLink = req.LinkedinLink
+	profile.TwitterLink = req.TwitterLink
+
 	// 데이터베이스 저장
 	if profile.ID == 0 {
 		if err := db.Create(&profile).Error; err != nil {

@@ -26,6 +26,13 @@ export interface User {
   marketingNotifications?: boolean; // 마케팅 알림 수신 여부
   profilePublic?: boolean; // 프로필 공개 여부
   investmentPublic?: boolean; // 투자 내역 공개 여부
+
+  // 프로필 정보 (백엔드에서 populate된 경우)
+  profile?: {
+    display_name?: string;
+    avatar?: string;
+    bio?: string;
+  };
 }
 
 // 계정 설정: 프로필
@@ -33,8 +40,22 @@ export interface UserProfileSettings {
   id?: number;
   user_id?: number;
   display_name?: string;
+  first_name?: string;
+  last_name?: string;
   avatar?: string;
   bio?: string;
+  age?: number;
+  location?: string;
+  website?: string;
+  occupation?: string;
+  experience?: string;
+  skills?: string;
+  interests?: string;
+  capital?: number;
+  constraints?: string;
+  github_link?: string;
+  linkedin_link?: string;
+  twitter_link?: string;
   email_notifications?: boolean;
   push_notifications?: boolean;
   marketing_notifications?: boolean;
@@ -66,10 +87,19 @@ export interface UserVerificationStatus {
   email_verified_at?: string | null;
   phone_verified?: boolean;
   phone_verified_at?: string | null;
-  // Level 2
+  // Level 2 - Social & Career
   linkedin_connected?: boolean;
+  linkedin_profile_id?: string | null;
+  linkedin_profile_url?: string | null;
+  linkedin_verified_at?: string | null;
   github_connected?: boolean;
+  github_profile_id?: string | null;
+  github_username?: string | null;
+  github_verified_at?: string | null;
   twitter_connected?: boolean;
+  twitter_profile_id?: string | null;
+  twitter_username?: string | null;
+  twitter_verified_at?: string | null;
   work_email_verified?: boolean;
   work_email_company?: string;
   work_email_verified_at?: string | null;

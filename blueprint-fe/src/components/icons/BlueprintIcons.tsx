@@ -7,6 +7,82 @@ interface IconProps {
   progress?: number;
 }
 
+// Blueprint B 로고 - 점과 선으로 구성된 미니멀한 B
+export const BlueprintBIcon: React.FC<IconProps> = ({
+  size = 24,
+  color = "currentColor",
+  className = "",
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    className={className}
+  >
+    {/* B의 I부분 - 세로선 3개 점 */}
+    <circle cx="6" cy="6" r="1.5" fill={color} />
+    <circle cx="6" cy="12" r="1.5" fill={color} />
+    <circle cx="6" cy="18" r="1.5" fill={color} />
+
+    {/* 상단 연결점 */}
+    <circle cx="12" cy="6" r="1.5" fill={color} />
+
+    {/* 상단 볼록 부분 */}
+    <circle cx="16" cy="9" r="1.5" fill={color} />
+
+    {/* 중단 연결점 */}
+    <circle cx="14" cy="12" r="1.5" fill={color} />
+
+    {/* 하단 볼록 부분 */}
+    <circle cx="17" cy="15" r="1.5" fill={color} />
+
+    {/* 하단 연결점 */}
+    <circle cx="13" cy="18" r="1.5" fill={color} />
+
+    {/* 연결선들 */}
+    {/* 세로선 */}
+    <line x1="6" y1="7.5" x2="6" y2="10.5" stroke={color} strokeWidth="1.2" />
+    <line x1="6" y1="13.5" x2="6" y2="16.5" stroke={color} strokeWidth="1.2" />
+
+    {/* 상단 수평선 */}
+    <line x1="7.5" y1="6" x2="10.5" y2="6" stroke={color} strokeWidth="1.2" />
+
+    {/* 상단 곡선 */}
+    <path d="M 12 6 Q 15 6 16 9" stroke={color} strokeWidth="1.2" fill="none" />
+
+    {/* 상단에서 중간으로 */}
+    <path
+      d="M 16 9 Q 15 11 14 12"
+      stroke={color}
+      strokeWidth="1.2"
+      fill="none"
+    />
+
+    {/* 중간 수평선 */}
+    <line x1="7.5" y1="12" x2="12.5" y2="12" stroke={color} strokeWidth="1.2" />
+
+    {/* 중간에서 하단으로 */}
+    <path
+      d="M 14 12 Q 16 13 17 15"
+      stroke={color}
+      strokeWidth="1.2"
+      fill="none"
+    />
+
+    {/* 하단 곡선 */}
+    <path
+      d="M 17 15 Q 16 17 13 18"
+      stroke={color}
+      strokeWidth="1.2"
+      fill="none"
+    />
+
+    {/* 하단 수평선 */}
+    <line x1="7.5" y1="18" x2="11.5" y2="18" stroke={color} strokeWidth="1.2" />
+  </svg>
+);
+
 // 나침반 아이콘 - 프로젝트 탐색
 export const CompassIcon: React.FC<IconProps> = ({
   size = 24,

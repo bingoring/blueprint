@@ -33,44 +33,12 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
+import type { SettingsAggregateResponse } from "../types";
 import GlobalNavbar from "./GlobalNavbar";
 import { ConnectionIcon } from "./icons/BlueprintIcons";
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
-
-interface UserSettings {
-  user: {
-    id: number;
-    email: string;
-    username: string;
-  };
-  profile: {
-    display_name: string;
-    bio: string;
-    location?: string;
-    website?: string;
-    avatar_url?: string;
-    social_links?: {
-      github?: string;
-      linkedin?: string;
-      twitter?: string;
-    };
-  } | null;
-  verification: {
-    email_verified: boolean;
-    phone_verified: boolean;
-    identity_verified: boolean;
-    phone?: string;
-  } | null;
-  notifications: {
-    email_notifications: boolean;
-    push_notifications: boolean;
-    milestone_updates: boolean;
-    investment_updates: boolean;
-    mentoring_updates: boolean;
-  };
-}
 
 const AccountSettingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -78,7 +46,9 @@ const AccountSettingsPage: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [settings, setSettings] = useState<SettingsAggregateResponse | null>(
+    null
+  );
   const [activeTab, setActiveTab] = useState("profile");
 
   // Load user settings
@@ -104,20 +74,15 @@ const AccountSettingsPage: React.FC = () => {
             bio: response.data.profile?.bio || "",
             location: response.data.profile?.location || "",
             website: response.data.profile?.website || "",
-            github: response.data.profile?.social_links?.github || "",
-            linkedin: response.data.profile?.social_links?.linkedin || "",
-            twitter: response.data.profile?.social_links?.twitter || "",
-            phone: response.data.verification?.phone || "",
+            github: response.data.profile?.github_link || "",
+            linkedin: response.data.profile?.linkedin_link || "",
+            twitter: response.data.profile?.twitter_link || "",
             emailNotifications:
-              response.data.notifications?.email_notifications ?? true,
+              response.data.profile?.email_notifications ?? true,
             pushNotifications:
-              response.data.notifications?.push_notifications ?? true,
-            milestoneUpdates:
-              response.data.notifications?.milestone_updates ?? true,
-            investmentUpdates:
-              response.data.notifications?.investment_updates ?? true,
-            mentoringUpdates:
-              response.data.notifications?.mentoring_updates ?? true,
+              response.data.profile?.push_notifications ?? false,
+            marketingNotifications:
+              response.data.profile?.marketing_notifications ?? false,
           });
         }
       } catch (error) {
@@ -149,11 +114,9 @@ const AccountSettingsPage: React.FC = () => {
         bio: values.bio,
         location: values.location,
         website: values.website,
-        social_links: {
-          github: values.github,
-          linkedin: values.linkedin,
-          twitter: values.twitter,
-        },
+        github_link: values.github,
+        linkedin_link: values.linkedin,
+        twitter_link: values.twitter,
       };
 
       const response = await apiClient.updateMyProfile(profileData);
@@ -175,25 +138,22 @@ const AccountSettingsPage: React.FC = () => {
   const handleSaveNotifications = async (values: {
     emailNotifications: boolean;
     pushNotifications: boolean;
-    milestoneUpdates: boolean;
-    investmentUpdates: boolean;
-    mentoringUpdates: boolean;
+    marketingNotifications: boolean;
   }) => {
     try {
       setSaving(true);
 
-      const notificationData = {
+      const response = await apiClient.updatePreferences({
         email_notifications: values.emailNotifications,
         push_notifications: values.pushNotifications,
-        milestone_updates: values.milestoneUpdates,
-        investment_updates: values.investmentUpdates,
-        mentoring_updates: values.mentoringUpdates,
-      };
+        marketing_notifications: values.marketingNotifications,
+      });
 
-      // API 호출 (현재는 mock)
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      message.success("알림 설정이 저장되었습니다.");
+      if (response.success) {
+        message.success("알림 설정이 저장되었습니다.");
+      } else {
+        message.error("알림 설정 저장에 실패했습니다.");
+      }
     } catch (error) {
       console.error("알림 설정 저장 실패:", error);
       message.error("알림 설정 저장에 실패했습니다.");
@@ -203,7 +163,8 @@ const AccountSettingsPage: React.FC = () => {
   };
 
   // Avatar upload
-  const handleAvatarUpload = async (file: any) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleAvatarUpload = async (_file: File) => {
     // Mock upload
     message.success("프로필 사진이 업로드되었습니다.");
     return false; // Prevent default upload
@@ -213,7 +174,7 @@ const AccountSettingsPage: React.FC = () => {
   const handleEmailVerification = async () => {
     try {
       message.info("인증 이메일을 발송했습니다.");
-    } catch (error) {
+    } catch {
       message.error("이메일 인증 발송에 실패했습니다.");
     }
   };
@@ -222,7 +183,7 @@ const AccountSettingsPage: React.FC = () => {
   const handlePhoneVerification = async () => {
     try {
       message.info("인증 문자를 발송했습니다.");
-    } catch (error) {
+    } catch {
       message.error("휴대폰 인증 발송에 실패했습니다.");
     }
   };
@@ -245,7 +206,7 @@ const AccountSettingsPage: React.FC = () => {
           form={form}
           layout="vertical"
           onFinish={handleSaveProfile}
-          style={{ maxWidth: 600 }}
+          style={{ maxWidth: 800 }}
         >
           <Card title="기본 정보" style={{ marginBottom: 24 }}>
             <Row gutter={24}>
@@ -254,7 +215,7 @@ const AccountSettingsPage: React.FC = () => {
                   <Avatar
                     size={120}
                     src={
-                      settings?.profile?.avatar_url ||
+                      settings?.profile?.avatar ||
                       `https://api.dicebear.com/6.x/avataaars/svg?seed=${user?.username}`
                     }
                     icon={<UserOutlined />}
@@ -381,7 +342,7 @@ const AccountSettingsPage: React.FC = () => {
         </Space>
       ),
       children: (
-        <div style={{ maxWidth: 600 }}>
+        <div style={{ maxWidth: 800 }}>
           <Card title="신원 인증" style={{ marginBottom: 24 }}>
             <Space direction="vertical" size="large" style={{ width: "100%" }}>
               <div
@@ -429,8 +390,7 @@ const AccountSettingsPage: React.FC = () => {
                   <Text strong>휴대폰 인증</Text>
                   <br />
                   <Text type="secondary" style={{ fontSize: "12px" }}>
-                    {settings?.verification?.phone ||
-                      "휴대폰 번호가 등록되지 않았습니다"}
+                    휴대폰 번호를 등록하여 계정을 보호하세요
                   </Text>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -451,7 +411,7 @@ const AccountSettingsPage: React.FC = () => {
                 </div>
               </div>
 
-              {!settings?.verification?.phone && (
+              {!settings?.verification?.phone_verified && (
                 <div>
                   <Form layout="inline" style={{ width: "100%" }}>
                     <Form.Item style={{ flex: 1 }}>
@@ -486,7 +446,8 @@ const AccountSettingsPage: React.FC = () => {
                   </Text>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {settings?.verification?.identity_verified ? (
+                  {settings?.verification?.professional_status === "approved" ||
+                  settings?.verification?.education_status === "approved" ? (
                     <Tag color="green" icon={<CheckCircleOutlined />}>
                       인증 완료
                     </Tag>
@@ -534,7 +495,7 @@ const AccountSettingsPage: React.FC = () => {
           form={form}
           layout="vertical"
           onFinish={handleSaveNotifications}
-          style={{ maxWidth: 600 }}
+          style={{ maxWidth: 800 }}
         >
           <Card title="알림 설정" style={{ marginBottom: 24 }}>
             <Space direction="vertical" size="large" style={{ width: "100%" }}>
@@ -594,60 +555,14 @@ const AccountSettingsPage: React.FC = () => {
                 }}
               >
                 <div>
-                  <Text strong>마일스톤 업데이트</Text>
+                  <Text strong>마케팅 알림</Text>
                   <br />
                   <Text type="secondary" style={{ fontSize: "12px" }}>
-                    참여 중인 프로젝트의 마일스톤 진행 상황
+                    새로운 기능 및 프로모션 정보를 받습니다
                   </Text>
                 </div>
                 <Form.Item
-                  name="milestoneUpdates"
-                  valuePropName="checked"
-                  style={{ margin: 0 }}
-                >
-                  <Switch />
-                </Form.Item>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <div>
-                  <Text strong>투자 업데이트</Text>
-                  <br />
-                  <Text type="secondary" style={{ fontSize: "12px" }}>
-                    투자한 프로젝트의 가격 변동 및 결과
-                  </Text>
-                </div>
-                <Form.Item
-                  name="investmentUpdates"
-                  valuePropName="checked"
-                  style={{ margin: 0 }}
-                >
-                  <Switch />
-                </Form.Item>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <div>
-                  <Text strong>멘토링 업데이트</Text>
-                  <br />
-                  <Text type="secondary" style={{ fontSize: "12px" }}>
-                    멘토링 요청 및 활동 관련 알림
-                  </Text>
-                </div>
-                <Form.Item
-                  name="mentoringUpdates"
+                  name="marketingNotifications"
                   valuePropName="checked"
                   style={{ margin: 0 }}
                 >

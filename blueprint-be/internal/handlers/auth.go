@@ -158,12 +158,13 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 			return
 		}
 
-		// 기본 프로필 생성
+		// 기본 프로필 생성 (구글 계정 이름을 DisplayName으로 설정)
 		profile := models.UserProfile{
-			UserID:    user.ID,
-			FirstName: userinfo.GivenName,
-			LastName:  userinfo.FamilyName,
-			Avatar:    userinfo.Picture,
+			UserID:      user.ID,
+			DisplayName: userinfo.Name,  // 구글 계정 전체 이름을 표시 이름으로 사용
+			FirstName:   userinfo.GivenName,
+			LastName:    userinfo.FamilyName,
+			Avatar:      userinfo.Picture,
 		}
 		database.GetDB().Create(&profile)
 
@@ -181,6 +182,17 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 	} else if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
 		return
+	} else {
+		// 기존 사용자의 경우, DisplayName이 비어있다면 구글 계정 이름으로 업데이트
+		var profile models.UserProfile
+		if err := database.GetDB().Where("user_id = ?", user.ID).First(&profile).Error; err == nil {
+			// 프로필이 존재하고 DisplayName이 비어있다면 업데이트
+			if profile.DisplayName == "" && userinfo.Name != "" {
+				profile.DisplayName = userinfo.Name
+				database.GetDB().Save(&profile)
+				log.Printf("✅ Updated DisplayName for existing user %d: %s", user.ID, userinfo.Name)
+			}
+		}
 	}
 
 	// JWT 토큰 생성

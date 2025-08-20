@@ -38,12 +38,18 @@ type UserProfile struct {
 	Bio         string    `json:"bio"`
 	Age         int       `json:"age"`
 	Location    string    `json:"location"`
+	Website     string    `json:"website"`
 	Occupation  string    `json:"occupation"`
 	Experience  string    `json:"experience" gorm:"type:text"` // JSON 형태로 저장
 	Skills      string    `json:"skills" gorm:"type:text"`     // JSON 형태로 저장
 	Interests   string    `json:"interests" gorm:"type:text"`  // JSON 형태로 저장
 	Capital     int64     `json:"capital"`                      // 보유 자본 (원 단위)
 	Constraints string    `json:"constraints" gorm:"type:text"` // JSON 형태로 저장
+
+	// 소셜 미디어 링크
+	GithubLink   string    `json:"github_link"`
+	LinkedinLink string    `json:"linkedin_link"`
+	TwitterLink  string    `json:"twitter_link"`
 
 	// 설정 - 알림/공개 범위
 	EmailNotifications     bool `json:"email_notifications" gorm:"default:true"`
@@ -120,9 +126,14 @@ type UserVerification struct {
 
 // 사용자 프로필 업데이트를 위한 요청 구조체
 type UpdateProfileRequest struct {
-	DisplayName string `json:"display_name"`
-	Avatar      string `json:"avatar"`
-	Bio         string `json:"bio"`
+	DisplayName  string `json:"display_name"`
+	Avatar       string `json:"avatar"`
+	Bio          string `json:"bio"`
+	Location     string `json:"location"`
+	Website      string `json:"website"`
+	GithubLink   string `json:"github_link"`
+	LinkedinLink string `json:"linkedin_link"`
+	TwitterLink  string `json:"twitter_link"`
 }
 
 // 설정 업데이트 요청

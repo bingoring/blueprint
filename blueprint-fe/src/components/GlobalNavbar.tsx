@@ -20,8 +20,8 @@ import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/useAuthStore";
 import {
+  BlueprintBIcon,
   CompassIcon,
-  ConnectionIcon,
   DashboardIcon,
   MentoringIcon,
   PortfolioIcon,
@@ -159,10 +159,11 @@ const GlobalNavbar: React.FC<GlobalNavbarProps> = ({ className = "" }) => {
             display: "flex",
             alignItems: "center",
             cursor: "pointer",
+            minWidth: "fit-content",
           }}
           onClick={() => navigate("/")}
         >
-          <ConnectionIcon
+          <BlueprintBIcon
             size={32}
             color="var(--primary-color)"
             className="mr-3"
@@ -173,6 +174,7 @@ const GlobalNavbar: React.FC<GlobalNavbarProps> = ({ className = "" }) => {
               fontWeight: "bold",
               color: "var(--text-primary)",
               letterSpacing: "-0.5px",
+              whiteSpace: "nowrap",
             }}
           >
             Blueprint
@@ -261,18 +263,145 @@ const GlobalNavbar: React.FC<GlobalNavbarProps> = ({ className = "" }) => {
             menu={{ items: profileMenuItems }}
             placement="bottomRight"
             arrow
+            dropdownRender={(menu) => (
+              <div
+                style={{
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+                  padding: "12px 0",
+                }}
+              >
+                {/* 프로필 정보 헤더 */}
+                <div
+                  style={{
+                    padding: "8px 16px 12px",
+                    borderBottom: "1px solid var(--border-color)",
+                    marginBottom: "8px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                    }}
+                  >
+                    <Avatar
+                      size={40}
+                      src={user?.avatar || user?.profile?.avatar}
+                      icon={<UserOutlined />}
+                      style={{
+                        backgroundColor: "var(--primary-color)",
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Text
+                        strong
+                        style={{
+                          color: "var(--text-primary)",
+                          fontSize: "14px",
+                          display: "block",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          marginBottom: "2px",
+                        }}
+                      >
+                        {user?.displayName ||
+                          user?.profile?.display_name ||
+                          user?.username ||
+                          "사용자"}
+                      </Text>
+                      <Text
+                        style={{
+                          color: "var(--text-tertiary)",
+                          fontSize: "12px",
+                          display: "block",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        @{user?.username}
+                      </Text>
+                    </div>
+                  </div>
+
+                  {/* 지갑 정보 */}
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      padding: "8px 12px",
+                      background: "var(--bg-hover)",
+                      borderRadius: "6px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div>
+                      <Text
+                        style={{
+                          color: "var(--text-secondary)",
+                          fontSize: "11px",
+                          display: "block",
+                        }}
+                      >
+                        보유 잔액
+                      </Text>
+                      <Text
+                        strong
+                        style={{
+                          color: "var(--color-success)",
+                          fontSize: "13px",
+                        }}
+                      >
+                        ${user?.totalInvestment || 0} USDC
+                      </Text>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <Text
+                        style={{
+                          color: "var(--text-secondary)",
+                          fontSize: "11px",
+                          display: "block",
+                        }}
+                      >
+                        성공률
+                      </Text>
+                      <Text
+                        strong
+                        style={{
+                          color: "var(--primary-color)",
+                          fontSize: "13px",
+                        }}
+                      >
+                        {(user?.projectSuccessRate || 0).toFixed(1)}%
+                      </Text>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 메뉴 아이템들 */}
+                {menu}
+              </div>
+            )}
           >
             <Space
               style={{
                 cursor: "pointer",
-                padding: "4px 8px",
+                padding: "6px 12px",
                 borderRadius: "8px",
                 transition: "background-color 0.2s",
+                maxWidth: "180px",
               }}
               className="blueprint-profile-menu"
             >
               <Avatar
                 size={32}
+                src={user?.avatar || user?.profile?.avatar}
                 icon={<UserOutlined />}
                 style={{
                   backgroundColor: "var(--primary-color)",
@@ -283,9 +412,17 @@ const GlobalNavbar: React.FC<GlobalNavbarProps> = ({ className = "" }) => {
                   color: "var(--text-primary)",
                   fontSize: "14px",
                   fontWeight: "500",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  minWidth: 0,
+                  flex: 1,
                 }}
               >
-                {user?.username || "사용자"}
+                {user?.displayName ||
+                  user?.profile?.display_name ||
+                  user?.username ||
+                  "사용자"}
               </Text>
             </Space>
           </Dropdown>
