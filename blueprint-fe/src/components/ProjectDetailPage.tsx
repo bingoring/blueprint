@@ -5,28 +5,27 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   DollarOutlined,
-  EditOutlined,
-  FallOutlined,
   FileAddOutlined,
   HistoryOutlined,
   LineChartOutlined,
+  LinkOutlined,
   LockOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   PlusOutlined,
-  RiseOutlined,
+  TagOutlined,
   TeamOutlined,
   TrophyOutlined,
-  UserOutlined,
   UploadOutlined,
-  LinkOutlined,
-  TagOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import {
   Avatar,
+  Badge,
   Button,
   Card,
   Col,
+  Form,
   Input,
   Layout,
   List,
@@ -34,19 +33,14 @@ import {
   Progress,
   Row,
   Select,
-  Space,
   Spin,
   Statistic,
   Tabs,
   Tag,
+  Tooltip,
   Typography,
   Upload,
-  Form,
   message,
-  Tooltip,
-  Divider,
-  Badge,
-  Timeline,
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -84,9 +78,14 @@ const mockProgressLogs = [
     id: 1,
     type: "completion",
     title: "MVP 개발 완료 - 최종 증명 제출",
-    content: "3개월간 개발한 MVP가 완성되었습니다. 모든 핵심 기능이 구현되었으며, 베타 테스터 50명을 통한 사용성 테스트도 완료했습니다.",
+    content:
+      "3개월간 개발한 MVP가 완성되었습니다. 모든 핵심 기능이 구현되었으며, 베타 테스터 50명을 통한 사용성 테스트도 완료했습니다.",
     attachments: [
-      { type: "github", url: "https://github.com/user/project", title: "GitHub 저장소" },
+      {
+        type: "github",
+        url: "https://github.com/user/project",
+        title: "GitHub 저장소",
+      },
       { type: "demo", url: "https://demo.example.com", title: "데모 사이트" },
     ],
     timestamp: "2시간 전",
@@ -97,9 +96,14 @@ const mockProgressLogs = [
     id: 2,
     type: "evidence",
     title: "베타 테스트 결과 보고",
-    content: "50명의 베타 테스터를 대상으로 한 사용성 테스트 결과입니다. 평균 만족도 4.2/5점, 주요 피드백을 반영하여 UI를 개선했습니다.",
+    content:
+      "50명의 베타 테스터를 대상으로 한 사용성 테스트 결과입니다. 평균 만족도 4.2/5점, 주요 피드백을 반영하여 UI를 개선했습니다.",
     attachments: [
-      { type: "file", url: "/files/beta-test-report.pdf", title: "베타 테스트 보고서.pdf" },
+      {
+        type: "file",
+        url: "/files/beta-test-report.pdf",
+        title: "베타 테스트 보고서.pdf",
+      },
     ],
     timestamp: "1일 전",
     likes: 15,
@@ -109,7 +113,8 @@ const mockProgressLogs = [
     id: 3,
     type: "progress",
     title: "주간 진행 상황 업데이트",
-    content: "이번 주는 사용자 인터페이스 최적화에 집중했습니다. 로딩 시간을 30% 단축하고, 모바일 반응형 디자인을 완성했습니다.",
+    content:
+      "이번 주는 사용자 인터페이스 최적화에 집중했습니다. 로딩 시간을 30% 단축하고, 모바일 반응형 디자인을 완성했습니다.",
     attachments: [],
     timestamp: "3일 전",
     likes: 8,
@@ -123,14 +128,16 @@ const ProjectDetailPage: React.FC = () => {
   const { isAuthenticated, user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
-  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
+  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(
+    null
+  );
   const [activeTab, setActiveTab] = useState("trade");
   const [tradeAmount, setTradeAmount] = useState<number>(100);
   const [tradeType, setTradeType] = useState<"yes" | "no">("yes");
-  
+
   // 레이아웃 상태
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  
+
   // 진행 기록 관련 상태
   const [progressLogs, setProgressLogs] = useState(mockProgressLogs);
   const [showPostModal, setShowPostModal] = useState(false);
@@ -185,12 +192,12 @@ const ProjectDetailPage: React.FC = () => {
         likes: 0,
         comments: 0,
       };
-      
+
       setProgressLogs([newPost, ...progressLogs]);
       setShowPostModal(false);
       postForm.resetFields();
       message.success("진행 상황이 성공적으로 등록되었습니다!");
-      
+
       // 투자자들에게 알림 발송 (실제 구현에서는 API 호출)
       console.log("알림 발송: 새로운 업데이트가 등록되었습니다.");
     } catch (error) {
@@ -200,11 +207,13 @@ const ProjectDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
+      <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
         <GlobalNavbar />
         <div className="flex items-center justify-center h-screen">
           <Spin size="large" />
-          <span className="ml-3" style={{ color: 'var(--text-secondary)' }}>프로젝트 정보를 로딩 중...</span>
+          <span className="ml-3" style={{ color: "var(--text-secondary)" }}>
+            프로젝트 정보를 로딩 중...
+          </span>
         </div>
       </div>
     );
@@ -212,13 +221,19 @@ const ProjectDetailPage: React.FC = () => {
 
   if (!project) {
     return (
-      <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
+      <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
         <GlobalNavbar />
         <div className="flex items-center justify-center h-screen">
           <div className="text-center">
-            <Text style={{ color: 'var(--text-secondary)' }}>프로젝트를 찾을 수 없습니다.</Text>
+            <Text style={{ color: "var(--text-secondary)" }}>
+              프로젝트를 찾을 수 없습니다.
+            </Text>
             <br />
-            <Button type="primary" onClick={() => navigate("/")} className="mt-4">
+            <Button
+              type="primary"
+              onClick={() => navigate("/")}
+              className="mt-4"
+            >
               홈으로 돌아가기
             </Button>
           </div>
@@ -281,29 +296,34 @@ const ProjectDetailPage: React.FC = () => {
   };
 
   const totalMilestones = project.milestones?.length || 0;
-  const completedMilestones = project.milestones?.filter((m) => m.status === "completed").length || 0;
-  const progressPercent = totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
-  
+  const completedMilestones =
+    project.milestones?.filter((m) => m.status === "completed").length || 0;
+  const progressPercent =
+    totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
+
   // 프로젝트 소유자 여부 확인
   const isOwner = user && Number(user.id) === project.user_id;
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
+    <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
       <GlobalNavbar />
-      
+
       <div className="pt-16">
         {/* 프로젝트 헤더 */}
-        <div style={{ 
-          background: 'var(--bg-secondary)', 
-          borderBottom: '1px solid var(--border-color)' 
-        }} className="px-6 py-4">
+        <div
+          style={{
+            background: "var(--bg-secondary)",
+            borderBottom: "1px solid var(--border-color)",
+          }}
+          className="px-6 py-4"
+        >
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-4">
               <Button
                 type="text"
                 icon={<ArrowLeftOutlined />}
                 onClick={() => navigate("/explore")}
-                style={{ color: 'var(--text-secondary)' }}
+                style={{ color: "var(--text-secondary)" }}
               >
                 프로젝트 목록으로 돌아가기
               </Button>
@@ -318,22 +338,29 @@ const ProjectDetailPage: React.FC = () => {
                   </Title>
                   <Tag color="blue">{project.category}</Tag>
                 </div>
-                <div className="flex items-center gap-4" style={{ color: 'var(--text-secondary)' }}>
+                <div
+                  className="flex items-center gap-4"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   <div className="flex items-center gap-2">
                     <UserOutlined />
-                    <Text style={{ color: 'var(--text-secondary)' }}>프로젝트 생성자 #{project.user_id}</Text>
+                    <Text style={{ color: "var(--text-secondary)" }}>
+                      프로젝트 생성자 #{project.user_id}
+                    </Text>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Text style={{ color: 'var(--text-secondary)' }}>전체 진행률:</Text>
-                    <Progress 
-                      percent={Math.round(progressPercent)} 
-                      size="small" 
+                    <Text style={{ color: "var(--text-secondary)" }}>
+                      전체 진행률:
+                    </Text>
+                    <Progress
+                      percent={Math.round(progressPercent)}
+                      size="small"
                       className="w-32"
                     />
                   </div>
                 </div>
               </div>
-              
+
               <div className="text-right">
                 <Statistic
                   title="총 TVL"
@@ -351,96 +378,186 @@ const ProjectDetailPage: React.FC = () => {
         <div className="max-w-7xl mx-auto p-6">
           <div className="flex gap-6">
             {/* 좌측: 마일스톤 네비게이터 (접을 수 있게) */}
-            <div 
+            <div
               className={`transition-all duration-300 ${
-                sidebarCollapsed ? 'w-16' : 'w-80'
+                sidebarCollapsed ? "w-14" : "w-80"
               } flex-shrink-0 overflow-hidden`}
             >
-              <Card 
+              <Card
                 className="h-fit"
-                style={{ 
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border-color)' 
+                style={{
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-color)",
                 }}
               >
                 <div className="flex items-center justify-between mb-4">
                   {!sidebarCollapsed && (
                     <div className="flex items-center gap-2">
                       <MilestoneIcon size={20} color="var(--primary-color)" />
-                      <Text strong style={{ color: 'var(--text-primary)' }}>마일스톤 목록</Text>
+                      <Text strong style={{ color: "var(--text-primary)" }}>
+                        마일스톤 목록
+                      </Text>
                     </div>
                   )}
                   <Button
                     type="text"
-                    icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                    icon={
+                      sidebarCollapsed ? (
+                        <MenuUnfoldOutlined />
+                      ) : (
+                        <MenuFoldOutlined />
+                      )
+                    }
                     onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                     size="small"
                   />
                 </div>
 
-                <div className={`space-y-2 max-h-96 overflow-y-auto ${sidebarCollapsed ? 'overflow-x-hidden' : ''}`}>
-                  {project.milestones?.map((milestone, index) => {
-                    const status = getMilestoneStatus(milestone.status);
-                    const isSelected = selectedMilestone?.id === milestone.id;
+                {sidebarCollapsed ? (
+                  // 접힌 상태: 세로 점 네비게이션
+                  <div className="flex flex-col items-center justify-center py-4">
+                    {project.milestones?.map((milestone, index) => {
+                      const isSelected = selectedMilestone?.id === milestone.id;
+                      const status = getMilestoneStatus(milestone.status);
 
-                    return (
-                      <div
-                        key={milestone.id}
-                        onClick={() => setSelectedMilestone(milestone)}
-                        className={`
-                          ${sidebarCollapsed ? 'p-2' : 'p-3'} rounded-lg cursor-pointer transition-all duration-200
-                          ${isSelected 
-                            ? 'border-2'
-                            : 'border border-transparent'
-                          }
-                        `}
-                        style={{
-                          background: isSelected ? 'var(--bg-hover)' : 'transparent',
-                          borderColor: isSelected ? 'var(--primary-color)' : 'transparent'
-                        }}
-                      >
-                        {sidebarCollapsed ? (
-                          <Tooltip title={`${milestone.title} - ${status.text}`} placement="right">
-                            <div className="text-center flex flex-col items-center">
-                              <div className="mb-1">
-                                {getMilestoneIcon(milestone.status)}
-                              </div>
-                              <div className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                {index + 1}
-                              </div>
-                              {milestone.status === "pending" && (
-                                <div className="w-2 h-2 bg-green-500 rounded-full mt-1 animate-pulse"></div>
+                      return (
+                        <Tooltip
+                          key={milestone.id}
+                          title={`${index + 1}. ${milestone.title} - ${
+                            status.text
+                          }`}
+                          placement="right"
+                        >
+                          <div
+                            onClick={() => setSelectedMilestone(milestone)}
+                            className="relative cursor-pointer mb-3 last:mb-0 transition-all duration-200 hover:scale-110"
+                          >
+                            {/* 연결선 (마지막 제외) */}
+                            {index < (project.milestones?.length || 0) - 1 && (
+                              <div
+                                className="absolute left-1/2 top-6 w-0.5 h-6 -translate-x-1/2"
+                                style={{
+                                  background:
+                                    milestone.status === "completed"
+                                      ? "var(--color-success)"
+                                      : "var(--border-color)",
+                                }}
+                              ></div>
+                            )}
+
+                            {/* 마일스톤 점 */}
+                            <div className="relative">
+                              {isSelected ? (
+                                // 선택된 마일스톤: 큰 채워진 원
+                                <div
+                                  className="w-6 h-6 rounded-full border-2 flex items-center justify-center shadow-lg"
+                                  style={{
+                                    background: "var(--primary-color)",
+                                    borderColor: "var(--primary-color)",
+                                    boxShadow:
+                                      "0 0 0 3px rgba(24, 144, 255, 0.2)",
+                                  }}
+                                >
+                                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                                </div>
+                              ) : milestone.status === "completed" ? (
+                                // 완료된 마일스톤: 체크마크
+                                <div
+                                  className="w-5 h-5 rounded-full flex items-center justify-center"
+                                  style={{ background: "var(--color-success)" }}
+                                >
+                                  <CheckCircleOutlined className="text-white text-xs" />
+                                </div>
+                              ) : milestone.status === "pending" ? (
+                                // 진행 중 마일스톤: 펄싱 효과
+                                <div className="relative">
+                                  <div
+                                    className="w-4 h-4 rounded-full border-2"
+                                    style={{
+                                      borderColor: "var(--color-warning)",
+                                      background: "var(--bg-card)",
+                                    }}
+                                  ></div>
+                                  <div
+                                    className="absolute inset-0 w-4 h-4 rounded-full animate-ping"
+                                    style={{
+                                      background: "var(--color-warning)",
+                                      opacity: 0.4,
+                                    }}
+                                  ></div>
+                                </div>
+                              ) : (
+                                // 대기 중 마일스톤: 빈 원
+                                <div
+                                  className="w-4 h-4 rounded-full border-2"
+                                  style={{
+                                    borderColor: "var(--border-color)",
+                                    background: "var(--bg-card)",
+                                  }}
+                                ></div>
                               )}
                             </div>
-                          </Tooltip>
-                        ) : (
+                          </div>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  // 펼쳐진 상태: 기존 목록 형태
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {project.milestones?.map((milestone, index) => {
+                      const status = getMilestoneStatus(milestone.status);
+                      const isSelected = selectedMilestone?.id === milestone.id;
+
+                      return (
+                        <div
+                          key={milestone.id}
+                          onClick={() => setSelectedMilestone(milestone)}
+                          className="p-3 rounded-lg cursor-pointer transition-all duration-200 border"
+                          style={{
+                            background: isSelected
+                              ? "var(--bg-hover)"
+                              : "transparent",
+                            borderColor: isSelected
+                              ? "var(--primary-color)"
+                              : "transparent",
+                          }}
+                        >
                           <div style={{ minWidth: 0 }}>
                             <div className="flex items-center gap-2 mb-2">
                               {getMilestoneIcon(milestone.status)}
-                              <Text strong className="text-sm flex-1 truncate" style={{ color: 'var(--text-primary)' }}>
+                              <Text
+                                strong
+                                className="text-sm flex-1 truncate"
+                                style={{ color: "var(--text-primary)" }}
+                              >
                                 {milestone.title}
                               </Text>
-                              <Tag size="small" color={status.color}>
-                                {status.text}
-                              </Tag>
+                              <Tag color={status.color}>{status.text}</Tag>
                             </div>
-                            <Text className="text-xs line-clamp-2" style={{ color: 'var(--text-tertiary)' }}>
+                            <Text
+                              className="text-xs line-clamp-2"
+                              style={{ color: "var(--text-tertiary)" }}
+                            >
                               {milestone.description || "설명이 없습니다"}
                             </Text>
                             {milestone.status === "pending" && (
                               <div className="flex items-center justify-between mt-2">
-                                <Text className="text-xs font-bold" style={{ color: 'var(--color-success)' }}>
+                                <Text
+                                  className="text-xs font-bold"
+                                  style={{ color: "var(--color-success)" }}
+                                >
                                   ${mockMarketData.yesPrice}
                                 </Text>
                                 <Badge status="processing" text="LIVE" />
                               </div>
                             )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </Card>
             </div>
 
@@ -449,19 +566,29 @@ const ProjectDetailPage: React.FC = () => {
               {selectedMilestone ? (
                 <div>
                   {/* 선택된 마일스톤 정보 */}
-                  <Card className="mb-6" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+                  <Card
+                    className="mb-6"
+                    style={{
+                      background: "var(--bg-card)",
+                      border: "1px solid var(--border-color)",
+                    }}
+                  >
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <Title level={3} className="!mb-2">
                           {selectedMilestone.title}
                         </Title>
-                        <Text style={{ color: 'var(--text-secondary)' }}>
+                        <Text style={{ color: "var(--text-secondary)" }}>
                           {selectedMilestone.description}
                         </Text>
                         {selectedMilestone.target_date && (
                           <div className="flex items-center gap-2 mt-2">
-                            <CalendarOutlined style={{ color: 'var(--text-tertiary)' }} />
-                            <Text style={{ color: 'var(--text-tertiary)' }}>목표 날짜: {selectedMilestone.target_date}</Text>
+                            <CalendarOutlined
+                              style={{ color: "var(--text-tertiary)" }}
+                            />
+                            <Text style={{ color: "var(--text-tertiary)" }}>
+                              목표 날짜: {selectedMilestone.target_date}
+                            </Text>
                           </div>
                         )}
                       </div>
@@ -478,8 +605,17 @@ const ProjectDetailPage: React.FC = () => {
                   </Card>
 
                   {/* 탭 컨텐츠 */}
-                  <Card style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
-                    <Tabs activeKey={activeTab} onChange={setActiveTab} size="large">
+                  <Card
+                    style={{
+                      background: "var(--bg-card)",
+                      border: "1px solid var(--border-color)",
+                    }}
+                  >
+                    <Tabs
+                      activeKey={activeTab}
+                      onChange={setActiveTab}
+                      size="large"
+                    >
                       {/* 거래 탭 */}
                       <Tabs.TabPane
                         tab={
@@ -495,18 +631,24 @@ const ProjectDetailPage: React.FC = () => {
                           <Col span={16}>
                             <div className="space-y-4">
                               {/* 가격 차트 */}
-                              <Card 
-                                title="가격 차트" 
-                                style={{ 
-                                  background: 'var(--bg-card)',
-                                  border: '1px solid var(--border-color)' 
+                              <Card
+                                title="가격 차트"
+                                style={{
+                                  background: "var(--bg-card)",
+                                  border: "1px solid var(--border-color)",
                                 }}
                               >
-                                <div className="h-80 flex items-center justify-center" style={{ color: 'var(--text-tertiary)' }}>
+                                <div
+                                  className="h-80 flex items-center justify-center"
+                                  style={{ color: "var(--text-tertiary)" }}
+                                >
                                   <div className="text-center">
                                     <LineChartOutlined className="text-6xl mb-4" />
                                     <div>실시간 가격 차트</div>
-                                    <Text style={{ color: 'var(--text-tertiary)' }} className="text-sm">
+                                    <Text
+                                      style={{ color: "var(--text-tertiary)" }}
+                                      className="text-sm"
+                                    >
                                       차트 데이터를 로딩 중입니다...
                                     </Text>
                                   </div>
@@ -514,39 +656,81 @@ const ProjectDetailPage: React.FC = () => {
                               </Card>
 
                               {/* 최근 거래 내역 */}
-                              <Card 
-                                title="최근 거래" 
+                              <Card
+                                title="최근 거래"
                                 size="small"
-                                style={{ 
-                                  background: 'var(--bg-card)',
-                                  border: '1px solid var(--border-color)' 
+                                style={{
+                                  background: "var(--bg-card)",
+                                  border: "1px solid var(--border-color)",
                                 }}
                               >
                                 <List
                                   size="small"
                                   dataSource={[
-                                    { id: 1, type: "YES", price: 0.72, amount: 100, time: "2분 전" },
-                                    { id: 2, type: "NO", price: 0.28, amount: 50, time: "5분 전" },
-                                    { id: 3, type: "YES", price: 0.71, amount: 200, time: "8분 전" },
-                                    { id: 4, type: "YES", price: 0.73, amount: 150, time: "12분 전" },
+                                    {
+                                      id: 1,
+                                      type: "YES",
+                                      price: 0.72,
+                                      amount: 100,
+                                      time: "2분 전",
+                                    },
+                                    {
+                                      id: 2,
+                                      type: "NO",
+                                      price: 0.28,
+                                      amount: 50,
+                                      time: "5분 전",
+                                    },
+                                    {
+                                      id: 3,
+                                      type: "YES",
+                                      price: 0.71,
+                                      amount: 200,
+                                      time: "8분 전",
+                                    },
+                                    {
+                                      id: 4,
+                                      type: "YES",
+                                      price: 0.73,
+                                      amount: 150,
+                                      time: "12분 전",
+                                    },
                                   ]}
                                   renderItem={(item) => (
                                     <List.Item className="px-0 py-2">
                                       <div className="flex items-center justify-between w-full">
                                         <div className="flex items-center gap-3">
-                                          <Tag 
-                                            color={item.type === "YES" ? "green" : "red"}
+                                          <Tag
+                                            color={
+                                              item.type === "YES"
+                                                ? "green"
+                                                : "red"
+                                            }
                                             className="min-w-12 text-center"
                                           >
                                             {item.type}
                                           </Tag>
                                           <Text strong>${item.price}</Text>
                                         </div>
-                                        <div className="flex items-center gap-3" style={{ color: 'var(--text-secondary)' }}>
-                                          <Text style={{ color: 'var(--text-secondary)' }}>
+                                        <div
+                                          className="flex items-center gap-3"
+                                          style={{
+                                            color: "var(--text-secondary)",
+                                          }}
+                                        >
+                                          <Text
+                                            style={{
+                                              color: "var(--text-secondary)",
+                                            }}
+                                          >
                                             {item.amount} USDC
                                           </Text>
-                                          <Text style={{ color: 'var(--text-tertiary)' }} className="text-xs">
+                                          <Text
+                                            style={{
+                                              color: "var(--text-tertiary)",
+                                            }}
+                                            className="text-xs"
+                                          >
                                             {item.time}
                                           </Text>
                                         </div>
@@ -565,64 +749,87 @@ const ProjectDetailPage: React.FC = () => {
                               <div className="space-y-2">
                                 <Button
                                   className={`w-full h-10 font-medium transition-all ${
-                                    tradeType === "yes" 
-                                      ? "bg-green-500 hover:bg-green-600 text-white border-green-500" 
+                                    tradeType === "yes"
+                                      ? "bg-green-500 hover:bg-green-600 text-white border-green-500"
                                       : "bg-green-50 hover:bg-green-100 text-green-600 border-green-200"
                                   }`}
                                   onClick={() => setTradeType("yes")}
                                 >
                                   <div className="flex items-center justify-between w-full">
                                     <span>성공 YES</span>
-                                    <span className="font-bold">${mockMarketData.yesPrice}</span>
+                                    <span className="font-bold">
+                                      ${mockMarketData.yesPrice}
+                                    </span>
                                   </div>
                                 </Button>
                                 <Button
                                   className={`w-full h-10 font-medium transition-all ${
-                                    tradeType === "no" 
-                                      ? "bg-red-500 hover:bg-red-600 text-white border-red-500" 
+                                    tradeType === "no"
+                                      ? "bg-red-500 hover:bg-red-600 text-white border-red-500"
                                       : "bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
                                   }`}
                                   onClick={() => setTradeType("no")}
                                 >
                                   <div className="flex items-center justify-between w-full">
                                     <span>실패 NO</span>
-                                    <span className="font-bold">${mockMarketData.noPrice}</span>
+                                    <span className="font-bold">
+                                      ${mockMarketData.noPrice}
+                                    </span>
                                   </div>
                                 </Button>
                               </div>
 
                               {/* 거래 입력 폼 */}
-                              <Card 
+                              <Card
                                 size="small"
-                                style={{ 
-                                  background: 'var(--bg-card)',
-                                  border: '1px solid var(--border-color)' 
+                                style={{
+                                  background: "var(--bg-card)",
+                                  border: "1px solid var(--border-color)",
                                 }}
                               >
                                 <div className="space-y-3">
                                   <div>
-                                    <Text style={{ color: 'var(--text-secondary)' }} className="text-sm block mb-1">
+                                    <Text
+                                      style={{ color: "var(--text-secondary)" }}
+                                      className="text-sm block mb-1"
+                                    >
                                       투자 금액
                                     </Text>
                                     <Input
                                       type="number"
                                       value={tradeAmount}
-                                      onChange={(e) => setTradeAmount(Number(e.target.value))}
+                                      onChange={(e) =>
+                                        setTradeAmount(Number(e.target.value))
+                                      }
                                       suffix="USDC"
                                       className="text-right"
                                     />
                                   </div>
-                                  
+
                                   <div className="flex justify-between text-sm">
-                                    <Text style={{ color: 'var(--text-secondary)' }}>예상 수익:</Text>
-                                    <Text strong style={{ color: 'var(--color-success)' }}>
+                                    <Text
+                                      style={{ color: "var(--text-secondary)" }}
+                                    >
+                                      예상 수익:
+                                    </Text>
+                                    <Text
+                                      strong
+                                      style={{ color: "var(--color-success)" }}
+                                    >
                                       ${(tradeAmount * 0.4).toFixed(2)}
                                     </Text>
                                   </div>
-                                  
+
                                   <div className="flex justify-between text-sm">
-                                    <Text style={{ color: 'var(--text-secondary)' }}>수익률:</Text>
-                                    <Text strong style={{ color: 'var(--color-success)' }}>
+                                    <Text
+                                      style={{ color: "var(--text-secondary)" }}
+                                    >
+                                      수익률:
+                                    </Text>
+                                    <Text
+                                      strong
+                                      style={{ color: "var(--color-success)" }}
+                                    >
                                       +40%
                                     </Text>
                                   </div>
@@ -630,8 +837,8 @@ const ProjectDetailPage: React.FC = () => {
                                   <Button
                                     type="primary"
                                     className={`w-full h-9 ${
-                                      tradeType === "yes" 
-                                        ? "bg-green-500 hover:bg-green-600 border-green-500" 
+                                      tradeType === "yes"
+                                        ? "bg-green-500 hover:bg-green-600 border-green-500"
                                         : "bg-red-500 hover:bg-red-600 border-red-500"
                                     }`}
                                     disabled={!isAuthenticated}
@@ -642,27 +849,52 @@ const ProjectDetailPage: React.FC = () => {
                               </Card>
 
                               {/* 시장 정보 */}
-                              <Card 
-                                title="시장 정보" 
+                              <Card
+                                title="시장 정보"
                                 size="small"
-                                style={{ 
-                                  background: 'var(--bg-card)',
-                                  border: '1px solid var(--border-color)' 
+                                style={{
+                                  background: "var(--bg-card)",
+                                  border: "1px solid var(--border-color)",
                                 }}
                               >
                                 <div className="space-y-2">
                                   <div className="flex justify-between text-sm">
-                                    <Text style={{ color: 'var(--text-secondary)' }}>총 거래량:</Text>
-                                    <Text strong>${mockMarketData.totalVolume.toLocaleString()}</Text>
+                                    <Text
+                                      style={{ color: "var(--text-secondary)" }}
+                                    >
+                                      총 거래량:
+                                    </Text>
+                                    <Text strong>
+                                      $
+                                      {mockMarketData.totalVolume.toLocaleString()}
+                                    </Text>
                                   </div>
                                   <div className="flex justify-between text-sm">
-                                    <Text style={{ color: 'var(--text-secondary)' }}>TVL:</Text>
-                                    <Text strong>${mockMarketData.totalTVL.toLocaleString()}</Text>
+                                    <Text
+                                      style={{ color: "var(--text-secondary)" }}
+                                    >
+                                      TVL:
+                                    </Text>
+                                    <Text strong>
+                                      $
+                                      {mockMarketData.totalTVL.toLocaleString()}
+                                    </Text>
                                   </div>
                                   <div className="flex justify-between text-sm">
-                                    <Text style={{ color: 'var(--text-secondary)' }}>24h 변화:</Text>
-                                    <Text strong style={{ color: 'var(--color-success)' }}>
-                                      +{(mockMarketData.priceChange * 100).toFixed(1)}%
+                                    <Text
+                                      style={{ color: "var(--text-secondary)" }}
+                                    >
+                                      24h 변화:
+                                    </Text>
+                                    <Text
+                                      strong
+                                      style={{ color: "var(--color-success)" }}
+                                    >
+                                      +
+                                      {(
+                                        mockMarketData.priceChange * 100
+                                      ).toFixed(1)}
+                                      %
                                     </Text>
                                   </div>
                                 </div>
@@ -685,18 +917,31 @@ const ProjectDetailPage: React.FC = () => {
                         <div className="space-y-4">
                           {progressLogs.length === 0 ? (
                             <div className="text-center py-12">
-                              <HistoryOutlined className="text-5xl mb-4" style={{ color: 'var(--text-tertiary)' }} />
-                              <div style={{ color: 'var(--text-tertiary)' }}>아직 등록된 진행 기록이 없습니다.</div>
+                              <HistoryOutlined
+                                className="text-5xl mb-4"
+                                style={{ color: "var(--text-tertiary)" }}
+                              />
+                              <div style={{ color: "var(--text-tertiary)" }}>
+                                아직 등록된 진행 기록이 없습니다.
+                              </div>
                             </div>
                           ) : (
                             progressLogs.map((log) => {
-                              const postType = postTypes.find(t => t.value === log.type);
+                              const postType = postTypes.find(
+                                (t) => t.value === log.type
+                              );
                               return (
-                                <Card 
+                                <Card
                                   key={log.id}
                                   style={{
-                                    background: log.type === 'completion' ? 'var(--bg-hover)' : 'var(--bg-card)',
-                                    border: log.type === 'completion' ? '2px solid var(--color-error)' : '1px solid var(--border-color)'
+                                    background:
+                                      log.type === "completion"
+                                        ? "var(--bg-hover)"
+                                        : "var(--bg-card)",
+                                    border:
+                                      log.type === "completion"
+                                        ? "2px solid var(--color-error)"
+                                        : "1px solid var(--border-color)",
                                   }}
                                 >
                                   <div className="flex items-start gap-3">
@@ -705,46 +950,91 @@ const ProjectDetailPage: React.FC = () => {
                                     </div>
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 mb-2">
-                                        <Tag color={postType?.color}>{postType?.label}</Tag>
-                                        <Text className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{log.timestamp}</Text>
+                                        <Tag color={postType?.color}>
+                                          {postType?.label}
+                                        </Tag>
+                                        <Text
+                                          className="text-sm"
+                                          style={{
+                                            color: "var(--text-tertiary)",
+                                          }}
+                                        >
+                                          {log.timestamp}
+                                        </Text>
                                       </div>
                                       <Title level={5} className="!mb-2">
                                         {log.title}
                                       </Title>
-                                      <Paragraph className="mb-3" style={{ color: 'var(--text-secondary)' }}>
+                                      <Paragraph
+                                        className="mb-3"
+                                        style={{
+                                          color: "var(--text-secondary)",
+                                        }}
+                                      >
                                         {log.content}
                                       </Paragraph>
-                                      
+
                                       {/* 첨부파일 */}
                                       {log.attachments.length > 0 && (
                                         <div className="mb-3">
-                                          <Text strong className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>
+                                          <Text
+                                            strong
+                                            className="text-sm mb-2 block"
+                                            style={{
+                                              color: "var(--text-secondary)",
+                                            }}
+                                          >
                                             첨부 자료:
                                           </Text>
                                           <div className="space-y-1">
-                                            {log.attachments.map((attachment, index) => (
-                                              <div key={index} className="flex items-center gap-2">
-                                                <span>{getAttachmentIcon(attachment.type)}</span>
-                                                <a
-                                                  href={attachment.url}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  style={{ color: 'var(--primary-color)' }}
+                                            {log.attachments.map(
+                                              (attachment, index) => (
+                                                <div
+                                                  key={index}
+                                                  className="flex items-center gap-2"
                                                 >
-                                                  {attachment.title}
-                                                </a>
-                                              </div>
-                                            ))}
+                                                  <span>
+                                                    {getAttachmentIcon(
+                                                      attachment.type
+                                                    )}
+                                                  </span>
+                                                  <a
+                                                    href={attachment.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    style={{
+                                                      color:
+                                                        "var(--primary-color)",
+                                                    }}
+                                                  >
+                                                    {attachment.title}
+                                                  </a>
+                                                </div>
+                                              )
+                                            )}
                                           </div>
                                         </div>
                                       )}
-                                      
+
                                       {/* 반응 */}
-                                      <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                                        <Button type="text" size="small" className="p-0">
+                                      <div
+                                        className="flex items-center gap-4 text-sm"
+                                        style={{
+                                          color: "var(--text-tertiary)",
+                                        }}
+                                      >
+                                        <Button
+                                          type="text"
+                                          size="small"
+                                          className="p-0"
+                                        >
                                           👍 {log.likes}
                                         </Button>
-                                        <Button type="text" size="small" className="p-0">
+                                        <Button
+                                          type="text"
+                                          size="small"
+                                          className="p-0"
+                                        >
                                           💬 {log.comments}
                                         </Button>
                                       </div>
@@ -773,9 +1063,24 @@ const ProjectDetailPage: React.FC = () => {
                           </Title>
                           <List
                             dataSource={[
-                              { id: 1, name: "Mentor #123", amount: 5000, isLead: true },
-                              { id: 2, name: "Mentor #456", amount: 3200, isLead: true },
-                              { id: 3, name: "Mentor #789", amount: 2800, isLead: false },
+                              {
+                                id: 1,
+                                name: "Mentor #123",
+                                amount: 5000,
+                                isLead: true,
+                              },
+                              {
+                                id: 2,
+                                name: "Mentor #456",
+                                amount: 3200,
+                                isLead: true,
+                              },
+                              {
+                                id: 3,
+                                name: "Mentor #789",
+                                amount: 2800,
+                                isLead: false,
+                              },
                             ]}
                             renderItem={(item) => (
                               <List.Item>
@@ -784,7 +1089,9 @@ const ProjectDetailPage: React.FC = () => {
                                   title={
                                     <div className="flex items-center gap-2">
                                       {item.name}
-                                      {item.isLead && <Tag color="gold">리드 멘토</Tag>}
+                                      {item.isLead && (
+                                        <Tag color="gold">리드 멘토</Tag>
+                                      )}
                                     </div>
                                   }
                                   description={`베팅 금액: ${item.amount.toLocaleString()} USDC`}
@@ -799,13 +1106,23 @@ const ProjectDetailPage: React.FC = () => {
                   </Card>
                 </div>
               ) : (
-                <Card className="h-96" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+                <Card
+                  className="h-96"
+                  style={{
+                    background: "var(--bg-card)",
+                    border: "1px solid var(--border-color)",
+                  }}
+                >
                   <div className="text-center py-20">
                     <MilestoneIcon size={64} />
-                    <Title level={4} className="mt-4" style={{ color: 'var(--text-secondary)' }}>
+                    <Title
+                      level={4}
+                      className="mt-4"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
                       마일스톤을 선택해주세요
                     </Title>
-                    <Text style={{ color: 'var(--text-tertiary)' }}>
+                    <Text style={{ color: "var(--text-tertiary)" }}>
                       좌측에서 마일스톤을 선택하면 상세 정보가 표시됩니다.
                     </Text>
                   </div>
@@ -835,8 +1152,14 @@ const ProjectDetailPage: React.FC = () => {
             label="마일스톤"
             rules={[{ required: true, message: "마일스톤을 선택해주세요" }]}
           >
-            <Select placeholder="마일스톤을 선택하세요" disabled value={selectedMilestone?.title}>
-              <Option value={selectedMilestone?.id}>{selectedMilestone?.title}</Option>
+            <Select
+              placeholder="마일스톤을 선택하세요"
+              disabled
+              value={selectedMilestone?.title}
+            >
+              <Option value={selectedMilestone?.id}>
+                {selectedMilestone?.title}
+              </Option>
             </Select>
           </Form.Item>
 
@@ -874,11 +1197,7 @@ const ProjectDetailPage: React.FC = () => {
           </Form.Item>
 
           <Form.Item name="attachments" label="증거 자료 첨부">
-            <Upload
-              multiple
-              beforeUpload={() => false}
-              listType="text"
-            >
+            <Upload multiple beforeUpload={() => false} listType="text">
               <Button icon={<UploadOutlined />}>파일 첨부</Button>
             </Upload>
             <div className="mt-2">
@@ -891,9 +1210,7 @@ const ProjectDetailPage: React.FC = () => {
 
           <Form.Item className="mb-0">
             <div className="flex justify-end gap-2">
-              <Button onClick={() => setShowPostModal(false)}>
-                취소
-              </Button>
+              <Button onClick={() => setShowPostModal(false)}>취소</Button>
               <Button type="primary" htmlType="submit">
                 등록하기
               </Button>
