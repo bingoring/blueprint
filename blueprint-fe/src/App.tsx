@@ -39,7 +39,7 @@ const queryClient = new QueryClient({
 
 // Import ActivityPage
 import ActivityPage from "./components/ActivityPage";
-
+import GovernancePage from "./components/GovernancePage";
 import MentoringPage from "./components/MentoringPage";
 
 import HallOfFamePage from "./components/HallOfFamePage";
@@ -105,6 +105,7 @@ function App() {
               <Route path="/explore" element={<ExplorePage />} />
               <Route path="/activity" element={<ActivityPage />} />
               <Route path="/mentoring" element={<MentoringPage />} />
+              <Route path="/governance" element={<GovernancePage />} />
               <Route path="/hall-of-fame" element={<HallOfFamePage />} />
 
               {/* 프로젝트 관련 라우트 */}

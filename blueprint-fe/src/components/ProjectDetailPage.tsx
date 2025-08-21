@@ -45,8 +45,9 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiClient } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
-import type { Milestone, Project } from "../types";
+import type { CreateDisputeRequest, Milestone, Project } from "../types";
 import GlobalNavbar from "./GlobalNavbar";
+import CreateDisputeModal from "./court/CreateDisputeModal";
 import { MilestoneIcon, PathIcon } from "./icons/BlueprintIcons";
 
 // const { Content } = Layout;
@@ -143,8 +144,6 @@ const ProjectDetailPage: React.FC = () => {
   const [postForm] = Form.useForm();
 
   // ⚖️ Blueprint Court 분쟁 관련 상태
-  const [disputeDetail, setDisputeDetail] = useState<any>(null);
-  const [disputeTimer, setDisputeTimer] = useState<any>(null);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [disputeLoading, setDisputeLoading] = useState(false);
 
@@ -185,40 +184,12 @@ const ProjectDetailPage: React.FC = () => {
   }, [id]);
 
   // ⚖️ Blueprint Court 관련 함수들
-  const loadDisputeDetail = async (disputeId: number) => {
-    try {
-      setDisputeLoading(true);
-      const response = await apiClient.getDisputeDetail(disputeId);
-      if (response.success && response.data) {
-        setDisputeDetail(response.data);
-        // 분쟁 타이머도 함께 로드
-        loadDisputeTimer(disputeId);
-      }
-    } catch (error) {
-      console.error("분쟁 상세 정보 로드 실패:", error);
-      message.error("분쟁 정보를 불러올 수 없습니다");
-    } finally {
-      setDisputeLoading(false);
-    }
-  };
-
-  const loadDisputeTimer = async (disputeId: number) => {
-    try {
-      const response = await apiClient.getDisputeTimer(disputeId);
-      if (response.success && response.data) {
-        setDisputeTimer(response.data.time_remaining);
-      }
-    } catch (error) {
-      console.error("분쟁 타이머 로드 실패:", error);
-    }
-  };
-
   const handleReportResult = async (
     result: boolean,
     evidence?: string,
     description?: string
   ) => {
-    if (!selectedMilestone) return;
+    if (!selectedMilestone || !selectedMilestone.id) return;
 
     try {
       setDisputeLoading(true);
@@ -273,7 +244,12 @@ const ProjectDetailPage: React.FC = () => {
   };
 
   // 게시글 등록 처리
-  const handlePostSubmit = async (values: any) => {
+  const handlePostSubmit = async (values: {
+    type: string;
+    title: string;
+    content: string;
+    attachments?: { type: string; url: string; title: string }[];
+  }) => {
     try {
       const newPost = {
         id: Date.now(),
@@ -293,7 +269,7 @@ const ProjectDetailPage: React.FC = () => {
 
       // 투자자들에게 알림 발송 (실제 구현에서는 API 호출)
       console.log("알림 발송: 새로운 업데이트가 등록되었습니다.");
-    } catch (error) {
+    } catch {
       message.error("등록 중 오류가 발생했습니다.");
     }
   };
@@ -1401,14 +1377,6 @@ const ProjectDetailPage: React.FC = () => {
                         key="dispute"
                       >
                         <div className="space-y-4">
-                          {/* 분쟁 타이머 (분쟁 진행 중일 때만 표시) */}
-                          {disputeTimer && (
-                            <DisputeTimer
-                              timeRemaining={disputeTimer}
-                              phase="challenge_window"
-                            />
-                          )}
-
                           {/* 마일스톤 상태에 따른 액션 버튼들 */}
                           <Card
                             title="분쟁 해결 시스템"
@@ -1496,16 +1464,14 @@ const ProjectDetailPage: React.FC = () => {
                                       ⚖️ 분쟁이 진행 중입니다. 판결단의 투표를
                                       기다리고 있습니다.
                                     </Text>
-                                    {disputeDetail && (
-                                      <div className="p-3 bg-orange-50 dark:bg-orange-900 rounded">
-                                        <Text className="block font-semibold">
-                                          분쟁 사유:
-                                        </Text>
-                                        <Text>
-                                          {disputeDetail.dispute_reason}
-                                        </Text>
-                                      </div>
-                                    )}
+                                    <div className="p-3 bg-orange-50 dark:bg-orange-900 rounded">
+                                      <Text className="block font-semibold">
+                                        분쟁 사유:
+                                      </Text>
+                                      <Text>
+                                        분쟁 상세 정보를 불러오는 중입니다...
+                                      </Text>
+                                    </div>
                                   </div>
                                 )}
 

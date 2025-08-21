@@ -392,3 +392,56 @@ export const ProgressIcon: React.FC<IconProps> = ({
     </text>
   </svg>
 );
+
+// 거버넌스/법원 아이콘 - 저울과 판사 망치를 형상화
+export const GovernanceIcon: React.FC<IconProps> = ({
+  size = 24,
+  color = "currentColor",
+  className = "",
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    className={className}
+  >
+    {/* 저울의 받침대 */}
+    <path
+      d="M12 3v16M8 19h8M10 19h4"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+
+    {/* 저울의 가로막대 */}
+    <path d="M6 8h12" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+
+    {/* 왼쪽 접시 */}
+    <path
+      d="M6 8l-2 4h4l-2-4z"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
+
+    {/* 오른쪽 접시 */}
+    <path
+      d="M18 8l-2 4h4l-2-4z"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
+
+    {/* 연결선 */}
+    <path d="M6 8v0M18 8v0" stroke={color} strokeWidth="1.5" />
+
+    {/* 판결의 점들 (균형을 나타냄) */}
+    <circle cx="6" cy="10" r="1" fill={color} opacity="0.6" />
+    <circle cx="18" cy="10" r="1" fill={color} opacity="0.6" />
+  </svg>
+);

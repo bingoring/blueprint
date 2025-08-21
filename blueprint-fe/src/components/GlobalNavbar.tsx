@@ -23,6 +23,7 @@ import {
   BlueprintBIcon,
   CompassIcon,
   DashboardIcon,
+  GovernanceIcon,
   MentoringIcon,
   PortfolioIcon,
   RocketIcon,
@@ -49,6 +50,7 @@ const GlobalNavbar: React.FC<GlobalNavbarProps> = ({ className = "" }) => {
     if (pathname.startsWith("/activity")) return "activity";
     if (pathname.startsWith("/mentoring")) return "mentoring";
     if (pathname.startsWith("/hall-of-fame")) return "hall-of-fame";
+    if (pathname.startsWith("/governance")) return "governance";
     return "";
   };
 
@@ -69,6 +71,9 @@ const GlobalNavbar: React.FC<GlobalNavbarProps> = ({ className = "" }) => {
         break;
       case "hall-of-fame":
         navigate("/hall-of-fame");
+        break;
+      case "governance":
+        navigate("/governance");
         break;
     }
   };
@@ -127,6 +132,11 @@ const GlobalNavbar: React.FC<GlobalNavbarProps> = ({ className = "" }) => {
       key: "hall-of-fame",
       icon: <TrophyIcon size={20} />,
       label: "명예의 전당",
+    },
+    {
+      key: "governance",
+      icon: <GovernanceIcon size={20} />,
+      label: "거버넌스",
     },
   ];
 
