@@ -30,6 +30,7 @@ require (
 
 require (
 	blueprint-module v0.0.0
+	blueprint-scheduler v0.0.0
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
@@ -66,3 +67,5 @@ require (
 )
 
 replace blueprint-module => ../blueprint-module
+
+replace blueprint-scheduler => ../blueprint-scheduler

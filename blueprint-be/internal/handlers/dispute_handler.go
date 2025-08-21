@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"strconv"
 
 	"blueprint-module/pkg/models"
@@ -28,7 +29,7 @@ func (dh *DisputeHandler) ReportMilestoneResult(c *gin.Context) {
 		return
 	}
 
-	milestoneIDStr := c.Param("milestoneId")
+	milestoneIDStr := c.Param("id")
 	milestoneID, err := strconv.ParseUint(milestoneIDStr, 10, 32)
 	if err != nil {
 		middleware.BadRequest(c, "Invalid milestone ID")
@@ -123,7 +124,7 @@ func (dh *DisputeHandler) SubmitVote(c *gin.Context) {
 
 // 📊 분쟁 상세 정보 조회
 func (dh *DisputeHandler) GetDisputeDetail(c *gin.Context) {
-	disputeIDStr := c.Param("disputeId")
+	disputeIDStr := c.Param("id")
 	disputeID, err := strconv.ParseUint(disputeIDStr, 10, 32)
 	if err != nil {
 		middleware.BadRequest(c, "Invalid dispute ID")
@@ -141,7 +142,7 @@ func (dh *DisputeHandler) GetDisputeDetail(c *gin.Context) {
 
 // 📋 마일스톤별 분쟁 목록 조회
 func (dh *DisputeHandler) GetMilestoneDisputes(c *gin.Context) {
-	milestoneIDStr := c.Param("milestoneId")
+	milestoneIDStr := c.Param("id")
 	milestoneID, err := strconv.ParseUint(milestoneIDStr, 10, 32)
 	if err != nil {
 		middleware.BadRequest(c, "Invalid milestone ID")
@@ -157,54 +158,19 @@ func (dh *DisputeHandler) GetMilestoneDisputes(c *gin.Context) {
 
 // 🏛️ 현재 진행중인 분쟁 목록 (거버넌스 탭용)
 func (dh *DisputeHandler) GetActiveDisputes(c *gin.Context) {
-	// TODO: 활성 분쟁 목록 조회 로직 구현
-	middleware.Success(c, gin.H{
-		"active_disputes": []gin.H{
-			// Mock data for demonstration
-			{
-				"id":               1,
-				"milestone_id":     10,
-				"milestone_title":  "앱 정식 출시",
-				"project_title":    "혁신적인 모바일 앱",
-				"tier":             "expert",
-				"status":           "voting_period",
-				"time_remaining":   gin.H{"hours": 23, "minutes": 45, "seconds": 12},
-				"total_investment": 75000,
-				"voting_stats": gin.H{
-					"total_voters":     10,
-					"voted_count":      7,
-					"maintain_votes":   4,
-					"overrule_votes":   3,
-					"voting_progress":  0.7,
-				},
-			},
-		},
-		"governance_disputes": []gin.H{
-			// Mock data for DAO disputes
-			{
-				"id":               2,
-				"milestone_id":     15,
-				"milestone_title":  "매출 1억 달성",
-				"project_title":    "블록체인 스타트업",
-				"tier":             "governance",
-				"status":           "voting_period",
-				"time_remaining":   gin.H{"hours": 35, "minutes": 20, "seconds": 8},
-				"total_investment": 1500000,
-				"voting_stats": gin.H{
-					"total_voters":     1000,
-					"voted_count":      234,
-					"maintain_votes":   145,
-					"overrule_votes":   89,
-					"voting_progress":  0.234,
-				},
-			},
-		},
-	}, "")
+	// DisputeService를 사용하여 실제 데이터 조회
+	disputes, err := dh.disputeService.GetActiveDisputes()
+	if err != nil {
+		middleware.InternalServerError(c, fmt.Sprintf("Failed to get active disputes: %v", err))
+		return
+	}
+
+	middleware.Success(c, disputes, "")
 }
 
 // ⏰ 분쟁 타이머 상태 조회 (실시간 업데이트용)
 func (dh *DisputeHandler) GetDisputeTimer(c *gin.Context) {
-	disputeIDStr := c.Param("disputeId")
+	disputeIDStr := c.Param("id")
 	disputeID, err := strconv.ParseUint(disputeIDStr, 10, 32)
 	if err != nil {
 		middleware.BadRequest(c, "Invalid dispute ID")

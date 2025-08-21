@@ -462,3 +462,92 @@ func (ds *DisputeService) calculateTimeRemaining(dispute *models.Dispute) models
 		IsExpired: false,
 	}
 }
+
+// 🏛️ 현재 진행 중인 분쟁 목록 조회 (거버넌스 탭용)
+func (ds *DisputeService) GetActiveDisputes() (map[string]interface{}, error) {
+	log.Printf("🏛️ Blueprint Court: Getting active disputes")
+
+	// 현재 진행 중인 분쟁들 조회 (투표 기간 중인 분쟁들)
+	var disputes []models.Dispute
+	if err := ds.db.Where("status IN ?", []models.DisputeStatus{
+		models.DisputeStatusChallengeWindow,
+		models.DisputeStatusVotingPeriod,
+	}).Preload("Milestone").Preload("Milestone.Project").Find(&disputes).Error; err != nil {
+		return nil, fmt.Errorf("failed to get active disputes: %w", err)
+	}
+
+	activeDisputes := []map[string]interface{}{}
+	governanceDisputes := []map[string]interface{}{}
+
+	for _, dispute := range disputes {
+		// 투자 총액 조회 (실제로는 Investment 모델에서 조회해야 함)
+		// 임시로 milestone의 current_tvl 사용
+		totalInvestment := float64(100000) // TODO: 실제 투자 총액 조회 로직 구현
+		if dispute.Milestone.CurrentTVL > 0 {
+			totalInvestment = float64(dispute.Milestone.CurrentTVL)
+		}
+
+		// 투표 통계 조회
+		var totalVotes int64
+		var maintainVotes int64
+		var overruleVotes int64
+
+		ds.db.Model(&models.DisputeVote{}).Where("dispute_id = ?", dispute.ID).Count(&totalVotes)
+		ds.db.Model(&models.DisputeVote{}).Where("dispute_id = ? AND choice = ?", dispute.ID, models.VoteChoiceMaintain).Count(&maintainVotes)
+		ds.db.Model(&models.DisputeVote{}).Where("dispute_id = ? AND choice = ?", dispute.ID, models.VoteChoiceOverrule).Count(&overruleVotes)
+
+		// 총 투표자 수 계산 (Tier에 따라 다름)
+		totalVoters := int64(10) // Tier 1 기본값
+		if dispute.Tier == models.DisputeTierGovernance {
+			totalVoters = 1000 // TODO: 실제 토큰 보유자 수 조회
+		}
+
+		// 남은 시간 계산
+		timeRemaining := ds.calculateTimeRemaining(&dispute)
+
+		disputeData := map[string]interface{}{
+			"id":               dispute.ID,
+			"milestone_id":     dispute.MilestoneID,
+			"milestone_title":  "Unknown Milestone", // 기본값
+			"project_title":    "Unknown Project",   // 기본값
+			"tier":             dispute.Tier,
+			"status":           dispute.Status,
+			"time_remaining":   map[string]interface{}{
+				"hours":   timeRemaining.Hours,
+				"minutes": timeRemaining.Minutes,
+				"seconds": timeRemaining.Seconds,
+			},
+			"total_investment": totalInvestment,
+			"voting_stats":     map[string]interface{}{
+				"total_voters":     totalVoters,
+				"voted_count":      totalVotes,
+				"maintain_votes":   maintainVotes,
+				"overrule_votes":   overruleVotes,
+				"voting_progress":  float64(totalVotes) / float64(totalVoters),
+			},
+		}
+
+		// 마일스톤과 프로젝트 정보가 있으면 업데이트
+		if dispute.Milestone.ID > 0 {
+			disputeData["milestone_title"] = dispute.Milestone.Title
+			if dispute.Milestone.Project.ID > 0 {
+				disputeData["project_title"] = dispute.Milestone.Project.Title
+			}
+		}
+
+		// Tier에 따라 분류
+		if dispute.Tier == models.DisputeTierExpert {
+			activeDisputes = append(activeDisputes, disputeData)
+		} else {
+			governanceDisputes = append(governanceDisputes, disputeData)
+		}
+	}
+
+	log.Printf("🏛️ Blueprint Court: Found %d expert disputes, %d governance disputes",
+		len(activeDisputes), len(governanceDisputes))
+
+	return map[string]interface{}{
+		"active_disputes":     activeDisputes,
+		"governance_disputes": governanceDisputes,
+	}, nil
+}

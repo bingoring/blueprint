@@ -9,6 +9,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
+	// Import scheduler models for cache access
+	schedulerModels "blueprint-scheduler/pkg/models"
 )
 
 // ProfileHandler 프로필 관련 핸들러
@@ -129,10 +132,27 @@ func (h *ProfileHandler) GetUserProfile(c *gin.Context) {
 	middleware.Success(c, response, "Profile retrieved successfully")
 }
 
-// calculateProfileStats 프로필 통계 계산
+// calculateProfileStats 프로필 통계 계산 (캐시 데이터 우선 사용)
 func (h *ProfileHandler) calculateProfileStats(userID uint) ProfileStats {
 	db := database.GetDB()
 
+	// 캐시된 통계 조회
+	var cachedStats schedulerModels.UserStatsCache
+	err := db.Where("user_id = ?", userID).First(&cachedStats).Error
+
+	if err == nil {
+		// 캐시된 데이터 사용 (1시간 이내)
+		if time.Since(cachedStats.LastCalculatedAt) < time.Hour {
+			return ProfileStats{
+				ProjectSuccessRate:   cachedStats.ProjectSuccessRate,
+				MentoringSuccessRate: cachedStats.MentoringSuccessRate,
+				TotalInvestment:      cachedStats.TotalInvestment,
+				SbtCount:             cachedStats.SbtCount,
+			}
+		}
+	}
+
+	// 캐시가 없거나 오래된 경우 실시간 계산 (fallback)
 	// 프로젝트 관련 통계
 	var totalProjects int64
 	var completedProjects int64
@@ -145,8 +165,12 @@ func (h *ProfileHandler) calculateProfileStats(userID uint) ProfileStats {
 		projectSuccessRate = (float64(completedProjects) / float64(totalProjects)) * 100
 	}
 
-	// 총 투자액 계산 (임시로 0 - 투자 시스템 구현 후 실제 계산)
-	totalInvestment := int64(0)
+	// 총 투자액 계산 (Position 모델에서)
+	var totalInvestment int64
+	db.Model(&models.Position{}).
+		Where("user_id = ?", userID).
+		Select("COALESCE(SUM(quantity * (avg_price * 100)), 0)").
+		Scan(&totalInvestment)
 
 	// SBT 개수 (임시로 사용자 ID 기반 계산)
 	sbtCount := int(userID % 15) // 0-14 범위의 임시 값

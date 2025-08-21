@@ -37,6 +37,7 @@ import {
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiClient } from "../lib/api";
 import { useTheme } from "../hooks/useTheme";
 import { useAuthStore } from "../stores/useAuthStore";
 import LanguageSwitcher from "./LanguageSwitcher";
@@ -154,33 +155,92 @@ const MissionControlDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { isDark, toggleTheme } = useTheme();
-  const [nextMilestone, setNextMilestone] = useState<NextMilestone | null>(
-    null
-  );
-  const [portfolio] = useState({
-    totalInvested: 5200,
-    currentValue: 6150,
-    profit: 950,
-    profitPercent: 18.2,
-    blueprintTokens: 12500,
+  const [loading, setLoading] = useState(true);
+  const [nextMilestone, setNextMilestone] = useState<NextMilestone | null>(null);
+  const [featuredProjects, setFeaturedProjects] = useState<any[]>([]);
+  const [activityFeed, setActivityFeed] = useState<any[]>([]);
+  const [portfolio, setPortfolio] = useState({
+    totalInvested: 0,
+    currentValue: 0,
+    profit: 0,
+    profitPercent: 0,
+    blueprintTokens: 0,
   });
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (user) {
+      loadDashboardData();
+    }
+  }, [user]);
 
   const loadDashboardData = async () => {
     try {
-      // TODO: Load user's next milestone and portfolio data
-      setNextMilestone({
-        title: "MVP 개발 완료",
-        daysLeft: 35,
-        progress: 65,
-        mentorName: "박개발자",
-        mentorAvatar: "https://api.dicebear.com/6.x/avataaars/svg?seed=mentor",
-      });
+      setLoading(true);
+      
+      // 병렬로 여러 API 호출
+      const [projectsResponse, activitiesResponse, positionsResponse] = await Promise.all([
+        apiClient.getProjects({ limit: 6, sort: "updated_at", order: "desc" }),
+        apiClient.getUserActivities({ limit: 5 }),
+        apiClient.getMyPositions().catch(() => ({ success: false, data: [] })), // 오류 시 빈 배열
+      ]);
+
+      // 추천 프로젝트 설정
+      if (projectsResponse.success) {
+        setFeaturedProjects(projectsResponse.data.projects || []);
+      }
+
+      // 활동 피드 설정 (백엔드 구조를 프론트엔드 구조로 변환)
+      if (activitiesResponse.success) {
+        const activities = activitiesResponse.data.activities || [];
+        const mappedActivities = activities.map((activity: any) => ({
+          id: activity.id,
+          type: activity.activity_type,
+          title: activity.description || `${activity.activity_type} 활동`,
+          time: new Date(activity.created_at).toLocaleDateString('ko-KR', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          avatar: activity.user?.username ? 
+            `https://api.dicebear.com/6.x/avataaars/svg?seed=${activity.user.username}` : 
+            null,
+        }));
+        setActivityFeed(mappedActivities);
+      }
+
+      // 포트폴리오 데이터 설정
+      if (positionsResponse.success) {
+        const positions = positionsResponse.data || [];
+        const totalValue = positions.reduce((sum: number, pos: any) => sum + (pos.value || 0), 0);
+        setPortfolio({
+          totalInvested: totalValue,
+          currentValue: totalValue * 1.15, // 임시 수익률
+          profit: totalValue * 0.15,
+          profitPercent: 15.0,
+          blueprintTokens: 12500, // 임시값
+        });
+      }
+
+      // 다음 마일스톤 (내 프로젝트 중에서)
+      if (projectsResponse.success) {
+        const myProjects = projectsResponse.data.projects?.filter((p: any) => p.user_id === user?.id) || [];
+        if (myProjects.length > 0) {
+          const firstProject = myProjects[0];
+          setNextMilestone({
+            title: "다음 마일스톤",
+            daysLeft: 30,
+            progress: 60,
+            mentorName: "시스템",
+            mentorAvatar: "https://api.dicebear.com/6.x/avataaars/svg?seed=system",
+          });
+        }
+      }
+
     } catch (error) {
       console.error("Dashboard data loading failed:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -572,7 +632,7 @@ const MissionControlDashboard: React.FC = () => {
                 style={{ borderRadius: 12 }}
               >
                 <List
-                  dataSource={mockActivityFeed}
+                  dataSource={activityFeed}
                   renderItem={(item) => (
                     <List.Item style={{ border: "none", padding: "12px 0" }}>
                       <List.Item.Meta
@@ -622,7 +682,7 @@ const MissionControlDashboard: React.FC = () => {
                   size="middle"
                   style={{ width: "100%" }}
                 >
-                  {mockFeaturedProjects.map((project) => (
+                  {featuredProjects.map((project) => (
                     <Card
                       key={project.id}
                       size="small"

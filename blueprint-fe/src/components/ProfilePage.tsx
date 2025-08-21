@@ -22,6 +22,7 @@ import {
 } from "antd";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { apiClient } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import GlobalNavbar from "./GlobalNavbar";
 import {
@@ -86,97 +87,102 @@ const ProfilePage: React.FC = () => {
   const isOwnProfile = !username || username === user?.username;
   const displayUser = isOwnProfile ? user : null;
 
-  // Mock data for development
+  // 실제 프로필 데이터 로드
   useEffect(() => {
-    const loadMockProfile = () => {
-      const mockProfile: UserProfile = {
-        id: 1,
-        username: displayUser?.username || username || "user",
-        displayName: displayUser?.displayName || `${username || "user"}님`,
-        bio: "혁신적인 아이디어로 세상을 바꾸고 싶은 개발자입니다. AI와 블록체인 기술에 관심이 많으며, 지속가능한 솔루션을 만드는 것이 목표입니다.",
-        joinDate: "2024-01-15",
-        location: "서울, 대한민국",
-        website: "https://example.com",
-        stats: {
-          totalProjects: 8,
-          completedProjects: 5,
-          totalInvestment: 25000,
-          totalEarnings: 8750,
-          successRate: 87,
-          mentorRating: 4.8,
-        },
-        currentProjects: [
-          {
-            id: 1,
-            title: "AI 기반 피트니스 앱",
-            category: "IT/개발",
-            progress: 75,
-            role: "creator",
+    const loadProfile = async () => {
+      try {
+        setLoading(true);
+        
+        // 프로필 조회할 사용자명 결정
+        const targetUsername = username || user?.username || "default";
+        
+        // API에서 실제 프로필 데이터 가져오기
+        const response = await apiClient.getUserProfile(targetUsername);
+        
+        if (response.success && response.data) {
+          // API 응답 구조를 UI 구조에 맞게 변환
+          const apiData = response.data;
+          const profileData: UserProfile = {
+            id: apiData.username.length, // 임시 ID
+            username: apiData.username,
+            displayName: apiData.displayName,
+            bio: apiData.bio || "소개글이 없습니다.",
+            avatar: apiData.avatar,
+            joinDate: apiData.joinedDate,
+            location: "위치 정보 없음",
+            website: "https://example.com",
+            stats: {
+              totalProjects: apiData.currentProjects.length + apiData.featuredProjects.length,
+              completedProjects: apiData.featuredProjects.length,
+              totalInvestment: apiData.stats.totalInvestment,
+              totalEarnings: apiData.stats.totalInvestment * 0.1, // 임시 계산
+              successRate: apiData.stats.projectSuccessRate,
+              mentorRating: apiData.stats.mentoringSuccessRate / 20, // 100% -> 5점 변환
+            },
+            currentProjects: apiData.currentProjects.map(project => ({
+              id: project.id,
+              title: project.title,
+              category: project.category,
+              progress: project.progress,
+              role: project.status === "active" ? "creator" : "investor", // 임시 매핑
+            })),
+            completedProjects: apiData.featuredProjects.map(project => ({
+              id: project.id,
+              title: project.title,
+              category: "일반", // API에 카테고리가 없어서 임시값
+              successRate: project.successRate,
+              investment: project.investment,
+              earnings: project.investment * 0.1, // 임시 계산
+            })),
+            achievements: [
+              // 임시 성취 목록 (향후 백엔드에 achievements API 추가 필요)
+              {
+                id: 1,
+                title: "프로필 활성화",
+                description: "Blueprint에 프로필을 등록했습니다",
+                icon: "🎯",
+                earnedAt: apiData.joinedDate,
+              },
+            ],
+          };
+          
+          setProfileData(profileData);
+        } else {
+          console.error("프로필 로드 실패:", response.error);
+        }
+      } catch (error) {
+        console.error("프로필 로드 중 오류:", error);
+        // 오류 발생 시에도 기본 프로필 표시
+        const targetUsername = username || user?.username || "default";
+        const fallbackProfile: UserProfile = {
+          id: 0,
+          username: targetUsername,
+          displayName: `${targetUsername}님`,
+          bio: "사용자 정보를 불러올 수 없습니다.",
+          joinDate: "2024-01-01",
+          location: "알 수 없음",
+          website: "",
+          stats: {
+            totalProjects: 0,
+            completedProjects: 0,
+            totalInvestment: 0,
+            totalEarnings: 0,
+            successRate: 0,
+            mentorRating: 0,
           },
-          {
-            id: 2,
-            title: "친환경 배달 서비스",
-            category: "창업",
-            progress: 45,
-            role: "investor",
-          },
-          {
-            id: 3,
-            title: "블록체인 투표 시스템",
-            category: "IT/개발",
-            progress: 90,
-            role: "mentor",
-          },
-        ],
-        completedProjects: [
-          {
-            id: 4,
-            title: "온라인 교육 플랫폼",
-            category: "교육",
-            successRate: 100,
-            investment: 5000,
-            earnings: 2500,
-          },
-          {
-            id: 5,
-            title: "스마트 홈 IoT 시스템",
-            category: "IT/개발",
-            successRate: 95,
-            investment: 8000,
-            earnings: 3200,
-          },
-        ],
-        achievements: [
-          {
-            id: 1,
-            title: "첫 프로젝트 성공",
-            description: "첫 번째 프로젝트를 성공적으로 완료했습니다",
-            icon: "🚀",
-            earnedAt: "2024-02-01",
-          },
-          {
-            id: 2,
-            title: "멘토 마스터",
-            description: "10명 이상의 프로젝트 창작자를 멘토링했습니다",
-            icon: "👨‍🏫",
-            earnedAt: "2024-03-15",
-          },
-          {
-            id: 3,
-            title: "투자 고수",
-            description: "총 투자액 $20,000를 달성했습니다",
-            icon: "💰",
-            earnedAt: "2024-04-10",
-          },
-        ],
-      };
-
-      setProfileData(mockProfile);
-      setLoading(false);
+          currentProjects: [],
+          completedProjects: [],
+          achievements: [],
+        };
+        setProfileData(fallbackProfile);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setTimeout(loadMockProfile, 500);
-  }, [displayUser, username]);
+    loadProfile();
+  }, [username, user]);
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("ko-KR").format(amount);

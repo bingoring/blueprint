@@ -138,7 +138,7 @@ type MilestoneResult struct {
 	// 관계
 	Milestone   Milestone `json:"milestone" gorm:"foreignKey:MilestoneID"`
 	Reporter    User      `json:"reporter" gorm:"foreignKey:ReporterID"`
-	Dispute     *Dispute  `json:"dispute,omitempty" gorm:"foreignKey:MilestoneID;references:MilestoneID"`
+	// Dispute 관계는 역참조로 처리 (순환참조 방지)
 
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`

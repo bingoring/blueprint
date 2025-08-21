@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"log"
 
+	// Import cache models for statistics
+	schedulerModels "blueprint-scheduler/pkg/models"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -71,6 +74,13 @@ func AutoMigrate() error {
 		&models.JurorQualification{},
 		&models.ArbitrationReward{},
 		
+		// ⚖️ Blueprint Court 분쟁 해결 시스템 모델
+		&models.Dispute{},
+		&models.DisputeVote{},
+		&models.DisputeJury{},
+		&models.DisputeStake{},
+		&models.MilestoneResult{},
+		
 		// 💎 멘토 스테이킹 및 슬래싱 시스템 모델
 		&models.MentorStake{},
 		&models.MentorSlashEvent{},
@@ -105,6 +115,12 @@ func AutoMigrate() error {
 		// 🔗 기타 모델
 		&models.MagicLink{},
 		&models.ActivityLog{},
+
+		// 📊 사전 계산된 통계 캐시 모델
+		&schedulerModels.UserStatsCache{},
+		&schedulerModels.ProjectStatsCache{},
+		&schedulerModels.GlobalStatsCache{},
+		&schedulerModels.DashboardCache{},
 	)
 
 	if err != nil {

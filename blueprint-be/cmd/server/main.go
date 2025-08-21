@@ -250,7 +250,7 @@ func main() {
 		protected.GET("/users/me/activities/summary", activityHandler.GetActivitySummary) // 활동 요약 (대시보드용)
 
 		// 👤 프로필 조회 (public/private)
-		protected.GET("/users/:username/profile", profileHandler.GetUserProfile) // 사용자 프로필 조회
+		// 프로필 조회는 공개 API로 이동
 
 		// 🏗️ 프로젝트 관리
 		protected.POST("/projects", projectHandler.CreateProjectWithMilestones) // 기존 메서드 사용
@@ -311,11 +311,11 @@ func main() {
 		protected.GET("/milestones/:id/position/:option", tradingHandler.GetMilestonePosition) // 특정 포지션
 
 		// ⚖️ Blueprint Court 분쟁 해결 시스템
-		protected.POST("/milestones/:milestoneId/result", disputeHandler.ReportMilestoneResult) // 마일스톤 결과 보고
-		protected.POST("/disputes", disputeHandler.CreateDispute)                               // 이의 제기
-		protected.POST("/disputes/vote", disputeHandler.SubmitVote)                             // 분쟁 투표
-		protected.GET("/disputes/:disputeId", disputeHandler.GetDisputeDetail)                  // 분쟁 상세 조회
-		protected.GET("/milestones/:milestoneId/disputes", disputeHandler.GetMilestoneDisputes) // 마일스톤별 분쟁 목록
+		protected.POST("/milestones/:id/result", disputeHandler.ReportMilestoneResult) // 마일스톤 결과 보고
+		protected.POST("/disputes", disputeHandler.CreateDispute)                      // 이의 제기
+		protected.POST("/disputes/vote", disputeHandler.SubmitVote)                    // 분쟁 투표
+		protected.GET("/disputes/:id", disputeHandler.GetDisputeDetail)                // 분쟁 상세 조회
+		protected.GET("/milestones/:id/disputes", disputeHandler.GetMilestoneDisputes) // 마일스톤별 분쟁 목록
 	}
 
 	// 📊 공개 마켓 데이터 API
@@ -330,8 +330,11 @@ func main() {
 
 	// ⚖️ Blueprint Court 공개 정보
 	api.GET("/disputes/active", disputeHandler.GetActiveDisputes)                   // 진행 중인 분쟁 목록 (거버넌스용)
-	api.GET("/disputes/:disputeId/timer", disputeHandler.GetDisputeTimer)           // 분쟁 타이머 상태 (공개)
+	api.GET("/disputes/:id/timer", disputeHandler.GetDisputeTimer)                  // 분쟁 타이머 상태 (공개)
 
+	// 👤 공개 프로필 정보
+	api.GET("/users/:username/profile", profileHandler.GetUserProfile)              // 사용자 프로필 조회 (공개)
+	
 	// 💎 공개 멘토 정보
 	api.GET("/mentors/top", mentorStakingHandler.GetTopMentors)                      // 상위 멘토 목록
 	// api.GET("/mentors/:id/stakes", mentorStakingHandler.GetMentorStakes)             // 멘토 스테이킹 정보 (공개) - 중복으로 주석처리

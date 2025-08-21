@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"encoding/json"
 	"blueprint-module/pkg/models"
 	"blueprint/internal/database"
 	"blueprint/internal/middleware"
 	"strconv"
 	"time"
 
+	schedulerModels "blueprint-scheduler/pkg/models"
 	"github.com/gin-gonic/gin"
 )
 
@@ -103,7 +105,7 @@ func (h *ActivityHandler) GetUserActivities(c *gin.Context) {
 	middleware.Success(c, response, "Activities retrieved successfully")
 }
 
-// GetActivitySummary 사용자의 활동 요약 정보 조회 (대시보드용)
+// GetActivitySummary 사용자의 활동 요약 정보 조회 (대시보드용 - 캐시 우선 사용)
 func (h *ActivityHandler) GetActivitySummary(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -112,8 +114,28 @@ func (h *ActivityHandler) GetActivitySummary(c *gin.Context) {
 	}
 
 	db := database.GetDB()
+	userIDUint := userID.(uint)
 
-	// 최근 30일간의 활동 요약
+	// 캐시된 활동 피드 데이터 조회
+	var dashboardCache schedulerModels.DashboardCache
+	err := db.Where("user_id = ?", userIDUint).First(&dashboardCache).Error
+
+	if err == nil && time.Since(dashboardCache.LastCalculatedAt) < 30*time.Minute {
+		// 캐시된 데이터 사용 (30분 이내)
+		var activityFeed []models.ActivityLog
+		if err := json.Unmarshal([]byte(dashboardCache.ActivityFeed), &activityFeed); err == nil {
+			// 캐시된 데이터로 응답
+			response := map[string]interface{}{
+				"recent_activities": activityFeed,
+				"summary_period":   "캐시된 데이터 (15분 주기 갱신)",
+				"cached":           true,
+			}
+			middleware.Success(c, response, "Activity summary retrieved from cache")
+			return
+		}
+	}
+
+	// 캐시가 없거나 오래된 경우 실시간 계산 (fallback)
 	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
 
 	// 활동 타입별 개수
@@ -124,7 +146,7 @@ func (h *ActivityHandler) GetActivitySummary(c *gin.Context) {
 
 	if err := db.Model(&models.ActivityLog{}).
 		Select("activity_type, COUNT(*) as count").
-		Where("user_id = ? AND created_at >= ?", userID, thirtyDaysAgo).
+		Where("user_id = ? AND created_at >= ?", userIDUint, thirtyDaysAgo).
 		Group("activity_type").
 		Find(&activityCounts).Error; err != nil {
 		middleware.InternalServerError(c, "Failed to get activity summary")
@@ -134,7 +156,7 @@ func (h *ActivityHandler) GetActivitySummary(c *gin.Context) {
 	// 최근 활동 (최대 5개)
 	var recentActivities []models.ActivityLog
 	if err := db.Model(&models.ActivityLog{}).
-		Where("user_id = ?", userID).
+		Where("user_id = ?", userIDUint).
 		Preload("Project").
 		Preload("Milestone").
 		Order("created_at DESC").
@@ -149,6 +171,7 @@ func (h *ActivityHandler) GetActivitySummary(c *gin.Context) {
 		"activity_counts":   activityCounts,
 		"recent_activities": recentActivities,
 		"summary_period":    "최근 30일",
+		"cached":            false,
 	}
 
 	middleware.Success(c, response, "Activity summary retrieved successfully")

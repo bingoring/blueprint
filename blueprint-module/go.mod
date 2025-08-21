@@ -3,6 +3,7 @@ module blueprint-module
 go 1.21
 
 require (
+	blueprint-scheduler v0.0.0
 	github.com/joho/godotenv v1.5.1
 	github.com/redis/go-redis/v9 v9.3.0
 	golang.org/x/net v0.21.0
@@ -23,3 +24,5 @@ require (
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 )
+
+replace blueprint-scheduler => ../blueprint-scheduler
