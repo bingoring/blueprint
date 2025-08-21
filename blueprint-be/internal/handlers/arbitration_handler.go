@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"blueprint-module/pkg/models"
+	"blueprint/internal/middleware"
 	"blueprint/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -158,9 +159,7 @@ func (h *ArbitrationHandler) RevealVote(c *gin.Context) {
 	}
 
 	// 5. 성공 응답
-	c.JSON(http.StatusOK, gin.H{
-		"message": "투표가 성공적으로 공개되었습니다",
-	})
+	middleware.Success(c, nil, "투표가 성공적으로 공개되었습니다")
 }
 
 // GetJurorDashboard 배심원 대시보드 조회
@@ -192,7 +191,7 @@ func (h *ArbitrationHandler) GetPendingCases(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	disputeType := c.Query("dispute_type")
 	priority := c.Query("priority")
-	
+
 	if page < 1 {
 		page = 1
 	}
@@ -232,7 +231,7 @@ func (h *ArbitrationHandler) GetMyCases(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	status := c.Query("status")
 	role := c.DefaultQuery("role", "all") // "plaintiff", "defendant", "juror", "all"
-	
+
 	if page < 1 {
 		page = 1
 	}
@@ -261,7 +260,7 @@ func (h *ArbitrationHandler) BecomeJuror(c *gin.Context) {
 		LanguageSkills  []string `json:"language_skills"`
 		LegalBackground bool     `json:"legal_background"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "잘못된 요청 데이터입니다: " + err.Error()})
 		return
@@ -293,7 +292,7 @@ func (h *ArbitrationHandler) BecomeJuror(c *gin.Context) {
 func (h *ArbitrationHandler) GetArbitrationStats(c *gin.Context) {
 	// 1. 쿼리 파라미터 추출
 	period := c.DefaultQuery("period", "monthly") // daily, weekly, monthly, yearly
-	
+
 	// 2. 통계 정보 조회
 	stats, err := h.arbitrationService.GetArbitrationStats(period)
 	if err != nil {
@@ -322,7 +321,7 @@ func (h *ArbitrationHandler) AppealCase(c *gin.Context) {
 		Evidence    string `json:"evidence"`
 		StakeAmount int64  `json:"stake_amount" binding:"min=2000"` // 이의제기 스테이킹
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "잘못된 요청 데이터입니다: " + err.Error()})
 		return

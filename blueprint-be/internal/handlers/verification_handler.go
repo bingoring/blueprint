@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"blueprint-module/pkg/models"
+	"blueprint/internal/middleware"
 	"blueprint/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -203,7 +204,7 @@ func (h *VerificationHandler) GetPendingProofs(c *gin.Context) {
 	// 1. 쿼리 파라미터 추출
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	
+
 	if page < 1 {
 		page = 1
 	}
@@ -227,7 +228,7 @@ func (h *VerificationHandler) GetPendingProofs(c *gin.Context) {
 	// 4. 페이징 처리 (간단한 구현)
 	offset := (page - 1) * limit
 	proofs := response.PendingProofs
-	
+
 	var paginatedProofs []models.MilestoneProof
 	if offset < len(proofs) {
 		end := offset + limit
@@ -238,7 +239,7 @@ func (h *VerificationHandler) GetPendingProofs(c *gin.Context) {
 	}
 
 	// 5. 성공 응답
-	c.JSON(http.StatusOK, gin.H{
+	middleware.Success(c, gin.H{
 		"proofs": paginatedProofs,
 		"pagination": gin.H{
 			"page":        page,
@@ -246,7 +247,7 @@ func (h *VerificationHandler) GetPendingProofs(c *gin.Context) {
 			"total":       len(proofs),
 			"total_pages": (len(proofs) + limit - 1) / limit,
 		},
-	})
+	}, "")
 }
 
 // UploadProofFile 증거 파일 업로드
@@ -302,11 +303,10 @@ func (h *VerificationHandler) UploadProofFile(c *gin.Context) {
 	}
 
 	// 6. 성공 응답
-	c.JSON(http.StatusOK, gin.H{
-		"message":  "파일이 성공적으로 업로드되었습니다",
+	middleware.Success(c, gin.H{
 		"file_url": fileURL,
 		"user_id":  userID,
-	})
+	}, "파일이 성공적으로 업로드되었습니다")
 }
 
 // GetMilestoneProofs 마일스톤의 증거 목록 조회
@@ -322,11 +322,10 @@ func (h *VerificationHandler) GetMilestoneProofs(c *gin.Context) {
 
 	// 2. 증거 목록 조회 (간단한 구현)
 	// TODO: VerificationService에 GetMilestoneProofs 메서드 추가
-	c.JSON(http.StatusOK, gin.H{
+	middleware.Success(c, gin.H{
 		"milestone_id": milestoneID,
 		"proofs":       []models.MilestoneProof{},
-		"message":      "증거 목록 조회 기능이 구현 중입니다",
-	})
+	}, "증거 목록 조회 기능이 구현 중입니다")
 }
 
 // GetVerificationStats 검증 통계 조회
@@ -346,7 +345,7 @@ func (h *VerificationHandler) GetVerificationStats(c *gin.Context) {
 	}
 
 	// 3. 성공 응답
-	c.JSON(http.StatusOK, gin.H{
+	middleware.Success(c, gin.H{
 		"statistics": response.Statistics,
 		"qualification": gin.H{
 			"reputation_score": response.Qualification.ReputationScore,
@@ -354,5 +353,5 @@ func (h *VerificationHandler) GetVerificationStats(c *gin.Context) {
 			"total_verifications": response.Qualification.TotalVerifications,
 			"accuracy_rate":    response.Qualification.AccuracyRate,
 		},
-	})
+	}, "")
 }

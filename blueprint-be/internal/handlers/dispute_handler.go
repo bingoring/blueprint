@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 
 	"blueprint-module/pkg/models"
@@ -63,15 +62,11 @@ func (dh *DisputeHandler) ReportMilestoneResult(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Milestone result reported successfully. Challenge window is now open for 48 hours.",
-		"data": gin.H{
-			"milestone_id": milestoneID,
-			"result":       req.Result,
-			"challenge_window_hours": 48,
-		},
-	})
+	middleware.Success(c, gin.H{
+		"milestone_id": milestoneID,
+		"result":       req.Result,
+		"challenge_window_hours": 48,
+	}, "Milestone result reported successfully. Challenge window is now open for 48 hours.")
 }
 
 // ⚔️ 이의 제기
@@ -94,14 +89,10 @@ func (dh *DisputeHandler) CreateDispute(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Dispute created successfully. Voting period will begin soon.",
-		"data": gin.H{
-			"milestone_id": req.MilestoneID,
-			"stake_amount": 100, // $BLUEPRINT
-		},
-	})
+	middleware.Success(c, gin.H{
+		"milestone_id": req.MilestoneID,
+		"stake_amount": 100, // $BLUEPRINT
+	}, "Dispute created successfully. Voting period will begin soon.")
 }
 
 // 🗳️ 분쟁 투표
@@ -124,14 +115,10 @@ func (dh *DisputeHandler) SubmitVote(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Vote submitted successfully",
-		"data": gin.H{
-			"dispute_id": req.DisputeID,
-			"choice":     req.Choice,
-		},
-	})
+	middleware.Success(c, gin.H{
+		"dispute_id": req.DisputeID,
+		"choice":     req.Choice,
+	}, "Vote submitted successfully")
 }
 
 // 📊 분쟁 상세 정보 조회
@@ -149,10 +136,7 @@ func (dh *DisputeHandler) GetDisputeDetail(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    disputeDetail,
-	})
+	middleware.Success(c, disputeDetail, "")
 }
 
 // 📋 마일스톤별 분쟁 목록 조회
@@ -165,63 +149,57 @@ func (dh *DisputeHandler) GetMilestoneDisputes(c *gin.Context) {
 	}
 
 	// TODO: 분쟁 목록 조회 로직 구현
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"milestone_id": milestoneID,
-			"disputes":     []gin.H{}, // 임시 빈 배열
-		},
-	})
+	middleware.Success(c, gin.H{
+		"milestone_id": milestoneID,
+		"disputes":     []gin.H{}, // 임시 빈 배열
+	}, "")
 }
 
 // 🏛️ 현재 진행중인 분쟁 목록 (거버넌스 탭용)
 func (dh *DisputeHandler) GetActiveDisputes(c *gin.Context) {
 	// TODO: 활성 분쟁 목록 조회 로직 구현
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"active_disputes": []gin.H{
-				// Mock data for demonstration
-				{
-					"id":               1,
-					"milestone_id":     10,
-					"milestone_title":  "앱 정식 출시",
-					"project_title":    "혁신적인 모바일 앱",
-					"tier":             "expert",
-					"status":           "voting_period",
-					"time_remaining":   gin.H{"hours": 23, "minutes": 45, "seconds": 12},
-					"total_investment": 75000,
-					"voting_stats": gin.H{
-						"total_voters":     10,
-						"voted_count":      7,
-						"maintain_votes":   4,
-						"overrule_votes":   3,
-						"voting_progress":  0.7,
-					},
-				},
-			},
-			"governance_disputes": []gin.H{
-				// Mock data for DAO disputes
-				{
-					"id":               2,
-					"milestone_id":     15,
-					"milestone_title":  "매출 1억 달성",
-					"project_title":    "블록체인 스타트업",
-					"tier":             "governance",
-					"status":           "voting_period",
-					"time_remaining":   gin.H{"hours": 35, "minutes": 20, "seconds": 8},
-					"total_investment": 1500000,
-					"voting_stats": gin.H{
-						"total_voters":     1000,
-						"voted_count":      234,
-						"maintain_votes":   145,
-						"overrule_votes":   89,
-						"voting_progress":  0.234,
-					},
+	middleware.Success(c, gin.H{
+		"active_disputes": []gin.H{
+			// Mock data for demonstration
+			{
+				"id":               1,
+				"milestone_id":     10,
+				"milestone_title":  "앱 정식 출시",
+				"project_title":    "혁신적인 모바일 앱",
+				"tier":             "expert",
+				"status":           "voting_period",
+				"time_remaining":   gin.H{"hours": 23, "minutes": 45, "seconds": 12},
+				"total_investment": 75000,
+				"voting_stats": gin.H{
+					"total_voters":     10,
+					"voted_count":      7,
+					"maintain_votes":   4,
+					"overrule_votes":   3,
+					"voting_progress":  0.7,
 				},
 			},
 		},
-	})
+		"governance_disputes": []gin.H{
+			// Mock data for DAO disputes
+			{
+				"id":               2,
+				"milestone_id":     15,
+				"milestone_title":  "매출 1억 달성",
+				"project_title":    "블록체인 스타트업",
+				"tier":             "governance",
+				"status":           "voting_period",
+				"time_remaining":   gin.H{"hours": 35, "minutes": 20, "seconds": 8},
+				"total_investment": 1500000,
+				"voting_stats": gin.H{
+					"total_voters":     1000,
+					"voted_count":      234,
+					"maintain_votes":   145,
+					"overrule_votes":   89,
+					"voting_progress":  0.234,
+				},
+			},
+		},
+	}, "")
 }
 
 // ⏰ 분쟁 타이머 상태 조회 (실시간 업데이트용)
@@ -234,17 +212,14 @@ func (dh *DisputeHandler) GetDisputeTimer(c *gin.Context) {
 	}
 
 	// TODO: 실제 타이머 계산 로직
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"dispute_id":     disputeID,
-			"phase":          "voting_period",
-			"time_remaining": gin.H{
-				"hours":      47,
-				"minutes":    23,
-				"seconds":    15,
-				"is_expired": false,
-			},
+	middleware.Success(c, gin.H{
+		"dispute_id":     disputeID,
+		"phase":          "voting_period",
+		"time_remaining": gin.H{
+			"hours":      47,
+			"minutes":    23,
+			"seconds":    15,
+			"is_expired": false,
 		},
-	})
+	}, "")
 }

@@ -3,7 +3,6 @@ package handlers
 import (
 	"blueprint/internal/middleware"
 	"blueprint/internal/services"
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -39,10 +38,7 @@ func (h *FundingHandler) GetFundingStats(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    stats,
-	})
+	middleware.Success(c, stats, "")
 }
 
 // StartFundingPhase 펀딩 단계 강제 시작 (관리자용)
@@ -67,10 +63,7 @@ func (h *FundingHandler) StartFundingPhase(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Funding phase started successfully",
-	})
+	middleware.Success(c, nil, "Funding phase started successfully")
 }
 
 // ProcessExpiredFunding 만료된 펀딩들 강제 처리 (관리자용)
@@ -81,10 +74,7 @@ func (h *FundingHandler) ProcessExpiredFunding(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Expired funding processed successfully",
-	})
+	middleware.Success(c, nil, "Expired funding processed successfully")
 }
 
 // GetLifecycleStats 전체 라이프사이클 통계 조회
@@ -96,10 +86,7 @@ func (h *FundingHandler) GetLifecycleStats(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    stats,
-	})
+	middleware.Success(c, stats, "")
 }
 
 // GetFundingMilestones 펀딩 중인 마일스톤 목록 조회
@@ -121,15 +108,11 @@ func (h *FundingHandler) GetFundingMilestones(c *gin.Context) {
 
 	// 데이터베이스 쿼리 (기본 구현)
 	// TODO: 실제 서비스 메서드로 분리
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "펀딩 중인 마일스톤 목록",
-		"data": gin.H{
-			"page":       page,
-			"limit":      limit,
-			"category":   category,
-			"offset":     offset,
-			"milestones": []gin.H{}, // 실제 데이터는 추후 구현
-		},
-	})
+	middleware.Success(c, gin.H{
+		"page":       page,
+		"limit":      limit,
+		"category":   category,
+		"offset":     offset,
+		"milestones": []gin.H{}, // 실제 데이터는 추후 구현
+	}, "펀딩 중인 마일스톤 목록")
 }

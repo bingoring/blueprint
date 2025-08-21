@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"blueprint-module/pkg/models"
+	"blueprint/internal/middleware"
 	"blueprint/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -90,9 +91,7 @@ func (h *MentorStakingHandler) UnstakeMentor(c *gin.Context) {
 	}
 
 	// 4. 성공 응답
-	c.JSON(http.StatusOK, gin.H{
-		"message": "스테이킹 해제가 성공적으로 처리되었습니다",
-	})
+	middleware.Success(c, nil, "스테이킹 해제가 성공적으로 처리되었습니다")
 }
 
 // ReportMentor 멘토 신고
@@ -152,7 +151,7 @@ func (h *MentorStakingHandler) GetMyStakes(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	status := c.Query("status")
 	stakeType := c.Query("stake_type")
-	
+
 	if page < 1 {
 		page = 1
 	}
@@ -206,7 +205,7 @@ func (h *MentorStakingHandler) GetMentorPerformance(c *gin.Context) {
 
 	// 2. 쿼리 파라미터 추출
 	period := c.DefaultQuery("period", "monthly") // weekly, monthly, quarterly, yearly
-	
+
 	var periodType models.MetricPeriodType
 	switch period {
 	case "weekly":
@@ -229,9 +228,9 @@ func (h *MentorStakingHandler) GetMentorPerformance(c *gin.Context) {
 	}
 
 	// 4. 성공 응답
-	c.JSON(http.StatusOK, gin.H{
+	middleware.Success(c, gin.H{
 		"performance_metric": metric,
-	})
+	}, "")
 }
 
 // GetMentorDashboard 멘토 대시보드 조회
@@ -278,7 +277,7 @@ func (h *MentorStakingHandler) GetSlashEvents(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	status := c.Query("status")
 	slashType := c.Query("slash_type")
-	
+
 	if page < 1 {
 		page = 1
 	}
@@ -313,7 +312,7 @@ func (h *MentorStakingHandler) ProcessSlashEvent(c *gin.Context) {
 		Approved bool   `json:"approved" binding:"required"`
 		Comment  string `json:"comment"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "잘못된 요청 데이터입니다: " + err.Error()})
 		return
@@ -337,10 +336,8 @@ func (h *MentorStakingHandler) ProcessSlashEvent(c *gin.Context) {
 	if req.Approved {
 		status = "승인"
 	}
-	
-	c.JSON(http.StatusOK, gin.H{
-		"message": fmt.Sprintf("슬래싱 이벤트가 %s되었습니다", status),
-	})
+
+	middleware.Success(c, nil, fmt.Sprintf("슬래싱 이벤트가 %s되었습니다", status))
 }
 
 // GetStakingStats 스테이킹 통계 조회
@@ -368,7 +365,7 @@ func (h *MentorStakingHandler) GetTopMentors(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	sortBy := c.DefaultQuery("sort_by", "total_staked") // total_staked, performance_score, success_rate
 	category := c.Query("category") // 전문 분야별 필터링
-	
+
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
@@ -381,9 +378,9 @@ func (h *MentorStakingHandler) GetTopMentors(c *gin.Context) {
 	}
 
 	// 3. 성공 응답
-	c.JSON(http.StatusOK, gin.H{
+	middleware.Success(c, gin.H{
 		"top_mentors": mentors,
 		"criteria":    sortBy,
 		"category":    category,
-	})
+	}, "")
 }
