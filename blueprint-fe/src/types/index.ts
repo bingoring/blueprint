@@ -130,6 +130,7 @@ export interface SettingsAggregateResponse {
 export interface Project {
   id: number;
   user_id: number;
+  creator_id: number; // Blueprint Court 시스템에서 사용 (user_id와 동일한 값)
   title: string;
   description: string;
   category: ProjectCategory;
@@ -324,6 +325,14 @@ export interface Milestone {
   min_validators?: number; // 최소 검증인 수 (기본값: 3)
   min_approval_rate?: number; // 최소 승인률 (기본값: 0.6)
   verification_deadline_days?: number; // 검증 마감일 (일수, 기본값: 3)
+
+  // ⚖️ Blueprint Court 분쟁 해결 시스템 관련 필드들
+  result_reported?: boolean; // 결과 보고 여부 (기본값: false)
+  result_reported_at?: string; // 결과 보고 시각
+  is_in_dispute?: boolean; // 분쟁 진행 중 여부 (기본값: false)
+  dispute_count?: number; // 총 분쟁 횟수 (기본값: 0)
+  final_result_confirmed?: boolean; // 최종 결과 확정 여부 (기본값: false)
+  completed?: boolean; // 완료 여부 (is_completed와 유사하지만 분쟁 시스템용)
 }
 
 export type MilestoneStatus = "pending" | "completed" | "failed" | "cancelled";

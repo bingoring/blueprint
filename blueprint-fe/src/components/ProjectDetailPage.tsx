@@ -1421,7 +1421,7 @@ const ProjectDetailPage: React.FC = () => {
                               <div className="space-y-4">
                                 {/* 결과 미보고 상태 - 생성자만 결과 보고 가능 */}
                                 {!selectedMilestone.result_reported &&
-                                  user?.id === project?.creator_id && (
+                                  Number(user?.id) === project?.creator_id && (
                                     <div className="space-y-3">
                                       <Text className="block">
                                         마일스톤이 완료되면 결과를 보고해주세요.
@@ -1480,7 +1480,8 @@ const ProjectDetailPage: React.FC = () => {
                                           setShowDisputeModal(true)
                                         }
                                         disabled={
-                                          user?.id === project?.creator_id
+                                          Number(user?.id) ===
+                                          project?.creator_id
                                         } // 생성자는 이의제기 불가
                                       >
                                         결과에 이의 제기
