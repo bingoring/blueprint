@@ -877,3 +877,133 @@ export interface OrderBookResponse {
   success: boolean;
   message: string;
 }
+
+// 🏛️ Blueprint Court 분쟁 해결 시스템 타입들
+
+export type DisputeStatus =
+  | "challenge_window" // 이의 제기 대기 (48시간)
+  | "voting_period" // 판결 투표 중 (72시간)
+  | "resolved" // 분쟁 해결 완료
+  | "rejected" // 분쟁 기각 (생성자 승소)
+  | "upheld"; // 분쟁 인용 (제기자 승소)
+
+export type DisputeTier =
+  | "expert" // Tier 1: 전문가 판결 (<10,000 USDC)
+  | "governance"; // Tier 2: DAO 거버넌스 (≥10,000 USDC)
+
+export type VoteChoice =
+  | "maintain" // 생성자 결과 유지
+  | "overrule"; // 분쟁 제기자 지지
+
+export interface MilestoneResult {
+  id: number;
+  milestone_id: number;
+  reporter_id: number;
+  result: boolean; // 보고된 결과 (true=성공)
+  evidence_url?: string; // 증거 URL
+  evidence_files?: string[]; // 증거 파일들
+  description: string; // 설명
+  is_disputed: boolean; // 분쟁 중 여부
+  is_final: boolean; // 최종 확정 여부
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Dispute {
+  id: number;
+  milestone_id: number;
+  challenger_id: number;
+  original_result: boolean;
+  dispute_reason: string;
+  stake_amount: number; // 예치금 (센트 단위)
+  status: DisputeStatus;
+  tier: DisputeTier;
+  total_investment_amount: number;
+  challenge_window_end: string;
+  voting_period_end?: string;
+  maintain_votes: number;
+  overrule_votes: number;
+  final_result?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DisputeVote {
+  id: number;
+  dispute_id: number;
+  voter_id: number;
+  choice: VoteChoice;
+  token_amount?: number; // 토큰 가중치 (DAO 투표용)
+  investment_amount?: number; // 투자액 (전문가 투표용)
+  created_at: string;
+}
+
+export interface DisputeJury {
+  id: number;
+  dispute_id: number;
+  juror_id: number;
+  position: "success_investor" | "fail_investor";
+  investment_amount: number;
+  has_voted: boolean;
+  juror?: User; // 판결단원 정보
+}
+
+export interface VotingStats {
+  total_voters: number;
+  voted_count: number;
+  maintain_votes: number;
+  overrule_votes: number;
+  voting_progress: number; // 0-1
+}
+
+export interface TimeRemaining {
+  phase: "challenge_window" | "voting_period";
+  hours: number;
+  minutes: number;
+  seconds: number;
+  is_expired: boolean;
+}
+
+export interface DisputeDetailResponse {
+  dispute: Dispute;
+  milestone_result: MilestoneResult;
+  jury_members: DisputeJury[];
+  voting_stats: VotingStats;
+  time_remaining: TimeRemaining;
+}
+
+// 요청 타입들
+export interface CreateDisputeRequest {
+  milestone_id: number;
+  dispute_reason: string;
+}
+
+export interface SubmitVoteRequest {
+  dispute_id: number;
+  choice: VoteChoice;
+}
+
+export interface ReportMilestoneResultRequest {
+  result: boolean;
+  evidence_url?: string;
+  evidence_files?: string[];
+  description: string;
+}
+
+// 거버넌스 관련 타입들
+export interface ActiveDisputesResponse {
+  active_disputes: DisputeSummary[];
+  governance_disputes: DisputeSummary[];
+}
+
+export interface DisputeSummary {
+  id: number;
+  milestone_id: number;
+  milestone_title: string;
+  project_title: string;
+  tier: DisputeTier;
+  status: DisputeStatus;
+  time_remaining: TimeRemaining;
+  total_investment: number;
+  voting_stats: VotingStats;
+}

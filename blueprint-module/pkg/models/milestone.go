@@ -68,6 +68,13 @@ type Milestone struct {
 	Evidence    string         `json:"evidence" gorm:"type:text"`
 	Notes       string         `json:"notes" gorm:"type:text"`
 
+	// 🆕 Blueprint Court 분쟁 해결 시스템
+	ResultReported     bool      `json:"result_reported" gorm:"default:false"`          // 결과 보고 여부
+	ResultReportedAt   *time.Time `json:"result_reported_at"`                          // 결과 보고 시각
+	IsInDispute        bool      `json:"is_in_dispute" gorm:"default:false"`           // 분쟁 진행 중 여부
+	DisputeCount       int       `json:"dispute_count" gorm:"default:0"`               // 총 분쟁 횟수
+	FinalResultConfirmed bool    `json:"final_result_confirmed" gorm:"default:false"` // 최종 결과 확정 여부
+
 	// 🔍 증명 및 검증 관련 필드
 	RequiresProof            bool      `json:"requires_proof" gorm:"default:true"`            // 증거 제출 필요 여부
 	ProofTypes               string    `json:"-" gorm:"type:text"`                            // 허용되는 증거 타입들 (JSON 배열)
