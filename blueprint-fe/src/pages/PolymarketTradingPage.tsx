@@ -121,21 +121,16 @@ const PolymarketTradingPage: React.FC = () => {
         if (foundMilestone) {
           setMilestone(foundMilestone);
 
-          // Set first option as default
-          if (
-            foundMilestone.betting_options &&
-            foundMilestone.betting_options.length > 0
-          ) {
-            const firstOption = foundMilestone.betting_options[0];
-            setSelectedOption(firstOption);
-            console.log("🎯 Selected option set to:", firstOption);
+          // Set default option to success
+          const firstOption = "success";
+          setSelectedOption(firstOption);
+          console.log("🎯 Selected option set to:", firstOption);
 
-            // Load market data for the selected option
-            setTimeout(() => {
-              console.log("🔄 Loading market data for option:", firstOption);
-              loadMarketDataForOption(firstOption);
-            }, 100);
-          }
+          // Load market data for the selected option
+          setTimeout(() => {
+            console.log("🔄 Loading market data for option:", firstOption);
+            loadMarketDataForOption(firstOption);
+          }, 100);
         }
       }
 
@@ -597,7 +592,7 @@ const PolymarketTradingPage: React.FC = () => {
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           {/* Option selector */}
           <div style={{ display: "flex", gap: "8px" }}>
-            {milestone.betting_options?.map((option) => (
+            {["success", "fail"].map((option) => (
               <button
                 key={option}
                 className={`trading-tab ${

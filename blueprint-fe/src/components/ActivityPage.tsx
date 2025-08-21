@@ -36,7 +36,7 @@ import {
   TrophyIcon,
 } from "./icons/BlueprintIcons";
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 interface MyProject {
   id: number;
@@ -110,7 +110,7 @@ interface ActivityData {
 
 const ActivityPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [activityData, setActivityData] = useState<ActivityData | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");

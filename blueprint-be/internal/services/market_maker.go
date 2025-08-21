@@ -220,8 +220,8 @@ func (mm *MarketMakerBot) scanActiveMarkets() error {
 			}
 		}
 
-		// 각 옵션에 대해 마켓 정보 생성
-		for _, option := range milestone.BettingOptions {
+		// 성공/실패 두 옵션에 대해 마켓 정보 생성
+		for _, option := range []string{"success", "fail"} {
 			key := fmt.Sprintf("%d:%s", milestone.ID, option)
 
 			if _, exists := mm.activeMarkets[key]; !exists {

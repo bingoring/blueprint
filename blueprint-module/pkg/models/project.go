@@ -131,10 +131,6 @@ type CreateProjectMilestoneRequest struct {
 	Order       int        `json:"order" binding:"required,min=1,max=5"`
 	TargetDate  *time.Time `json:"target_date"`
 
-	// 베팅 관련 필드 추가
-	BettingType    string   `json:"betting_type"`    // simple, custom
-	BettingOptions []string `json:"betting_options"` // 커스텀 베팅 옵션들
-
 	// 🔍 증명 및 검증 관련 필드들
 	RequiresProof             *bool    `json:"requires_proof,omitempty"`               // 증거 제출 필요 여부
 	ProofTypes                []string `json:"proof_types,omitempty"`                  // 허용되는 증거 타입들 (string array)
@@ -153,10 +149,6 @@ type UpdateMilestoneRequest struct {
 	TargetDate  *time.Time `json:"target_date"`
 	Evidence    string     `json:"evidence"`
 	Notes       string     `json:"notes"`
-
-	// 베팅 관련 필드 추가
-	BettingType    string   `json:"betting_type"`    // simple, custom
-	BettingOptions []string `json:"betting_options"` // 커스텀 베팅 옵션들
 
 	// 🔍 증명 및 검증 관련 필드들
 	RequiresProof             *bool    `json:"requires_proof,omitempty"`               // 증거 제출 필요 여부

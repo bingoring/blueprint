@@ -318,10 +318,6 @@ export interface Milestone {
   created_at?: string; // 선택적으로 변경 (DB에서만 필요)
   updated_at?: string; // 선택적으로 변경 (DB에서만 필요)
 
-  // 투자 관련 새 필드들
-  betting_type?: "simple" | "custom";
-  betting_options?: string[]; // 베팅 옵션 배열
-
   // 🔍 증명 및 검증 관련 필드들
   requires_proof?: boolean; // 증거 제출 필요 여부 (기본값: true)
   proof_types?: ProofType[]; // 허용되는 증거 타입들

@@ -93,14 +93,6 @@ func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 	// 마일스톤들 생성
 	var milestones []models.Milestone
 	for _, milestoneReq := range req.Milestones {
-		// betting_options 올바르게 설정
-		bettingOptions := milestoneReq.BettingOptions
-		if milestoneReq.BettingType == "simple" {
-			bettingOptions = []string{"success", "fail"}
-		} else if milestoneReq.BettingType == "custom" && len(milestoneReq.BettingOptions) == 0 {
-			// custom이지만 옵션이 없으면 기본값 사용
-			bettingOptions = []string{"success", "fail"}
-		}
 
 		// 🔍 인증 관련 필드 기본값 설정
 		requiresProof := true
@@ -137,9 +129,7 @@ func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 			Order:          milestoneReq.Order,
 			TargetDate:     milestoneReq.TargetDate,
 			Status:         models.MilestoneStatusPending,
-			BettingType:    milestoneReq.BettingType,
-			BettingOptions: bettingOptions, // 올바른 옵션 할당
-			
+
 			// 🔍 인증 관련 필드들 설정
 			RequiresProof:            requiresProof,
 			ProofTypesArray:          proofTypes, // BeforeSave에서 JSON으로 변환됨
@@ -163,33 +153,19 @@ func (h *ProjectHandler) CreateProjectWithMilestones(c *gin.Context) {
 		return
 	}
 
-	// 각 마일스톤에 대한 betting options 설정 및 마켓 초기화 🎯
+	// 각 마일스톤에 대한 마켓 초기화 🎯
 	publisher := queue.NewPublisher()
 	for _, milestone := range milestones {
-		// betting options가 비어있으면 기본값 설정
-		if len(milestone.BettingOptions) == 0 {
-			if milestone.BettingType == "simple" {
-				milestone.BettingOptions = []string{"success", "fail"}
-			} else {
-				milestone.BettingOptions = []string{"success", "fail"}
-			}
-
-			// 데이터베이스에 업데이트
-			if err := database.GetDB().Model(&milestone).Update("betting_options", milestone.BettingOptions).Error; err != nil {
-				log.Printf("Failed to update betting options for milestone %d: %v", milestone.ID, err)
-			}
-		}
-
-		// 🚀 마켓 초기화 이벤트를 큐에 발행
+		// 🚀 마켓 초기화 이벤트를 큐에 발행 (항상 성공/실패 두 옵션)
 		err := publisher.EnqueueMarketInit(queue.MarketInitEventData{
 			ProjectID:   project.ID,
 			MilestoneID: milestone.ID,
-			Options:     milestone.BettingOptions,
+			Options:     []string{"success", "fail"}, // 고정된 두 옵션
 		})
 		if err != nil {
 			log.Printf("❌ Failed to enqueue market init for milestone %d: %v", milestone.ID, err)
 		} else {
-			log.Printf("✅ Market init queued for milestone %d with options: %v", milestone.ID, milestone.BettingOptions)
+			log.Printf("✅ Market init queued for milestone %d with success/fail options", milestone.ID)
 		}
 	}
 
@@ -521,12 +497,6 @@ func (h *ProjectHandler) UpdateProjectWithMilestones(c *gin.Context) {
 			if milestoneReq.Notes != "" {
 				milestoneUpdates["notes"] = milestoneReq.Notes
 			}
-			if milestoneReq.BettingType != "" {
-				milestoneUpdates["betting_type"] = milestoneReq.BettingType
-			}
-			if len(milestoneReq.BettingOptions) > 0 {
-				milestoneUpdates["betting_options"] = milestoneReq.BettingOptions
-			}
 
 			// 🔍 인증 관련 필드 업데이트
 			if milestoneReq.RequiresProof != nil {
@@ -564,13 +534,6 @@ func (h *ProjectHandler) UpdateProjectWithMilestones(c *gin.Context) {
 			}
 		} else {
 			// 새 마일스톤 생성 (ID가 없는 경우)
-			// betting_options 설정
-			bettingOptions := milestoneReq.BettingOptions
-			if milestoneReq.BettingType == "simple" {
-				bettingOptions = []string{"success", "fail"}
-			} else if milestoneReq.BettingType == "custom" && len(milestoneReq.BettingOptions) == 0 {
-				bettingOptions = []string{"success", "fail"}
-			}
 
 			// 🔍 인증 관련 필드 기본값 설정
 			requiresProof := true
@@ -606,11 +569,9 @@ func (h *ProjectHandler) UpdateProjectWithMilestones(c *gin.Context) {
 				Order:          milestoneReq.Order,
 				TargetDate:     milestoneReq.TargetDate,
 				Status:         models.MilestoneStatusPending,
-				BettingType:    milestoneReq.BettingType,
-				BettingOptions: bettingOptions,
 				Evidence:       milestoneReq.Evidence,
 				Notes:          milestoneReq.Notes,
-				
+
 				// 🔍 인증 관련 필드들 설정
 				RequiresProof:            requiresProof,
 				ProofTypesArray:          proofTypes,

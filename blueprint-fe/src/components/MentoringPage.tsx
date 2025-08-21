@@ -118,7 +118,7 @@ interface MentoringData {
 
 const MentoringPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [mentoringData, setMentoringData] = useState<MentoringData | null>(
     null

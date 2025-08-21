@@ -27,7 +27,6 @@ import {
   Col,
   Form,
   Input,
-  Layout,
   List,
   Modal,
   Progress,
@@ -50,7 +49,7 @@ import type { Milestone, Project } from "../types";
 import GlobalNavbar from "./GlobalNavbar";
 import { MilestoneIcon, PathIcon } from "./icons/BlueprintIcons";
 
-const { Content } = Layout;
+// const { Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
@@ -505,7 +504,7 @@ const ProjectDetailPage: React.FC = () => {
                 ) : (
                   // 펼쳐진 상태: 기존 목록 형태
                   <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {project.milestones?.map((milestone, index) => {
+                    {project.milestones?.map((milestone) => {
                       const status = getMilestoneStatus(milestone.status);
                       const isSelected = selectedMilestone?.id === milestone.id;
 
@@ -651,6 +650,200 @@ const ProjectDetailPage: React.FC = () => {
                                     >
                                       차트 데이터를 로딩 중입니다...
                                     </Text>
+                                  </div>
+                                </div>
+                              </Card>
+
+                              {/* 호가창 (Order Book) */}
+                              <Card
+                                title="호가창 (Order Book)"
+                                style={{
+                                  background: "var(--bg-card)",
+                                  border: "1px solid var(--border-color)",
+                                }}
+                              >
+                                <div className="h-96">
+                                  {/* 매도 호가 (Ask Orders) */}
+                                  <div className="mb-4">
+                                    <Text
+                                      style={{ color: "var(--text-secondary)" }}
+                                      className="text-sm font-medium mb-2 block"
+                                    >
+                                      매도 (Ask) - NO
+                                    </Text>
+                                    <div className="space-y-1">
+                                      {[
+                                        {
+                                          price: 0.32,
+                                          amount: 450,
+                                          total: 144,
+                                        },
+                                        {
+                                          price: 0.31,
+                                          amount: 820,
+                                          total: 254.2,
+                                        },
+                                        {
+                                          price: 0.3,
+                                          amount: 1200,
+                                          total: 360,
+                                        },
+                                        {
+                                          price: 0.29,
+                                          amount: 950,
+                                          total: 275.5,
+                                        },
+                                        {
+                                          price: 0.28,
+                                          amount: 1500,
+                                          total: 420,
+                                        },
+                                      ].map((order, idx) => (
+                                        <div
+                                          key={idx}
+                                          className="flex items-center justify-between py-1 px-2 rounded hover:bg-red-50 dark:hover:bg-red-900/10 cursor-pointer"
+                                          style={{
+                                            background: `linear-gradient(to left, rgba(220, 38, 38, 0.1) ${
+                                              (order.amount / 1500) * 100
+                                            }%, transparent 0%)`,
+                                          }}
+                                        >
+                                          <div className="flex items-center gap-4 flex-1">
+                                            <Text
+                                              strong
+                                              style={{
+                                                color: "var(--color-error)",
+                                              }}
+                                              className="min-w-16"
+                                            >
+                                              ${order.price.toFixed(2)}
+                                            </Text>
+                                            <Text
+                                              style={{
+                                                color: "var(--text-primary)",
+                                              }}
+                                              className="min-w-20"
+                                            >
+                                              {order.amount.toLocaleString()}
+                                            </Text>
+                                            <Text
+                                              style={{
+                                                color: "var(--text-secondary)",
+                                              }}
+                                              className="text-sm"
+                                            >
+                                              ${order.total.toLocaleString()}
+                                            </Text>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {/* 현재 가격 */}
+                                  <div className="py-3 px-2 text-center border-y border-dashed border-gray-300 dark:border-gray-600 mb-4">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <Text
+                                        strong
+                                        className="text-lg"
+                                        style={{
+                                          color: "var(--color-success)",
+                                        }}
+                                      >
+                                        $0.72
+                                      </Text>
+                                      <Text
+                                        style={{
+                                          color: "var(--color-success)",
+                                        }}
+                                        className="text-sm"
+                                      >
+                                        ↑ +$0.05
+                                      </Text>
+                                    </div>
+                                    <Text
+                                      style={{ color: "var(--text-tertiary)" }}
+                                      className="text-xs"
+                                    >
+                                      현재 시장가 (YES)
+                                    </Text>
+                                  </div>
+
+                                  {/* 매수 호가 (Bid Orders) */}
+                                  <div>
+                                    <Text
+                                      style={{ color: "var(--text-secondary)" }}
+                                      className="text-sm font-medium mb-2 block"
+                                    >
+                                      매수 (Bid) - YES
+                                    </Text>
+                                    <div className="space-y-1">
+                                      {[
+                                        {
+                                          price: 0.71,
+                                          amount: 2100,
+                                          total: 1491,
+                                        },
+                                        {
+                                          price: 0.7,
+                                          amount: 1800,
+                                          total: 1260,
+                                        },
+                                        {
+                                          price: 0.69,
+                                          amount: 1350,
+                                          total: 931.5,
+                                        },
+                                        {
+                                          price: 0.68,
+                                          amount: 950,
+                                          total: 646,
+                                        },
+                                        {
+                                          price: 0.67,
+                                          amount: 750,
+                                          total: 502.5,
+                                        },
+                                      ].map((order, idx2) => (
+                                        <div
+                                          key={idx2}
+                                          className="flex items-center justify-between py-1 px-2 rounded hover:bg-green-50 dark:hover:bg-green-900/10 cursor-pointer"
+                                          style={{
+                                            background: `linear-gradient(to left, rgba(34, 197, 94, 0.1) ${
+                                              (order.amount / 2100) * 100
+                                            }%, transparent 0%)`,
+                                          }}
+                                        >
+                                          <div className="flex items-center gap-4 flex-1">
+                                            <Text
+                                              strong
+                                              style={{
+                                                color: "var(--color-success)",
+                                              }}
+                                              className="min-w-16"
+                                            >
+                                              ${order.price.toFixed(2)}
+                                            </Text>
+                                            <Text
+                                              style={{
+                                                color: "var(--text-primary)",
+                                              }}
+                                              className="min-w-20"
+                                            >
+                                              {order.amount.toLocaleString()}
+                                            </Text>
+                                            <Text
+                                              style={{
+                                                color: "var(--text-secondary)",
+                                              }}
+                                              className="text-sm"
+                                            >
+                                              ${order.total.toLocaleString()}
+                                            </Text>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
                                 </div>
                               </Card>

@@ -566,10 +566,10 @@ func (h *TradingHandler) InitializeMarket(c *gin.Context) {
 		return
 	}
 
-	// 옵션이 없으면 마일스톤의 betting_options 사용
+	// 옵션이 없으면 기본 성공/실패 옵션 사용
 	options := req.Options
 	if len(options) == 0 {
-		options = milestone.BettingOptions
+		options = []string{"success", "fail"}
 	}
 
 	// 마켓 초기화는 매칭 엔진에서 동적으로 처리됩니다

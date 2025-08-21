@@ -11,7 +11,6 @@ import {
   Avatar,
   Card,
   Col,
-  DatePicker,
   Divider,
   List,
   Progress,
@@ -31,7 +30,6 @@ import { TrophyIcon } from "./icons/BlueprintIcons";
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
-const { RangePicker } = DatePicker;
 
 interface SuccessfulProject {
   id: number;
@@ -804,7 +802,7 @@ const HallOfFamePage: React.FC = () => {
                         description={
                           <Space>
                             <Text type="secondary">@{item.creator}</Text>
-                            <Tag size="small">{item.category}</Tag>
+                            <Tag>{item.category}</Tag>
                           </Space>
                         }
                       />
@@ -856,7 +854,7 @@ const HallOfFamePage: React.FC = () => {
                         description={
                           <Space>
                             <Text type="secondary">@{item.creator}</Text>
-                            <Tag size="small">{item.category}</Tag>
+                            <Tag>{item.category}</Tag>
                           </Space>
                         }
                       />
@@ -918,7 +916,7 @@ const HallOfFamePage: React.FC = () => {
                         description={
                           <Space>
                             <Text type="secondary">@{item.creator}</Text>
-                            <Tag size="small">{item.category}</Tag>
+                            <Tag>{item.category}</Tag>
                           </Space>
                         }
                       />
@@ -973,7 +971,7 @@ const HallOfFamePage: React.FC = () => {
                         description={
                           <Space>
                             <Text type="secondary">@{item.creator}</Text>
-                            <Tag size="small">{item.category}</Tag>
+                            <Tag>{item.category}</Tag>
                           </Space>
                         }
                       />

@@ -57,9 +57,7 @@ type Milestone struct {
 	Status      MilestoneStatus `json:"status" gorm:"type:varchar(20);default:'proposal'"`
 	IsCompleted bool           `json:"is_completed" gorm:"default:false"`
 
-	// 베팅 관련 (새로 추가)
-	BettingType    string   `json:"betting_type" gorm:"type:varchar(20);default:'simple'"` // simple, custom
-	BettingOptions []string `json:"betting_options" gorm:"type:text;serializer:json"`      // JSON 배열
+	// 베팅은 항상 성공/실패 두 옵션만 지원
 
 	// 응원 (베팅) 관련
 	TotalSupport       int64   `json:"total_support" gorm:"default:0"`
@@ -79,7 +77,7 @@ type Milestone struct {
 	VerificationDeadlineDays int       `json:"verification_deadline_days" gorm:"default:3"`   // 검증 마감일 (일수)
 	MinValidators            int       `json:"min_validators" gorm:"default:3"`               // 최소 검증인 수
 	MinApprovalRate          float64   `json:"min_approval_rate" gorm:"default:0.6"`          // 최소 승인률 (60%)
-	
+
 	// 검증 통계
 	TotalValidators       int       `json:"total_validators" gorm:"default:0"`           // 총 검증인 수
 	ApprovalVotes         int       `json:"approval_votes" gorm:"default:0"`             // 승인 투표 수
@@ -97,7 +95,7 @@ type Milestone struct {
 
 	// 외래키 참조
 	Project Project `json:"project,omitempty" gorm:"foreignKey:ProjectID"`
-	
+
 	// 🔍 검증 관련 관계 (circular import 방지를 위해 interface{} 사용)
 	// 실제 사용시에는 적절한 타입 캐스팅 필요
 }
@@ -143,7 +141,7 @@ func (m *Milestone) StartFundingPhase() {
 
 // CanSubmitProof 증거 제출 가능 여부
 func (m *Milestone) CanSubmitProof() bool {
-	return m.RequiresProof && 
+	return m.RequiresProof &&
 		   m.Status == MilestoneStatusActive &&
 		   (m.ProofDeadline == nil || time.Now().Before(*m.ProofDeadline))
 }
@@ -170,7 +168,7 @@ func (m *Milestone) HasReachedApprovalThreshold() bool {
 
 // CanCompleteVerification 검증 완료 가능 여부
 func (m *Milestone) CanCompleteVerification() bool {
-	return m.HasSufficientValidators() && 
+	return m.HasSufficientValidators() &&
 		   (m.HasReachedApprovalThreshold() || m.IsVerificationExpired())
 }
 
@@ -179,7 +177,7 @@ func (m *Milestone) UpdateVerificationStats(approvalVotes, rejectionVotes int) {
 	m.ApprovalVotes = approvalVotes
 	m.RejectionVotes = rejectionVotes
 	m.TotalValidators = approvalVotes + rejectionVotes
-	
+
 	if m.TotalValidators > 0 {
 		m.CurrentApprovalRate = float64(approvalVotes) / float64(m.TotalValidators)
 	} else {

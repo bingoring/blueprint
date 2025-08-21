@@ -16,13 +16,6 @@ export const VALIDATION_MESSAGES = {
   DUPLICATE: "이미 존재하는 값입니다.",
   DUPLICATE_OPTION: (value: string) => `"${value}" 옵션이 이미 존재합니다.`,
 
-  // 베팅 옵션 관련
-  BETTING_OPTION_REQUIRED: "옵션을 입력해주세요.",
-  BETTING_OPTION_DUPLICATE: (option: string) =>
-    `"${option}" 옵션이 이미 존재합니다.`,
-  BETTING_OPTION_MIN_LENGTH: "옵션은 최소 2글자 이상이어야 합니다.",
-  BETTING_OPTION_MAX_LENGTH: "옵션은 최대 50글자까지 가능합니다.",
-
   // 마일스톤 관련
   MILESTONE_TITLE_REQUIRED: "마일스톤 제목을 입력해주세요.",
   MILESTONE_TITLE_DUPLICATE: (title: string) =>
@@ -48,8 +41,6 @@ export const ERROR_MESSAGES = {
 
   // 권한 관련
   INVESTORS_EXISTS: "투자자가 있는 프로젝트는 수정할 수 없습니다.",
-  BETTING_OPTIONS_LOCKED:
-    "투자자가 있는 프로젝트는 투자 옵션을 변경할 수 없습니다.",
 } as const;
 
 export const WARNING_MESSAGES = {
@@ -73,9 +64,6 @@ export const MessageHelpers = {
   /**
    * 동적 메시지 생성 (타입 안전)
    */
-  getDuplicateOptionMessage: (option: string): string =>
-    VALIDATION_MESSAGES.BETTING_OPTION_DUPLICATE(option),
-
   getRequiredFieldMessage: (fieldName: string): string =>
     VALIDATION_MESSAGES.REQUIRED_FIELD(fieldName),
 

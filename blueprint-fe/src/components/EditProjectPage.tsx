@@ -22,7 +22,6 @@ import {
   Form,
   Input,
   InputNumber,
-  Radio,
   Row,
   Select,
   Slider,
@@ -35,11 +34,10 @@ import {
   Typography,
 } from "antd";
 import dayjs from "dayjs";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { VALIDATION_MESSAGES } from "../constants/messages";
 import { useNotification } from "../hooks/useNotification";
-import type { ValidationRule } from "../hooks/useValidation";
 import { ValidationRules } from "../hooks/useValidation";
 import { apiClient } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -51,112 +49,11 @@ import type {
 } from "../types";
 import { FormFieldWithValidation } from "./common/FormFieldWithValidation";
 
-const { Title, Paragraph, Text } = Typography;
+const { Title, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Step } = Steps;
 
-interface CustomBettingOptionsProps {
-  milestoneIndex: number;
-  milestone: ProjectMilestone;
-  onAddOption: (milestoneIndex: number, option: string) => void;
-  onRemoveOption: (milestoneIndex: number, optionIndex: number) => void;
-}
-
-// 사용자 정의 투자 옵션 컴포넌트 (CreateProjectPage와 동일)
-const CustomBettingOptions: React.FC<CustomBettingOptionsProps> = ({
-  milestoneIndex,
-  milestone,
-  onAddOption,
-  onRemoveOption,
-}) => {
-  const [newOption, setNewOption] = useState("");
-  const { showSuccess } = useNotification();
-
-  const validationRules: ValidationRule<string>[] = useMemo(
-    () => [
-      ValidationRules.required(VALIDATION_MESSAGES.BETTING_OPTION_REQUIRED),
-      ValidationRules.minLength(
-        2,
-        VALIDATION_MESSAGES.BETTING_OPTION_MIN_LENGTH
-      ),
-      ValidationRules.maxLength(
-        50,
-        VALIDATION_MESSAGES.BETTING_OPTION_MAX_LENGTH
-      ),
-      ValidationRules.unique(VALIDATION_MESSAGES.DUPLICATE),
-    ],
-    []
-  );
-
-  const handleAddOption = () => {
-    onAddOption(milestoneIndex, newOption.trim());
-    setNewOption("");
-    showSuccess("옵션이 추가되었습니다.");
-  };
-
-  const handleRemoveOption = (optionIndex: number) => {
-    onRemoveOption(milestoneIndex, optionIndex);
-    showSuccess("옵션이 삭제되었습니다.");
-  };
-
-  return (
-    <div className="space-y-3">
-      <div>
-        <Text
-          type="secondary"
-          className="text-sm"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          투자자들이 선택할 수 있는 옵션들을 추가하세요. 예: "1년 내 완료", "2년
-          내 완료", "3년 내 완료"
-        </Text>
-      </div>
-
-      <FormFieldWithValidation
-        value={newOption}
-        onChange={setNewOption}
-        placeholder="새 투자 옵션 입력 (예: 1년 내 완료)"
-        validationRules={validationRules}
-        validationContext={milestone.betting_options || []}
-        actionButton={{
-          text: "추가",
-          icon: <PlusOutlined />,
-          onClick: handleAddOption,
-        }}
-        onEnter={handleAddOption}
-        className="mb-4"
-      />
-
-      {milestone.betting_options && milestone.betting_options.length > 0 && (
-        <div className="space-y-2">
-          <Text
-            type="secondary"
-            className="text-sm"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            현재 옵션들:
-          </Text>
-          <div className="flex flex-wrap gap-2">
-            {milestone.betting_options.map((option: string, index: number) => (
-              <Tag
-                key={index}
-                closable
-                onClose={() => handleRemoveOption(index)}
-                style={{
-                  backgroundColor: "var(--bg-secondary)",
-                  borderColor: "var(--border-color)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                {option}
-              </Tag>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+// 투자옵션 기능 제거됨 - 성공/실패만 지원
 
 const EditProjectPage: React.FC = () => {
   const navigate = useNavigate();
@@ -293,20 +190,6 @@ const EditProjectPage: React.FC = () => {
           showError(`마일스톤 ${i + 1}의 제목을 입력해주세요.`);
           return;
         }
-
-        if (milestone.betting_type === "custom") {
-          if (
-            !milestone.betting_options ||
-            milestone.betting_options.length < 2
-          ) {
-            showError(
-              `마일스톤 ${
-                i + 1
-              }의 사용자 정의 옵션은 최소 2개 이상이어야 합니다.`
-            );
-            return;
-          }
-        }
       }
 
       setCurrentStep(currentStep + 1);
@@ -319,43 +202,14 @@ const EditProjectPage: React.FC = () => {
     }
   };
 
-  // 마일스톤 관리 함수들 (CreateProjectPage와 동일)
+  // 마일스톤 업데이트
   const updateMilestone = (
     index: number,
-    field: keyof ProjectMilestone,
-    value: string | string[] | number | boolean
+    field: string,
+    value: string | string[] | boolean | number
   ) => {
     const newMilestones = [...milestones];
     newMilestones[index] = { ...newMilestones[index], [field]: value };
-
-    if (field === "betting_type" && value === "custom") {
-      newMilestones[index].betting_options = [];
-    } else if (field === "betting_type" && value === "simple") {
-      newMilestones[index].betting_options = [];
-    }
-
-    setMilestones(newMilestones);
-  };
-
-  const addBettingOption = (milestoneIndex: number, option: string) => {
-    const newMilestones = [...milestones];
-    const currentOptions = newMilestones[milestoneIndex].betting_options || [];
-    newMilestones[milestoneIndex] = {
-      ...newMilestones[milestoneIndex],
-      betting_options: [...currentOptions, option],
-    };
-    setMilestones(newMilestones);
-  };
-
-  const removeBettingOption = (milestoneIndex: number, optionIndex: number) => {
-    const newMilestones = [...milestones];
-    const currentOptions = newMilestones[milestoneIndex].betting_options || [];
-    newMilestones[milestoneIndex] = {
-      ...newMilestones[milestoneIndex],
-      betting_options: currentOptions.filter(
-        (_: string, i: number) => i !== optionIndex
-      ),
-    };
     setMilestones(newMilestones);
   };
 
@@ -414,8 +268,6 @@ const EditProjectPage: React.FC = () => {
         target_date: milestone.target_date
           ? formatTargetDate(milestone.target_date)
           : undefined,
-        betting_type: milestone.betting_type || "simple",
-        betting_options: milestone.betting_options || ["success", "fail"],
         // 인증 관련 필드들
         requires_proof: milestone.requires_proof,
         proof_types: milestone.proof_types,
@@ -875,42 +727,6 @@ const EditProjectPage: React.FC = () => {
                         </Col>
                       </Row>
 
-                      {/* 투자 옵션 설정 */}
-                      <Divider
-                        className="!my-4"
-                        style={{ borderTopColor: "var(--border-color)" }}
-                      />
-                      <div className="space-y-3">
-                        <div>
-                          <Typography.Text strong>
-                            💰 투자 옵션 타입
-                          </Typography.Text>
-                          <Radio.Group
-                            value={milestone.betting_type || "simple"}
-                            onChange={(e) =>
-                              updateMilestone(
-                                index,
-                                "betting_type",
-                                e.target.value
-                              )
-                            }
-                            className="ml-3"
-                          >
-                            <Radio value="simple">📍 단순 (성공/실패)</Radio>
-                            <Radio value="custom">🎯 사용자 정의</Radio>
-                          </Radio.Group>
-                        </div>
-
-                        {milestone.betting_type === "custom" && (
-                          <CustomBettingOptions
-                            milestoneIndex={index}
-                            milestone={milestone}
-                            onAddOption={addBettingOption}
-                            onRemoveOption={removeBettingOption}
-                          />
-                        )}
-                      </div>
-
                       {/* 🔍 인증 방법 설정 */}
                       <Divider
                         className="!my-4"
@@ -1307,20 +1123,6 @@ const EditProjectPage: React.FC = () => {
                                 }}
                               >
                                 {milestone.title || `마일스톤 ${index + 1}`}
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: "12px",
-                                  color: "var(--text-secondary)",
-                                  marginTop: "4px",
-                                }}
-                              >
-                                투자 옵션:{" "}
-                                {milestone.betting_type === "simple"
-                                  ? "📍 단순 (성공/실패)"
-                                  : `🎯 사용자 정의 (${
-                                      milestone.betting_options?.length || 0
-                                    }개 옵션)`}
                               </div>
                               <div
                                 style={{
