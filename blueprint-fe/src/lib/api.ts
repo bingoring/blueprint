@@ -1,13 +1,17 @@
 import type {
   AIMilestoneResponse,
   AIUsageInfo,
+  ActiveDisputesResponse,
   ActivityLogParams,
   ActivityLogResponse,
   ActivitySummaryResponse,
   ApiResponse,
   AuthResponse,
+  CreateDisputeRequest,
   CreateOrderRequest,
   CreateProjectWithMilestonesRequest,
+  DisputeDetailResponse,
+  DisputeSummary,
   Expert,
   LogoutResponse,
   MarketStatusResponse,
@@ -26,7 +30,10 @@ import type {
   ProjectStatus,
   ProjectStatusOption,
   RefreshTokenResponse,
+  ReportMilestoneResultRequest,
   SettingsAggregateResponse,
+  SubmitVoteRequest,
+  TimeRemaining,
   TokenExpiryResponse,
   Trade,
   UpdateProfileRequest,
@@ -611,6 +618,86 @@ class ApiClient {
     return this.request<{ data: object[]; interval: string; count: number }>(
       `/milestones/${milestoneId}/price-history/${optionId}?interval=${interval}&limit=${limit}`
     );
+  }
+
+  // ================================
+  // ⚖️ Blueprint Court 분쟁 해결 시스템 API
+  // ================================
+
+  // 마일스톤 결과 보고 (생성자)
+  async reportMilestoneResult(
+    milestoneId: number,
+    data: ReportMilestoneResultRequest
+  ): Promise<
+    ApiResponse<{
+      milestone_id: number;
+      result: boolean;
+      challenge_window_hours: number;
+    }>
+  > {
+    return this.request(`/milestones/${milestoneId}/result`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // 이의 제기 (투자자)
+  async createDispute(data: CreateDisputeRequest): Promise<
+    ApiResponse<{
+      milestone_id: number;
+      stake_amount: number;
+    }>
+  > {
+    return this.request("/disputes", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // 분쟁 투표 (판결단/토큰 보유자)
+  async submitDisputeVote(data: SubmitVoteRequest): Promise<
+    ApiResponse<{
+      dispute_id: number;
+      choice: string;
+    }>
+  > {
+    return this.request("/disputes/vote", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // 분쟁 상세 정보 조회
+  async getDisputeDetail(
+    disputeId: number
+  ): Promise<ApiResponse<DisputeDetailResponse>> {
+    return this.request(`/disputes/${disputeId}`);
+  }
+
+  // 마일스톤별 분쟁 목록 조회
+  async getMilestoneDisputes(milestoneId: number): Promise<
+    ApiResponse<{
+      milestone_id: number;
+      disputes: DisputeSummary[];
+    }>
+  > {
+    return this.request(`/milestones/${milestoneId}/disputes`);
+  }
+
+  // 활성 분쟁 목록 조회 (거버넌스 탭용)
+  async getActiveDisputes(): Promise<ApiResponse<ActiveDisputesResponse>> {
+    return this.request("/disputes/active");
+  }
+
+  // 분쟁 타이머 상태 조회 (실시간 업데이트용)
+  async getDisputeTimer(disputeId: number): Promise<
+    ApiResponse<{
+      dispute_id: number;
+      phase: string;
+      time_remaining: TimeRemaining;
+    }>
+  > {
+    return this.request(`/disputes/${disputeId}/timer`);
   }
 }
 

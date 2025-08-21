@@ -142,6 +142,12 @@ const ProjectDetailPage: React.FC = () => {
   const [showPostModal, setShowPostModal] = useState(false);
   const [postForm] = Form.useForm();
 
+  // ⚖️ Blueprint Court 분쟁 관련 상태
+  const [disputeDetail, setDisputeDetail] = useState<any>(null);
+  const [disputeTimer, setDisputeTimer] = useState<any>(null);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeLoading, setDisputeLoading] = useState(false);
+
   const loadProject = async () => {
     if (!id) return;
 
@@ -177,6 +183,94 @@ const ProjectDetailPage: React.FC = () => {
   useEffect(() => {
     loadProject();
   }, [id]);
+
+  // ⚖️ Blueprint Court 관련 함수들
+  const loadDisputeDetail = async (disputeId: number) => {
+    try {
+      setDisputeLoading(true);
+      const response = await apiClient.getDisputeDetail(disputeId);
+      if (response.success && response.data) {
+        setDisputeDetail(response.data);
+        // 분쟁 타이머도 함께 로드
+        loadDisputeTimer(disputeId);
+      }
+    } catch (error) {
+      console.error("분쟁 상세 정보 로드 실패:", error);
+      message.error("분쟁 정보를 불러올 수 없습니다");
+    } finally {
+      setDisputeLoading(false);
+    }
+  };
+
+  const loadDisputeTimer = async (disputeId: number) => {
+    try {
+      const response = await apiClient.getDisputeTimer(disputeId);
+      if (response.success && response.data) {
+        setDisputeTimer(response.data.time_remaining);
+      }
+    } catch (error) {
+      console.error("분쟁 타이머 로드 실패:", error);
+    }
+  };
+
+  const handleReportResult = async (
+    result: boolean,
+    evidence?: string,
+    description?: string
+  ) => {
+    if (!selectedMilestone) return;
+
+    try {
+      setDisputeLoading(true);
+      const response = await apiClient.reportMilestoneResult(
+        selectedMilestone.id,
+        {
+          result,
+          evidence_url: evidence || "",
+          evidence_files: [],
+          description: description || "",
+        }
+      );
+
+      if (response.success) {
+        message.success(
+          "마일스톤 결과가 성공적으로 보고되었습니다. 48시간 동안 이의제기 기간입니다."
+        );
+        // 프로젝트 데이터 다시 로드
+        await loadProject();
+      } else {
+        message.error(response.error || "결과 보고에 실패했습니다");
+      }
+    } catch (error) {
+      console.error("결과 보고 실패:", error);
+      message.error("결과 보고 중 오류가 발생했습니다");
+    } finally {
+      setDisputeLoading(false);
+    }
+  };
+
+  const handleCreateDispute = async (request: CreateDisputeRequest) => {
+    try {
+      setDisputeLoading(true);
+      const response = await apiClient.createDispute(request);
+
+      if (response.success) {
+        message.success(
+          "이의 제기가 성공적으로 접수되었습니다. 투표 기간이 시작됩니다."
+        );
+        setShowDisputeModal(false);
+        // 프로젝트 데이터 다시 로드
+        await loadProject();
+      } else {
+        message.error(response.error || "이의 제기에 실패했습니다");
+      }
+    } catch (error) {
+      console.error("이의 제기 실패:", error);
+      message.error("이의 제기 중 오류가 발생했습니다");
+    } finally {
+      setDisputeLoading(false);
+    }
+  };
 
   // 게시글 등록 처리
   const handlePostSubmit = async (values: any) => {
@@ -1295,6 +1389,144 @@ const ProjectDetailPage: React.FC = () => {
                           />
                         </div>
                       </Tabs.TabPane>
+
+                      {/* ⚖️ 분쟁 탭 */}
+                      <Tabs.TabPane
+                        tab={
+                          <span className="flex items-center gap-2">
+                            <span>⚖️</span>
+                            분쟁 (Dispute)
+                          </span>
+                        }
+                        key="dispute"
+                      >
+                        <div className="space-y-4">
+                          {/* 분쟁 타이머 (분쟁 진행 중일 때만 표시) */}
+                          {disputeTimer && (
+                            <DisputeTimer
+                              timeRemaining={disputeTimer}
+                              phase="challenge_window"
+                            />
+                          )}
+
+                          {/* 마일스톤 상태에 따른 액션 버튼들 */}
+                          <Card
+                            title="분쟁 해결 시스템"
+                            style={{
+                              background: "var(--bg-card)",
+                              border: "1px solid var(--border-color)",
+                            }}
+                          >
+                            {selectedMilestone && (
+                              <div className="space-y-4">
+                                {/* 결과 미보고 상태 - 생성자만 결과 보고 가능 */}
+                                {!selectedMilestone.result_reported &&
+                                  user?.id === project?.creator_id && (
+                                    <div className="space-y-3">
+                                      <Text className="block">
+                                        마일스톤이 완료되면 결과를 보고해주세요.
+                                      </Text>
+                                      <div className="flex gap-2">
+                                        <Button
+                                          type="primary"
+                                          className="bg-green-500 hover:bg-green-600 border-green-500"
+                                          onClick={() =>
+                                            handleReportResult(
+                                              true,
+                                              "",
+                                              "마일스톤이 성공적으로 완료되었습니다."
+                                            )
+                                          }
+                                          loading={disputeLoading}
+                                        >
+                                          성공 보고
+                                        </Button>
+                                        <Button
+                                          danger
+                                          onClick={() =>
+                                            handleReportResult(
+                                              false,
+                                              "",
+                                              "마일스톤 완료에 실패했습니다."
+                                            )
+                                          }
+                                          loading={disputeLoading}
+                                        >
+                                          실패 보고
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                {/* 결과 보고됨, 이의제기 기간 중 - 투자자들이 이의제기 가능 */}
+                                {selectedMilestone.result_reported &&
+                                  !selectedMilestone.is_in_dispute && (
+                                    <div className="space-y-3">
+                                      <Text className="block">
+                                        결과가 보고되었습니다. 48시간 동안
+                                        이의제기가 가능합니다.
+                                      </Text>
+                                      <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                                        <Text>
+                                          보고된 결과:{" "}
+                                          {selectedMilestone.completed
+                                            ? "✅ 성공"
+                                            : "❌ 실패"}
+                                        </Text>
+                                      </div>
+                                      <Button
+                                        danger
+                                        onClick={() =>
+                                          setShowDisputeModal(true)
+                                        }
+                                        disabled={
+                                          user?.id === project?.creator_id
+                                        } // 생성자는 이의제기 불가
+                                      >
+                                        결과에 이의 제기
+                                      </Button>
+                                    </div>
+                                  )}
+
+                                {/* 분쟁 진행 중 */}
+                                {selectedMilestone.is_in_dispute && (
+                                  <div className="space-y-3">
+                                    <Text className="block text-orange-500">
+                                      ⚖️ 분쟁이 진행 중입니다. 판결단의 투표를
+                                      기다리고 있습니다.
+                                    </Text>
+                                    {disputeDetail && (
+                                      <div className="p-3 bg-orange-50 dark:bg-orange-900 rounded">
+                                        <Text className="block font-semibold">
+                                          분쟁 사유:
+                                        </Text>
+                                        <Text>
+                                          {disputeDetail.dispute_reason}
+                                        </Text>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* 분쟁 없음 */}
+                                {!selectedMilestone.result_reported &&
+                                  !selectedMilestone.is_in_dispute && (
+                                    <div className="text-center py-8">
+                                      <Text
+                                        style={{
+                                          color: "var(--text-secondary)",
+                                        }}
+                                      >
+                                        마일스톤 완료 후 결과 보고 시 분쟁 해결
+                                        시스템이 작동됩니다.
+                                      </Text>
+                                    </div>
+                                  )}
+                              </div>
+                            )}
+                          </Card>
+                        </div>
+                      </Tabs.TabPane>
                     </Tabs>
                   </Card>
                 </div>
@@ -1411,6 +1643,16 @@ const ProjectDetailPage: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* ⚖️ 분쟁 제기 모달 */}
+      <CreateDisputeModal
+        visible={showDisputeModal}
+        onClose={() => setShowDisputeModal(false)}
+        onSubmit={handleCreateDispute}
+        milestoneId={selectedMilestone?.id || 0}
+        milestoneTitle={selectedMilestone?.title || ""}
+        originalResult={selectedMilestone?.completed || false}
+      />
     </div>
   );
 };
